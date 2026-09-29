@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ROV Point Hub · สะสมคะแนนแลกคูปอง</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-database-compat.min.js"></script>
+<style>
+:root{--bg:#f2f4f3;--card:#fff;--ink:#16302f;--mut:#6b7c7b;--pri:#0d5c63;--line:#e6ebe9;--ok:#e6f0e8;--okt:#2f6b3e;--wn:#fdeedd;--wnt:#8a4a12;--gr:#f1f3f2;--gold:#9a6412;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1817;--card:#182524;--ink:#e6efee;--mut:#93a5a3;--line:#263634;--ok:#1f3a29;--okt:#8fd1a1;--wn:#3d2c18;--wnt:#f0b877;--gr:#223130}}
+:root[data-theme="dark"]{--bg:#0f1817;--card:#182524;--ink:#e6efee;--mut:#93a5a3;--line:#263634;--ok:#1f3a29;--okt:#8fd1a1;--wn:#3d2c18;--wnt:#f0b877;--gr:#223130}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans Thai',system-ui,sans-serif;font-size:15px}
+header{background:#0d5c63;color:#fff;padding:18px 16px 20px;display:flex;gap:14px;align-items:flex-start}
+.ico{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.14);display:grid;place-items:center;flex:none;font-size:24px}
+header h1{margin:0;font-size:21px;line-height:1.3}header p{margin:3px 0 0;opacity:.85;font-size:13px}
+.sw{margin-left:auto;flex:none;border:0;background:rgba(255,255,255,.16);color:#fff;font:600 12px 'Noto Sans Thai';padding:7px 11px;border-radius:99px}
+main{max-width:820px;margin:0 auto;padding:14px 12px 30px}
+.tabs{display:flex;gap:8px;overflow-x:auto}
+.tab{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 18px;border-radius:99px;font:600 14px 'Noto Sans Thai';white-space:nowrap}
+.tab.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px 18px;margin-top:12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.chip{font:600 12px 'Noto Sans Thai';padding:5px 11px;border-radius:99px;background:var(--gr);color:var(--mut);border:0;white-space:nowrap}
+.chip.ok{background:var(--ok);color:var(--okt)}.chip.wn{background:var(--wn);color:var(--wnt)}
+.mut{color:var(--mut);font-size:13px}b.n{font-size:16px}
+.big{font-size:38px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--pri);margin:2px 0}
+.btn{font:700 14px 'Noto Sans Thai';border-radius:14px;padding:11px 16px;border:1px solid var(--line);background:var(--card);color:var(--ink);white-space:nowrap}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#fff}.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}.btn:disabled{opacity:.45}
+.bar{height:8px;border-radius:9px;background:var(--gr);overflow:hidden;margin-top:10px}.bar i{display:block;height:100%;background:var(--pri);width:0;transition:width .4s}
+.em{font-size:26px;flex:none}.gap{display:flex;gap:12px;align-items:center;min-width:0}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;display:flex;align-items:flex-end;justify-content:center}
+.gb{background:var(--card);width:100%;max-width:640px;max-height:88%;overflow:auto;border-radius:24px 24px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px))}
+.gb h2{margin:0 0 4px}.gb h4{margin:16px 0 6px;color:var(--pri)}.gb ol{margin:0;padding-left:20px;line-height:1.9}.gb b{background:var(--gr);padding:1px 7px;border-radius:7px;font-weight:600}
+.stp{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}.no{width:26px;height:26px;border-radius:50%;background:var(--pri);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+main{padding-bottom:96px}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nv{flex:1;border:0;background:none;color:var(--mut);font:600 11px 'Noto Sans Thai';padding:8px 0 9px;display:flex;flex-direction:column;align-items:center;gap:1px}.nv span{font-size:21px}.nv.on{color:var(--pri)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.menu{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;color:var(--ink);font:15px 'Noto Sans Thai';text-align:left}
+.code{font:700 15px ui-monospace,monospace;background:var(--gr);padding:4px 8px;border-radius:8px}
+.tbl{width:100%;border-collapse:collapse}.tbl td{padding:9px 4px;border-top:1px solid var(--line)}
+.inp{width:100%;font:15px 'Noto Sans Thai';padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);margin-top:6px}
+</style></head><body>
+<header><div class="ico">🎮</div><div style="flex:1;min-width:0"><h1 id="h1">ROV Point Hub</h1><p id="hp"></p></div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex:none" id="hact"></div></header>
+<main><div id="v">
+ <div class="card" style="margin-top:0;text-align:center;padding:36px 18px"><div style="font-size:44px">🔌</div><b class="n">กำลังเชื่อมต่อ…</b></div>
+</div></main><nav id="nav" style="display:none"></nav><div id="gd"></div><div id="dlg"></div>
+<script>
+const FIREBASE_CONFIG={apiKey:"AIzaSyDnd949B306VQztn-Rh41nNMyaJcB10or8",authDomain:"curov-355d1.firebaseapp.com",databaseURL:"https://curov-355d1-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"curov-355d1",storageBucket:"curov-355d1.firebasestorage.app",messagingSenderId:"811437937433",appId:"1:811437937433:web:6a2a85c02c9c17e3856b88"};
+const ADMIN_EMAIL='sakkrin611@gmail.com';
+const M=[
+{id:'ci',e:'📅',n:'เช็กอินรายวัน',d:'เข้าเว็บทุกวัน · ครบ 7 วันติดต่อกันรับโบนัส 5,000',p:100,s:0,max:1},
+{id:'v1',e:'🎬',n:'ดูคลิปไฮไลต์ 30 วินาที',d:'เปิดหน้านี้ค้างไว้ให้ครบเวลา',p:5,s:30,max:10},
+{id:'n',e:'📰',n:'อ่านข่าว ROV 1 ข่าว (60 วินาที)',d:'นับเวลาอ่านข่าว',p:30,s:60,max:5},
+{id:'v2',e:'📺',n:'ดูคลิปแมตช์ 3 นาที',d:'เปิดหน้านี้ค้างไว้ให้ครบเวลา',p:50,s:180,max:5},
+{id:'p1',e:'🕹️',n:'เล่นเว็บ 5 นาที',d:'อยู่ในหน้านี้ให้ครบเวลา',p:100,s:300,max:6},
+{id:'p2',e:'🔥',n:'เล่นเว็บ 30 นาที',d:'ภารกิจใหญ่ คะแนนสูง',p:1000,s:1800,max:2},
+{id:'big',e:'👑',n:'ออนไลน์ครบ 2 ชั่วโมงในวันเดียว',d:'นับเวลาที่เปิดเว็บรวมทั้งวัน',p:10000,s:7200,max:1,tot:1}];
+const T=[[5,100000],[10,300000],[50,1000000],[100,10000000]];
+const WH=[[5,50],[20,25],[50,14],[100,7],[500,3],[1000,1]];
+const fmt=n=>n.toLocaleString('en-US'),day=()=>new Date().toLocaleDateString('en-CA');
+const $=s=>document.querySelector(s),p2=x=>String(x).padStart(2,'0'),mm=s=>p2(Math.floor(s/60))+':'+p2(s%60);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ico=t=>({video:'🎬',news:'📰',image:'🖼️'}[t]||'📄'),tn=t=>({video:'วิดีโอ',news:'ข่าว',image:'รูปภาพ'}[t]||'');
+const tstr=()=>{const d=new Date();return p2(d.getDate())+'/'+p2(d.getMonth()+1)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
+const fresh=()=>({pts:0,day:day(),done:{},on:0,streak:0,last:null,log:[],my:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0});
+
+let fbApp,auth,db,ready=false;
+let user=null,uid=null,isAdmin=false,authMode='in';
+let S=null,run=null,saveOk=null,lastSave=null,pushTimer=null;
+let content=[],pg='login',cur=null;
+let userRefOff=null,contentRefOff=null;
+
+const dlg=(m,y='ยืนยัน',n='ยกเลิก')=>new Promise(res=>{const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:20px"><div class="gb" style="border-radius:22px;max-width:380px;max-height:none;padding:20px"><div style="white-space:pre-wrap;line-height:1.7">${esc(m)}</div><div style="display:grid;grid-template-columns:${n?'1fr 1fr':'1fr'};gap:10px;margin-top:16px">${n?`<button class="btn" id="dn">${n}</button>`:''}<button class="btn pri" id="dy">${y}</button></div></div></div>`;const c=v=>{e.innerHTML='';res(v)};$('#dy').onclick=()=>c(true);if(n)$('#dn').onclick=()=>c(false)});
+const say=m=>dlg(m,'ตกลง',null);
+async function cp(c){let ok=false;try{await navigator.clipboard.writeText(c);ok=true}catch(e){}
+ if(!ok){try{const t=document.createElement('textarea');t.value=c;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.select();ok=document.execCommand('copy');t.remove()}catch(e){}}
+ if(!ok)say('คัดลอกอัตโนมัติไม่ได้ กดค้างที่ข้อความแล้วเลือกคัดลอก')}
+
+// ---------- auth ----------
+function fbErr(c){return ({'auth/invalid-email':'อีเมลไม่ถูกต้อง','auth/user-not-found':'ไม่พบบัญชีนี้','auth/wrong-password':'รหัสผ่านไม่ถูกต้อง','auth/invalid-credential':'อีเมลหรือรหัสผ่านไม่ถูกต้อง','auth/email-already-in-use':'อีเมลนี้ถูกใช้สมัครแล้ว','auth/weak-password':'รหัสผ่านสั้นเกินไป (อย่างน้อย 6 ตัว)','auth/too-many-requests':'ลองผิดหลายครั้งเกินไป รอสักครู่แล้วลองใหม่','auth/network-request-failed':'เชื่อมต่อเครือข่ายไม่ได้'})[c]||('เกิดข้อผิดพลาด ('+(c||'unknown')+')')}
+async function doAuth(){const email=$('#lem').value.trim(),pw=$('#lpw').value,er=$('#lerr'),bt=$('#lbtn');er.textContent='';
+ if(!email||!pw){er.textContent='กรอกอีเมลและรหัสผ่าน';return}
+ bt.disabled=true;try{if(authMode==='up')await auth.createUserWithEmailAndPassword(email,pw);else await auth.signInWithEmailAndPassword(email,pw)}catch(e){er.textContent=fbErr(e.code)}bt.disabled=false}
+async function forgotPw(){const email=($('#lem')&&$('#lem').value.trim())||'';if(!email){say('กรอกอีเมลในช่องด้านบนก่อน แล้วกดลืมรหัสผ่านอีกครั้ง');return}
+ try{await auth.sendPasswordResetEmail(email);say('ส่งลิงก์รีเซ็ตรหัสผ่านไปที่ '+email+' แล้ว (เช็กเมล/ถังขยะ)')}catch(e){say(fbErr(e.code))}}
+async function logout(){if(!(await dlg('ออกจากระบบ?','ออกจากระบบ')))return;await flush();detachAll();auth.signOut()}
+function vLogin(){return `<div class="card" style="margin-top:0;text-align:center;padding:28px 18px">
+ <div style="font-size:44px">🎮</div><b class="n" style="display:block;margin-top:6px;font-size:19px">ROV Point Hub</b><div class="mut" style="margin-top:4px">เข้าสู่ระบบเพื่อเริ่มสะสมคะแนน · ข้อมูลจะผูกกับบัญชีนี้ถาวร</div>
+ <div style="text-align:left;margin-top:18px"><label class="mut">อีเมล</label><input id="lem" type="email" autocomplete="email" class="inp" placeholder="you@example.com">
+ <label class="mut" style="display:block;margin-top:10px">รหัสผ่าน</label><input id="lpw" type="password" autocomplete="current-password" class="inp" placeholder="อย่างน้อย 6 ตัวอักษร"></div>
+ <div style="color:#d32f2f;font-size:13px;margin-top:10px;min-height:18px" id="lerr"></div>
+ <button class="btn pri" id="lbtn" style="width:100%;margin-top:4px" onclick="doAuth()">${authMode==='up'?'สมัครสมาชิก':'เข้าสู่ระบบ'}</button>
+ <div class="mut" style="margin-top:14px">${authMode==='up'?'มีบัญชีแล้ว?':'ยังไม่มีบัญชี?'} <button class="chip" onclick="authMode=authMode==='up'?'in':'up';R()">${authMode==='up'?'เข้าสู่ระบบ':'สมัครสมาชิก'}</button></div>
+ ${authMode==='in'?`<button class="chip" style="margin-top:10px" onclick="forgotPw()">ลืมรหัสผ่าน?</button>`:''}</div>`}
+
+// ---------- realtime user doc ----------
+function attachUser(){userRefOff=db.ref('users/'+uid);
+ userRefOff.on('value',snap=>{const v=snap.val();if(!v){S=fresh();pushUser(true)}else{S=Object.assign(fresh(),v)}roll();R()},e=>{markSave(false)})}
+function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();userRefOff=null;contentRefOff=null;S=null;content=[];run=null}
+function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
+function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
+async function pushUser(direct){if(!S||!uid)return;if(!direct&&pushTimer){clearTimeout(pushTimer);pushTimer=null}const d=clone(S);try{await db.ref('users/'+uid).set(d);markSave(true)}catch(e){markSave(false)}}
+function flush(){return pushUser(true)}
+function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.on=0;run=null;save()}}
+function add(n,t){S.pts+=n;S.log.unshift({t:tstr(),m:t,n});S.log=S.log.slice(0,80);save()}
+
+// ---------- realtime content ----------
+function attachContent(){contentRefOff=db.ref('content');
+ contentRefOff.on('value',snap=>{const v=snap.val()||{};content=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(['lib','home','view','admin'].includes(pg))R()},()=>{})}
+
+// ---------- missions ----------
+function claim(id){const m=M.find(x=>x.id===id);let n=m.p,t=m.n;
+ if(id==='ci'){const y=new Date(Date.now()-864e5).toLocaleDateString('en-CA');S.streak=S.last===y?S.streak+1:1;S.last=day();
+  if(S.streak%7===0){n+=5000;t+=' + โบนัสครบ 7 วัน'}}
+ S.done[id]=(S.done[id]||0)+1;if(run&&run.id===id)run=null;add(n,t);R()}
+function start(id){run={id,el:0};R()}
+function stop(){run=null;R()}
+function mission(m){const c=(S.done||{})[m.id]||0,full=c>=m.max,r=run&&run.id===m.id;
+ const el=m.tot?S.on:(r?run.el:0),ready=m.s===0||el>=m.s;let b;
+ if(full)b='<span class="chip ok">ครบวันนี้</span>';
+ else if(ready)b=`<button class="btn gold" onclick="claim('${m.id}')">รับ +${fmt(m.p)}</button>`;
+ else if(m.tot)b='<span class="chip wn" id="t-'+m.id+'">'+mm(S.on)+' / '+mm(m.s)+'</span>';
+ else if(r)b=`<button class="btn" onclick="stop()">หยุด</button>`;
+ else b=`<button class="btn pri" onclick="start('${m.id}')">เริ่ม</button>`;
+ return `<div class="card"><div class="row"><div class="gap"><span class="em">${m.e}</span><div style="min-width:0"><b class="n">${m.n}</b><div class="mut">${m.d}</div><div class="mut">+${fmt(m.p)} คะแนน · วันนี้ ${c}/${m.max}</div></div></div>${b}</div>
+ ${(m.s&&!full&&(r||m.tot))?`<div class="bar"><i id="b-${m.id}" style="width:${Math.min(100,el/m.s*100)}%"></i></div>${r?`<div class="mut" style="margin-top:6px" id="t-${m.id}">${mm(el)} / ${mm(m.s)}</div>`:''}`:''}</div>`}
+function spin(){if(S.done.wheel)return;let r=Math.random()*100,p=5;for(const [v,w] of WH){if(r<w){p=v;break}r-=w}S.done.wheel=1;add(p,'หมุนวงล้อรายวัน');R();say('🎡 ได้ '+fmt(p)+' คะแนน!')}
+const seenN=()=>Object.keys(S.seen).length;
+const MS=[['oid','🆔','ตั้งค่า ROV Open ID','กรอกครั้งแรก',50,()=>S.oid?1:0,1],['s3','🔥','เช็กอินติดกัน 3 วัน','',300,()=>S.streak,3],['s14','🔥','เช็กอินติดกัน 14 วัน','',3000,()=>S.streak,14],['s30','🔥','เช็กอินติดกัน 30 วัน','',10000,()=>S.streak,30],
+['c3','📚','ดู/อ่านเนื้อหาในคลัง 3 รายการ','',200,seenN,3],['c10','📚','ดู/อ่านเนื้อหาในคลัง 10 รายการ','',1000,seenN,10],['l10','⏱️','ออนไลน์สะสม 10 ชั่วโมง','',2000,()=>S.life/3600,10],['l50','⏱️','ออนไลน์สะสม 50 ชั่วโมง','',10000,()=>S.life/3600,50]];
+function msClaim(id){const m=MS.find(x=>x[0]===id);if(!m||S.ms[id]||m[5]()<m[6])return;S.ms[id]=1;add(m[4],m[2]);R()}
+function msCard(m){const [id,e,n,d,p,f,t]=m,c=Math.min(f(),t),ok=c>=t,dn=S.ms[id];
+ return `<div class="card"><div class="row"><div class="gap"><span class="em">${e}</span><div style="min-width:0"><b class="n">${n}</b><div class="mut">+${fmt(p)} คะแนน · ${Math.floor(c)}/${t}${d?' · '+d:''}</div></div></div>${dn?'<span class="chip ok">รับแล้ว ✓</span>':ok?`<button class="btn gold" onclick="msClaim('${id}')">รับ +${fmt(p)}</button>`:`<span class="chip">${Math.floor(c/t*100)}%</span>`}</div>${dn||ok?'':`<div class="bar"><i style="width:${c/t*100}%"></i></div>`}</div>`}
+function vM(){return '<div class="mut" style="margin:14px 4px 0">เลือก "เริ่ม" แล้วเปิดหน้านี้ค้างไว้ · เวลาจะนับเฉพาะตอนที่อยู่ในหน้านี้ · ทำได้ครั้งละ 1 ภารกิจ</div>'
+ +`<div class="card"><div class="row"><div class="gap"><span class="em">🎡</span><div><b class="n">วงล้อรายวัน</b><div class="mut">หมุนได้วันละ 1 ครั้ง · ได้ 5–1,000 คะแนน</div></div></div>${S.done.wheel?'<span class="chip ok">หมุนแล้ววันนี้</span>':'<button class="btn gold" onclick="spin()">หมุน</button>'}</div></div>`
+ +M.map(mission).join('')+'<div class="mut" style="margin:18px 4px 0">🏆 เป้าหมายสะสม (รับได้ครั้งเดียว)</div>'+MS.map(msCard).join('')}
+
+// ---------- redeem ----------
+function vR(){const nx=T.find(t=>S.pts<t[1]);
+ let h=`<div class="card"><b class="n">แลกคะแนนเป็นคูปอง ROV</b><div class="mut">${nx?`อีก ${fmt(nx[1]-S.pts)} คะแนน จะแลก ${nx[0]} คูปองได้`:'คะแนนพอแลกได้ทุกระดับแล้ว'}</div></div>`;
+ T.forEach(([q,c])=>{const ok=S.pts>=c;h+=`<div class="card"><div class="row"><div class="gap"><span class="em">🎟️</span><div><b class="n">${q} คูปอง</b><div class="mut">${fmt(c)} คะแนน</div></div></div>
+ <button class="btn ${ok?'gold':''}" ${ok?'':'disabled'} onclick="redeem(${q},${c})">${ok?'แลกเลย':'คะแนนไม่พอ'}</button></div><div class="bar"><i style="width:${Math.min(100,S.pts/c*100)}%"></i></div><div class="mut" style="margin-top:6px">${fmt(Math.min(S.pts,c))} / ${fmt(c)}</div></div>`});return h}
+async function redeem(q,c){if(S.pts<c)return;if(!S.oid){await say('กรอก ROV Open ID ก่อนแลกคูปอง');eo=true;pg='home';R();return}
+ if(!(await dlg('ใช้ '+fmt(c)+' คะแนน แลก '+q+' คูปอง\nให้ Open ID: '+S.oid+' ?')))return;if(S.pts<c)return;
+ const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',g=n=>Array.from({length:n},()=>ch[Math.floor(Math.random()*ch.length)]).join('');
+ const code='ROV-'+g(4)+'-'+g(4);S.my.unshift({t:tstr(),q,code,oid:S.oid});add(-c,'แลก '+q+' คูปอง ('+code+') ID '+S.oid);pg='mine';R()}
+function vH(){return `<div class="card"><b class="n">คูปองของฉัน</b>${S.my.length?`<table class="tbl">${S.my.map(x=>`<tr><td>${x.q} คูปอง<div class="mut">${x.t}${x.oid?' · ID '+x.oid:''}</div></td><td align="right"><span class="code">${x.code}</span> <button class="chip" onclick="cp('${x.code}')">คัดลอก</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มีคูปอง</div>'}</div>
+<div class="card"><b class="n">ประวัติคะแนน</b><table class="tbl">${S.log.map(x=>`<tr><td class="mut" width="90">${x.t}</td><td>${x.m}</td><td align="right"><b style="color:${x.n<0?'#d32f2f':'var(--okt)'}">${x.n>0?'+':''}${fmt(x.n)}</b></td></tr>`).join('')||'<tr><td class="mut">ยังไม่มีประวัติ</td></tr>'}</table></div>`}
+let eo=false;
+function oidR(){const e=$('#oidc');if(!e||!S||(eo&&$('#oi')))return;
+ e.innerHTML=(S.oid&&!eo)?`<div class="row"><div class="gap"><span class="em">🆔</span><div><div class="mut">ROV Open ID ที่รับคูปอง</div><span class="code">${S.oid}</span></div></div><button class="chip" onclick="eo=true;oidR();$('#oi').focus()">แก้ไข</button></div>`
+ :`<b class="n">🆔 ROV Open ID</b><div class="mut" style="margin:4px 0 8px">กรอก Open ID ของบัญชี ROV ที่จะรับคูปอง (ต้องกรอกก่อนแลก)</div><div class="row" style="flex-wrap:nowrap"><input id="oi" value="${S.oid||''}" placeholder="เช่น 1234567890" inputmode="text" maxlength="30" class="inp" style="margin-top:0"><button class="btn pri" onclick="saveOid()">บันทึก</button></div>`}
+function saveOid(){const v=$('#oi').value.trim();if(!/^[A-Za-z0-9_-]{5,30}$/.test(v)){say('Open ID ต้องเป็นตัวเลข/ตัวอักษร 5-30 ตัว ไม่มีเว้นวรรค');return}
+ S.oid=v;eo=false;save();R()}
+
+// ---------- nav / pages ----------
+const NAV=[['home','🏠','หน้าหลัก'],['missions','🎯','ภารกิจ'],['lib','📚','คลัง'],['redeem','🎟️','แลกคูปอง'],['more','☰','เพิ่มเติม']];
+const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],login:['ROV Point Hub','เข้าสู่ระบบ']};
+const navOn=k=>({view:'lib',mine:'more',admin:'more'}[pg]||pg)===k;
+function go(k){pg=k;cur=null;R();window.scrollTo(0,0)}
+function openC(id){cur=id;pg='view';R();window.scrollTo(0,0)}
+function claimC(id){const c=content.find(x=>x.id===id);if(!c||S.seen[id])return;S.seen[id]=true;add(c.pts,(tn(c.type)||'เนื้อหา')+': '+c.title);R()}
+function head(){const P=PG[pg]||PG.home;$('#h1').textContent=P[0];$('#hp').textContent=P[1];
+ $('#hact').innerHTML=(pg==='login')?'':`<span class="sw" style="margin:0">⭐ ${fmt(S?S.pts:0)}</span><button class="sw" style="margin:0" onclick="guide(1)">❓ วิธีใช้</button>`;
+ $('#nav').style.display=pg==='login'?'none':'flex';
+ $('#nav').innerHTML=NAV.map(([k,i,l])=>`<button class="nv ${navOn(k)?'on':''}" onclick="go('${k}')"><span>${i}</span>${l}</button>`).join('')}
+function vHome(){const nx=T.find(t=>S.pts<t[1]),nw=content.filter(c=>!S.seen[c.id]).length;
+ return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'} · ข้อมูลผูกกับบัญชีนี้ถาวร</div></div></div></div></div>
+ <div class="card"><div class="row"><div><div class="mut">คะแนนของคุณ</div><div class="big" id="pts">${fmt(S.pts)}</div></div><div style="text-align:right"><span class="chip wn">🔥 เช็กอินติดกัน ${S.streak} วัน</span><div class="mut" style="margin-top:6px" id="onl">ออนไลน์วันนี้ ${mm(S.on)}</div><div class="mut" style="margin-top:4px" id="sv"></div></div></div>
+ ${nx?`<div class="bar"><i style="width:${Math.min(100,S.pts/nx[1]*100)}%"></i></div><div class="mut" style="margin-top:6px">อีก ${fmt(nx[1]-S.pts)} คะแนน แลก ${nx[0]} คูปองได้</div>`:''}</div>
+ <div class="card" id="oidc"></div><div class="grid">${[['missions','🎯','ภารกิจประจำวัน','เช็กอิน ดูคลิป เล่นเว็บ'],['lib','📚','คลังเนื้อหา',nw?nw+' รายการใหม่':'วิดีโอ ข่าว รูป'],['redeem','🎟️','แลกคูปอง','ใช้คะแนนแลก'],['mine','🧾','คูปองของฉัน',S.my.length+' ใบ']].map(([k,e,t,d])=>`<button class="menu" onclick="go('${k}')"><span class="em">${e}</span><b>${t}</b><span class="mut">${d}</span></button>`).join('')}</div>`}
+function vLib(){return '<div class="mut" style="margin:2px 4px">เนื้อหาที่แอดมินอัปโหลด · ดู/อ่านจนครบเวลาแล้วกดรับคะแนน (รับได้ครั้งเดียวต่อรายการ) · อัปเดตทันทีเมื่อแอดมินเพิ่ม</div>'+(content.length?content.map(c=>{const d=!!S.seen[c.id],q=S.cp[c.id]||0;
+ return `<div class="card" onclick="openC('${c.id}')"><div class="row"><div class="gap"><span class="em">${ico(c.type)}</span><div style="min-width:0"><b class="n">${esc(c.title)}</b><div class="mut">${tn(c.type)} · ต้องอยู่ ${mm(c.sec)} · +${fmt(c.pts)} คะแนน</div></div></div>${d?'<span class="chip ok">รับแล้ว ✓</span>':q?'<span class="chip wn">'+mm(Math.min(q,c.sec))+'/'+mm(c.sec)+'</span>':'<span class="chip">ใหม่</span>'}</div></div>`}).join(''):'<div class="card"><div class="mut">ยังไม่มีเนื้อหา — รอแอดมินอัปโหลด</div></div>')}
+function vView(){const c=content.find(x=>x.id===cur);if(!c)return '<div class="card"><button class="btn" onclick="go(\'lib\')">← กลับคลัง</button><div class="mut" style="margin-top:8px">ไม่พบเนื้อหา (อาจถูกลบ)</div></div>';
+ const d=!!S.seen[c.id],q=Math.min(S.cp[c.id]||0,c.sec),rd=q>=c.sec;
+ const md=c.type==='video'?`<video id="vid" src="${c.url}" controls playsinline controlslist="nodownload" style="width:100%;border-radius:14px;background:#000"></video>`:c.url?`<img src="${c.url}" alt="" style="width:100%;border-radius:14px">`:'';
+ return `<div class="card" style="margin-top:0"><button class="btn" onclick="go('lib')">← กลับคลัง</button><h2 style="margin:12px 0 4px;font-size:20px">${esc(c.title)}</h2><div class="mut">+${fmt(c.pts)} คะแนน · ต้องอยู่ในหน้านี้ ${mm(c.sec)}${c.type==='video'?' (นับเฉพาะตอนวิดีโอกำลังเล่น)':''}</div><div style="margin-top:12px">${md}</div>${c.body?`<div style="margin-top:12px;white-space:pre-wrap;line-height:1.75">${esc(c.body)}</div>`:''}</div>
+ <div class="card"><div class="row"><b class="n">ความคืบหน้า</b>${d?'<span class="chip ok">รับแล้ว ✓</span>':rd?`<button class="btn gold" onclick="claimC('${c.id}')">รับ +${fmt(c.pts)}</button>`:`<span class="chip wn" id="ct2">${mm(q)} / ${mm(c.sec)}</span>`}</div><div class="bar"><i id="cb2" style="width:${d?100:Math.min(100,q/c.sec*100)}%"></i></div></div>`}
+function vMore(){const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-direction:row;align-items:center;gap:12px" onclick="${k}"><span class="em">${e}</span><b>${t}</b></button>`;
+ return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน (อีเมลนี้ถูกกำหนดไว้ล่วงหน้า)':'ผู้เล่น'}</div></div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>
+ <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('mine')",'🧾','คูปองและประวัติ')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน · อัปโหลดเนื้อหา'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
+
+// ---------- admin content (real Storage + Realtime DB) ----------
+function fileSel(){const f=$('#af').files[0];if(!f)return;$('#at').value=f.type.startsWith('video/')?'video':f.type.startsWith('image/')?($('#at').value==='news'?'news':'image'):$('#at').value;
+ if(f.type.startsWith('video/')){const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{const d=Math.max(5,Math.floor(v.duration));URL.revokeObjectURL(v.src);$('#as').value=d;$('#as').max=d;$('#afh').textContent='ความยาววิดีโอ '+mm(d)+' — ตั้งเวลาได้ไม่เกินความยาว'};v.src=URL.createObjectURL(f)}}
+const alist=()=>content.length?`<table class="tbl">${content.map(c=>`<tr><td>${ico(c.type)} ${esc(c.title)}<div class="mut">+${fmt(c.pts)} · ${mm(c.sec)}</div></td><td align="right"><button class="chip" onclick="delC('${c.id}')">ลบ</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มี</div>';
+function vAdmin(){if(!isAdmin)return '<div class="card"><div class="mut">เฉพาะบัญชีแอดมินเท่านั้น</div></div>';
+ return `<div class="card" style="margin-top:0"><b class="n">เพิ่มเนื้อหาใหม่ (เผยแพร่จริงทันที)</b><div class="mut" style="margin-top:4px">อัปโหลดแล้วผู้เล่นทุกคนที่เปิดหน้าอยู่จะเห็นทันทีโดยไม่ต้องรีเฟรช</div>
+ <select id="at" class="inp"><option value="video">🎬 วิดีโอ (mp4/webm)</option><option value="news">📰 ข่าว/บทความ</option><option value="image">🖼️ รูปภาพ</option></select>
+ <input id="ati" placeholder="หัวข้อ" maxlength="120" class="inp"><textarea id="abd" rows="5" placeholder="เนื้อหาข่าว/คำอธิบาย (ข่าวต้องกรอก)" class="inp"></textarea>
+ <input id="af" type="file" accept="video/mp4,video/webm,image/png,image/jpeg,image/webp,image/gif" onchange="fileSel()" class="inp"><div class="mut" id="afh">วิดีโอไม่เกิน 4MB (คลิปสั้นๆ) · รูปไม่เกิน 2MB — จำกัดเพราะเก็บในแพ็กเกจฟรีของ Firebase (ไม่ใช้ Storage ที่ต้องผูกบัตร)</div>
+ <div class="row" style="gap:8px;margin-top:8px;align-items:flex-start"><label class="mut" style="flex:1">คะแนนที่ได้ (5–10,000)<input id="ap" type="number" min="5" max="10000" value="50" class="inp"></label><label class="mut" style="flex:1">ต้องอยู่ (วินาที)<input id="as" type="number" min="5" max="7200" value="60" class="inp"></label></div>
+ <button class="btn pri" id="abtn" style="width:100%;margin-top:12px" onclick="addContent()">อัปโหลดและเผยแพร่</button><div class="mut" id="ast" style="margin-top:6px"></div></div>
+ <div class="card"><b class="n">เนื้อหาที่เผยแพร่แล้ว</b><div id="alist">${alist()}</div></div>`}
+function readB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
+async function addContent(){const st=$('#ast'),bt=$('#abtn');const type=$('#at').value,title=$('#ati').value.trim(),body=$('#abd').value.trim(),f=$('#af').files[0];let pts=Math.round(+$('#ap').value),sec=Math.round(+$('#as').value);
+ if(!title){st.textContent='กรอกหัวข้อ';return}if(type!=='news'&&!f){st.textContent='เลือกไฟล์ก่อน';return}if(type==='news'&&!body){st.textContent='กรอกเนื้อหาข่าว';return}
+ if(f&&type==='video'&&!f.type.startsWith('video/')||f&&type==='image'&&!f.type.startsWith('image/')){st.textContent='ชนิดไฟล์ไม่ตรงกับประเภท';return}
+ if(!(pts>=5&&pts<=10000)||!(sec>=5&&sec<=7200)){st.textContent='คะแนน 5–10,000 / เวลา 5–7,200 วินาที';return}
+ const cap=type==='video'?4:2;if(f&&f.size>cap*1048576){st.textContent='ไฟล์เกิน '+cap+'MB (แพ็กเกจฟรีเก็บไฟล์เล็กเท่านั้น)';return}
+ bt.disabled=true;try{const id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);let url='';
+  if(f){st.textContent='กำลังแปลงไฟล์...';url=await readB64(f)}
+  await db.ref('content/'+id).set({type,title,body,url,pts,sec,ts:firebase.database.ServerValue.TIMESTAMP});
+  st.textContent='✅ เผยแพร่แล้ว ผู้เล่นทุกคนเห็นทันที';['#ati','#abd'].forEach(x=>$(x).value='');$('#af').value=''}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่ (ไฟล์อาจใหญ่เกินไป)')}bt.disabled=false}
+async function delC(id){const c=content.find(x=>x.id===id);if(!c||!(await dlg('ลบ "'+c.title+'" ? (ลบถาวรจากทุกคน)','ลบ')))return;
+ try{await db.ref('content/'+id).remove()}catch(e){say('ลบไม่สำเร็จ: '+((e&&e.code)||'ลองใหม่'))}}
+
+// ---------- guide ----------
+function mock(ic,t,sb,btn,col,at,bar){const bc={gold:'#9a6412',pri:'#0d5c63',gr:'#8a9a98'}[col];
+ const arr=at==='bar'?'<path d="M150 132V110" stroke="#e53935" stroke-width="3"/><path d="M142 116L150 104L158 116Z" fill="#e53935"/><text x="164" y="130" fill="#e53935" font-size="13" font-weight="700">แถบนี้ต้องเต็ม</text>':'<path d="M264 4V36" stroke="#e53935" stroke-width="3"/><path d="M256 30L264 42L272 30Z" fill="#e53935"/><text x="250" y="18" fill="#e53935" font-size="13" font-weight="700" text-anchor="end">กดตรงนี้</text>';
+ return `<svg viewBox="0 0 320 138" width="100%" style="margin-top:8px;font-family:'Noto Sans Thai',sans-serif"><rect x="6" y="26" width="308" height="92" rx="16" style="fill:var(--card);stroke:var(--line)"/><text x="20" y="54" font-size="14" font-weight="700" style="fill:var(--ink)">${ic} ${t}</text><text x="20" y="74" font-size="11" style="fill:var(--mut)">${sb}</text>
+ <rect x="222" y="44" width="84" height="34" rx="12" fill="${bc}"/><text x="264" y="66" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">${btn}</text>${bar!=null?`<rect x="20" y="96" width="280" height="8" rx="4" style="fill:var(--gr)"/><rect x="20" y="96" width="${280*bar}" height="8" rx="4" fill="#0d5c63"/>`:''}${arr}</svg>`}
+function guide(o){const e=$('#gd');if(!o){e.innerHTML='';return}
+ const st=[['เข้าสู่ระบบด้วยอีเมล','สมัครหรือเข้าสู่ระบบด้วยอีเมล/รหัสผ่าน คะแนนจะผูกกับบัญชีนี้ถาวร เปิดเครื่องไหนก็ได้ข้อมูลเดิม',mock('🔐','เข้าสู่ระบบ','อีเมล + รหัสผ่าน','เข้าสู่ระบบ','pri','btn')],
+ ['กรอก ROV Open ID','หน้าหลัก → พิมพ์ Open ID ของบัญชี ROV → กด บันทึก (ต้องมีก่อนจึงแลกคูปองได้)',mock('🆔','ROV Open ID','พิมพ์ Open ID ของคุณ','บันทึก','pri','btn')],
+ ['กด "เช็กอินรายวัน"','เมนูล่าง 🎯 ภารกิจ → กด รับ ที่ เช็กอินรายวัน (วันละครั้ง ครบ 7 วันติดกันได้โบนัส)',mock('📅','เช็กอินรายวัน','+100 คะแนน · วันนี้ 0/1','รับ +100','gold','btn')],
+ ['เลือกภารกิจแล้วกด "เริ่ม"','เช่น ดูคลิป อ่านข่าว เล่นเว็บ · ทำได้ครั้งละ 1 ภารกิจ',mock('🎬','ดูคลิปไฮไลต์ 30 วินาที','+5 คะแนน · วันนี้ 0/10','เริ่ม','pri','btn')],
+ ['เปิดหน้านี้ค้างไว้จนแถบเต็ม','ห้ามสลับแท็บ/ออกจากแอป เวลาจะหยุดนับ',mock('🎬','ดูคลิปไฮไลต์ 30 วินาที','กำลังนับ 00:18 / 00:30','หยุด','gr','bar',.6)],
+ ['ดู/อ่านเนื้อหาในหน้า "คลัง"','เมนูล่าง 📚 คลัง → เลือกวิดีโอ/ข่าว/รูปที่แอดมินอัปโหลด → กดเล่น/อ่านให้ครบเวลา → กด รับ',mock('🎬','คลิปไฮไลต์แมตช์','+50 คะแนน · ต้องดู 01:00','ดู','pri','btn')],
+ ['สะสมพอแล้ว กด "แลกเลย"','แท็บ แลกคูปอง → เลือกระดับที่คะแนนพอ → กดแลก → ยืนยัน',mock('🎟️','5 คูปอง','100,000 คะแนน','แลกเลย','gold','btn')],
+ ['คัดลอกโค้ดคูปอง','แท็บ คูปองและประวัติ → กด คัดลอก แล้วเก็บโค้ดไว้ใช้',mock('🎟️','ROV-AB12-CD34','5 คูปอง','คัดลอก','pri','btn')]];
+ e.innerHTML=`<div class="ov" onclick="if(event.target===this)guide(0)"><div class="gb"><h2>วิธีใช้งาน</h2><div class="mut">ทำตามทีละขั้น 1 → 8 ตามรูป (ลูกศรแดงคือปุ่มที่ต้องกด)</div>
+ ${st.map((x,i)=>`<div class="stp"><div class="gap"><span class="no">${i+1}</span><b class="n">${x[0]}</b></div><div class="mut" style="margin-top:4px">${x[1]}</div>${x[2]}</div>`).join('')}
+ <button class="btn pri" style="width:100%;margin-top:16px" onclick="guide(0)">เข้าใจแล้ว</button></div></div>`}
+
+// ---------- render loop ----------
+const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin};
+function R(){head();$('#v').innerHTML=pg==='login'?vLogin():V[pg]();if(pg!=='login')oidR()}
+setInterval(()=>{if(!S||document.visibilityState!=='visible')return;roll();S.on++;S.life=(S.life||0)+1;{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
+ let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
+  const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
+ const big=M[M.length-1];if(pg==='missions'){const t=$('#t-big'),b=$('#b-big');if(t)t.textContent=mm(S.on)+' / '+mm(big.s);if(b)b.style.width=Math.min(100,S.on/big.s*100)+'%';if(S.on===big.s)re=true}
+ let rv=false;if(pg==='view'&&cur){const it=content.find(x=>x.id===cur);if(it&&!S.seen[cur]&&(S.cp[cur]||0)<it.sec){const v=$('#vid'),act=it.type==='video'?!!(v&&!v.paused&&!v.ended):true;
+  if(act){S.cp[cur]=(S.cp[cur]||0)+1;const t=$('#ct2'),b=$('#cb2');if(t)t.textContent=mm(S.cp[cur])+' / '+mm(it.sec);if(b)b.style.width=Math.min(100,S.cp[cur]/it.sec*100)+'%';if(S.cp[cur]>=it.sec)rv=true}}}
+ if(S.on%5===0||re||rv)save();if(rv||(re&&pg==='missions'))R()},1000);
+
+// ---------- boot ----------
+function boot(){try{
+  fbApp=firebase.initializeApp(FIREBASE_CONFIG);auth=firebase.auth();db=firebase.database();
+  auth.onAuthStateChanged(u=>{user=u;
+   if(!u){detachAll();pg='login';ready=true;R();return}
+   uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
+   attachUser();attachContent();if(pg==='login')pg='home';ready=true;R()});
+ }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
+addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
+boot();
+</script></body></html>
