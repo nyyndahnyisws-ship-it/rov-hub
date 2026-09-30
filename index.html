@@ -100,7 +100,11 @@ function vLogin(){return `<div class="card" style="margin-top:0;text-align:cente
 
 // ---------- realtime user doc ----------
 function attachUser(){userRefOff=db.ref('users/'+uid);
- userRefOff.on('value',snap=>{const v=snap.val();if(!v){S=fresh();pushUser(true)}else{S=Object.assign(fresh(),v)}roll();R()},e=>{markSave(false)})}
+ userRefOff.on('value',snap=>{const v=snap.val();
+  if(!v){S=fresh();pushUser(true);roll();R();return}
+  if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return}
+  const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();R()
+ },e=>{markSave(false)})}
 function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();userRefOff=null;contentRefOff=null;S=null;content=[];run=null}
 function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
 function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
@@ -186,7 +190,7 @@ function vMore(){const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-d
  return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน (อีเมลนี้ถูกกำหนดไว้ล่วงหน้า)':'ผู้เล่น'}</div></div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>
  <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('mine')",'🧾','คูปองและประวัติ')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน · อัปโหลดเนื้อหา'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
 
-// ---------- admin content (real Storage + Realtime DB) ----------
+// ---------- admin content ----------
 function fileSel(){const f=$('#af').files[0];if(!f)return;$('#at').value=f.type.startsWith('video/')?'video':f.type.startsWith('image/')?($('#at').value==='news'?'news':'image'):$('#at').value;
  if(f.type.startsWith('video/')){const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{const d=Math.max(5,Math.floor(v.duration));URL.revokeObjectURL(v.src);$('#as').value=d;$('#as').max=d;$('#afh').textContent='ความยาววิดีโอ '+mm(d)+' — ตั้งเวลาได้ไม่เกินความยาว'};v.src=URL.createObjectURL(f)}}
 const alist=()=>content.length?`<table class="tbl">${content.map(c=>`<tr><td>${ico(c.type)} ${esc(c.title)}<div class="mut">+${fmt(c.pts)} · ${mm(c.sec)}</div></td><td align="right"><button class="chip" onclick="delC('${c.id}')">ลบ</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มี</div>';
