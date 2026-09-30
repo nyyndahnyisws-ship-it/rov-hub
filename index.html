@@ -42,6 +42,8 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:var
 .code{font:700 15px ui-monospace,monospace;background:var(--gr);padding:4px 8px;border-radius:8px}
 .tbl{width:100%;border-collapse:collapse}.tbl td{padding:9px 4px;border-top:1px solid var(--line)}
 .inp{width:100%;font:15px 'Noto Sans Thai';padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);margin-top:6px}
+@keyframes boxshake{0%,100%{transform:rotate(0)}20%{transform:rotate(-8deg) scale(1.03)}40%{transform:rotate(7deg) scale(1.05)}60%{transform:rotate(-6deg) scale(1.06)}80%{transform:rotate(5deg) scale(1.08)}}
+@keyframes boxpop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 </style></head><body>
 <header><div class="ico">🎮</div><div style="flex:1;min-width:0"><h1 id="h1">ROV Point Hub</h1><p id="hp"></p></div>
 <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex:none" id="hact"></div></header>
@@ -67,7 +69,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ico=t=>({video:'🎬',news:'📰',image:'🖼️'}[t]||'📄'),tn=t=>({video:'วิดีโอ',news:'ข่าว',image:'รูปภาพ'}[t]||'');
 const tstr=()=>{const d=new Date();return p2(d.getDate())+'/'+p2(d.getMonth()+1)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
-const fresh=()=>({pts:0,day:day(),done:{},on:0,streak:0,last:null,log:[],my:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0});
+const fresh=()=>({pts:0,day:day(),done:{},on:0,streak:0,last:null,log:[],my:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0,boxN:0});
 
 let fbApp,auth,db,ready=false;
 let user=null,uid=null,isAdmin=false,authMode='in';
@@ -101,23 +103,56 @@ function vLogin(){return `<div class="card" style="margin-top:0;text-align:cente
 // ---------- realtime user doc ----------
 function attachUser(){userRefOff=db.ref('users/'+uid);
  userRefOff.on('value',snap=>{const v=snap.val();
-  if(!v){S=fresh();pushUser(true);roll();R();return}
+  if(!v){S=fresh();pushUser(true);roll();pg==='admin'?head():R();return}
   if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return}
-  const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();R()
+  const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();pg==='admin'?head():R()
  },e=>{markSave(false)})}
 function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();userRefOff=null;contentRefOff=null;S=null;content=[];run=null}
 function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
 function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
 async function pushUser(direct){if(!S||!uid)return;if(!direct&&pushTimer){clearTimeout(pushTimer);pushTimer=null}const d=clone(S);try{await db.ref('users/'+uid).set(d);markSave(true)}catch(e){markSave(false)}}
 function flush(){return pushUser(true)}
-function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.on=0;run=null;save()}}
+function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.on=0;S.boxN=0;run=null;save()}}
 function add(n,t){S.pts+=n;S.log.unshift({t:tstr(),m:t,n});S.log=S.log.slice(0,80);save()}
 
 // ---------- realtime content ----------
 function attachContent(){contentRefOff=db.ref('content');
  contentRefOff.on('value',snap=>{const v=snap.val()||{};content=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
-  if(['lib','home','view','admin'].includes(pg))R()},()=>{})}
+  if(pg==='admin'){const e=$('#alist');if(e)e.innerHTML=alist();return}
+  if(['lib','home','view'].includes(pg))R()},()=>{})}
 
+const BOX=[
+{id:'gray',name:'กล่องสีเทา',tag:'ธรรมดา',rarity:'พบได้บ่อย',w:30,min:20,max:50,c1:'#b0b8c1',c2:'#6b7684'},
+{id:'green',name:'กล่องสีเขียว',tag:'ธรรมดา',rarity:'พบได้บ่อย',w:25,min:50,max:100,c1:'#7ed17a',c2:'#2e8b3d'},
+{id:'blue',name:'กล่องสีฟ้า',tag:'หายาก',rarity:'พบได้น้อย',w:20,min:120,max:250,c1:'#6cc3f5',c2:'#1976d2'},
+{id:'purple',name:'กล่องสีม่วง',tag:'หาโครตยาก',rarity:'พบได้ยากมาก',w:15,min:300,max:600,c1:'#c98cec',c2:'#7b1fa2'},
+{id:'gold',name:'กล่องทอง',tag:'ตำนาน',rarity:'พบได้ยากที่สุด',w:10,min:800,max:2000,c1:'#ffd54f',c2:'#f4511e'}];
+function chestSVG(c1,c2,s){s=s||96;return `<svg viewBox="0 0 140 120" width="${s}" height="${Math.round(s*120/140)}">
+<ellipse cx="70" cy="110" rx="46" ry="7" fill="rgba(0,0,0,.18)"/>
+<rect x="58" y="20" width="24" height="26" rx="7" fill="${c1}"/>
+<path d="M14 50 Q14 26 40 22 L100 22 Q126 26 126 50 L126 92 Q126 100 116 100 L24 100 Q14 100 14 92 Z" fill="${c1}"/>
+<path d="M14 62 L126 62 L126 92 Q126 100 116 100 L24 100 Q14 100 14 92 Z" fill="${c2}"/>
+<rect x="14" y="58" width="112" height="7" fill="rgba(0,0,0,.12)"/>
+<circle cx="70" cy="62" r="16" fill="${c2}"/><circle cx="70" cy="62" r="16" fill="none" stroke="${c1}" stroke-width="2"/>
+<path d="M70 71c-6-5-11-9-11-14a6 6 0 0 1 11-3 6 6 0 0 1 11 3c0 5-5 9-11 14z" fill="#fff"/>
+</svg>`}
+function boxMini(b){return `<div style="text-align:center;flex:1;min-width:0"><div>${chestSVG(b.c1,b.c2,52)}</div><div class="mut" style="font-size:10px;margin-top:2px;white-space:nowrap">${b.name}</div><div class="mut" style="font-size:10px;font-weight:700;color:${b.c2}">${b.w}%</div></div>`}
+function vBox(){const left=5-(S.boxN||0);
+ return `<div class="card"><div class="row"><div class="gap"><span class="em">🎁</span><div><b class="n">กล่องสุ่มประจำวัน</b><div class="mut">เปิดได้อีก ${Math.max(0,left)}/5 กล่องวันนี้</div></div></div>
+ <button class="btn gold" ${left<=0?'disabled':''} onclick="openBox()">${left<=0?'ครบแล้ววันนี้':'เปิดกล่อง'}</button></div>
+ <div style="display:flex;gap:4px;margin-top:14px">${BOX.map(boxMini).join('')}</div></div>`}
+function pickBox(){const r=Math.random()*100;let acc=0;for(const b of BOX){acc+=b.w;if(r<acc)return b}return BOX[0]}
+function revealBox(b,reward){return new Promise(res=>{const e=$('#dlg');
+ e.innerHTML=`<div class="ov" style="align-items:center;justify-content:center;background:${b.c2}"><div style="text-align:center;color:#fff;padding:20px">
+ <div style="font-weight:800;letter-spacing:1px;opacity:.9">${b.tag}</div>
+ <div style="font-size:13px;opacity:.85;margin-top:2px">${b.name} · ${b.rarity}</div>
+ <div style="margin:18px auto;animation:boxshake .6s ease-in-out 2" >${chestSVG(b.c1,b.c2,120)}</div>
+ <div id="brw" style="opacity:0"><div style="font-size:36px;font-weight:800;animation:boxpop .35s ease-out">+${fmt(reward)}</div><div style="opacity:.9">คะแนน</div></div>
+ <button id="bok" class="btn" style="width:220px;margin-top:22px;background:#fff;font-weight:700;opacity:0" >ไปต่อ</button>
+ </div></div>`;
+ setTimeout(()=>{const rw=$('#brw'),ok=$('#bok');if(rw)rw.style.opacity=1;if(ok){ok.style.opacity=1;ok.onclick=()=>{e.innerHTML='';res()}}},1150)})}
+async function openBox(){if((S.boxN||0)>=5)return;const b=pickBox(),reward=Math.floor(Math.random()*(b.max-b.min+1))+b.min;
+ S.boxN=(S.boxN||0)+1;R();await revealBox(b,reward);add(reward,'เปิด'+b.name);R()}
 // ---------- missions ----------
 function claim(id){const m=M.find(x=>x.id===id);let n=m.p,t=m.n;
  if(id==='ci'){const y=new Date(Date.now()-864e5).toLocaleDateString('en-CA');S.streak=S.last===y?S.streak+1:1;S.last=day();
@@ -142,7 +177,7 @@ function msClaim(id){const m=MS.find(x=>x[0]===id);if(!m||S.ms[id]||m[5]()<m[6])
 function msCard(m){const [id,e,n,d,p,f,t]=m,c=Math.min(f(),t),ok=c>=t,dn=S.ms[id];
  return `<div class="card"><div class="row"><div class="gap"><span class="em">${e}</span><div style="min-width:0"><b class="n">${n}</b><div class="mut">+${fmt(p)} คะแนน · ${Math.floor(c)}/${t}${d?' · '+d:''}</div></div></div>${dn?'<span class="chip ok">รับแล้ว ✓</span>':ok?`<button class="btn gold" onclick="msClaim('${id}')">รับ +${fmt(p)}</button>`:`<span class="chip">${Math.floor(c/t*100)}%</span>`}</div>${dn||ok?'':`<div class="bar"><i style="width:${c/t*100}%"></i></div>`}</div>`}
 function vM(){return '<div class="mut" style="margin:14px 4px 0">เลือก "เริ่ม" แล้วเปิดหน้านี้ค้างไว้ · เวลาจะนับเฉพาะตอนที่อยู่ในหน้านี้ · ทำได้ครั้งละ 1 ภารกิจ</div>'
- +`<div class="card"><div class="row"><div class="gap"><span class="em">🎡</span><div><b class="n">วงล้อรายวัน</b><div class="mut">หมุนได้วันละ 1 ครั้ง · ได้ 5–1,000 คะแนน</div></div></div>${S.done.wheel?'<span class="chip ok">หมุนแล้ววันนี้</span>':'<button class="btn gold" onclick="spin()">หมุน</button>'}</div></div>`
+ +`<div class="card"><div class="row"><div class="gap"><span class="em">🎡</span><div><b class="n">วงล้อรายวัน</b><div class="mut">หมุนได้วันละ 1 ครั้ง · ได้ 5–1,000 คะแนน</div></div></div>${S.done.wheel?'<span class="chip ok">หมุนแล้ววันนี้</span>':'<button class="btn gold" onclick="spin()">หมุน</button>'}</div></div>`+vBox()
  +M.map(mission).join('')+'<div class="mut" style="margin:18px 4px 0">🏆 เป้าหมายสะสม (รับได้ครั้งเดียว)</div>'+MS.map(msCard).join('')}
 
 // ---------- redeem ----------
