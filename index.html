@@ -77,6 +77,7 @@ let S=null,run=null,saveOk=null,lastSave=null,pushTimer=null;
 let content=[],pg='login',cur=null,adminTab='content';
 let announce=[],announceRefOff=null;
 let contacts=[],contactsRefOff=null;
+let leaderboard=[],leaderboardRefOff=null,rankTab='pts';
 let userRefOff=null,contentRefOff=null;
 
 const dlg=(m,y='ยืนยัน',n='ยกเลิก')=>new Promise(res=>{const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:20px"><div class="gb" style="border-radius:22px;max-width:380px;max-height:none;padding:20px"><div style="white-space:pre-wrap;line-height:1.7">${esc(m)}</div><div style="display:grid;grid-template-columns:${n?'1fr 1fr':'1fr'};gap:10px;margin-top:16px">${n?`<button class="btn" id="dn">${n}</button>`:''}<button class="btn pri" id="dy">${y}</button></div></div></div>`;const c=v=>{e.innerHTML='';res(v)};$('#dy').onclick=()=>c(true);if(n)$('#dn').onclick=()=>c(false)});
@@ -106,13 +107,13 @@ function vLogin(){return `<div class="card" style="margin-top:0;text-align:cente
 function attachUser(){userRefOff=db.ref('users/'+uid);
  userRefOff.on('value',snap=>{const v=snap.val();
   if(!v){S=fresh();pushUser(true);roll();pg==='admin'?head():R();return}
-  if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return}
-  const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();pg==='admin'?head():R()
+  if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return} // echo of our own write — local state already correct, skip re-render so nothing on screen (e.g. a form you're typing in) gets wiped
+  const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();pg==='admin'?head():R() // on the admin page a background update only refreshes the header (points/nav), never the form itself
  },e=>{markSave(false)})}
-function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;S=null;content=[];announce=[];contacts=[];run=null}
+function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();if(leaderboardRefOff)leaderboardRefOff.off();userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;leaderboardRefOff=null;S=null;content=[];announce=[];contacts=[];leaderboard=[];run=null}
 function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
 function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
-async function pushUser(direct){if(!S||!uid)return;if(!direct&&pushTimer){clearTimeout(pushTimer);pushTimer=null}const d=clone(S);try{await db.ref('users/'+uid).set(d);markSave(true)}catch(e){markSave(false)}}
+async function pushUser(direct){if(!S||!uid)return;if(!direct&&pushTimer){clearTimeout(pushTimer);pushTimer=null}const d=clone(S);try{await db.ref('users/'+uid).set(d);markSave(true);db.ref('leaderboard/'+uid).set({email:(user&&user.email)||'',pts:S.pts,life:S.life||0,ts:Date.now()}).catch(()=>{})}catch(e){markSave(false)}}
 function flush(){return pushUser(true)}
 function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.on=0;S.boxOpen={};run=null;save()}}
 function add(n,t){S.pts+=n;S.log.unshift({t:tstr(),m:t,n});S.log=S.log.slice(0,80);save()}
@@ -126,6 +127,9 @@ function attachAnnounce(){announceRefOff=db.ref('announce');
  announceRefOff.on('value',snap=>{const v=snap.val()||{};announce=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
   if(pg==='admin'){if(adminTab==='announce'){const e=$('#annlist');if(e)e.innerHTML=annList()}return}
   if(pg==='home')R()},()=>{})}
+function attachLeaderboard(){leaderboardRefOff=db.ref('leaderboard');
+ leaderboardRefOff.on('value',snap=>{const v=snap.val()||{};leaderboard=Object.keys(v).map(id=>Object.assign({uid:id},v[id]));
+  if(pg==='rank')R()},()=>{})}
 function attachContacts(){contactsRefOff=db.ref('contacts');
  contactsRefOff.on('value',snap=>{const v=snap.val()||{};contacts=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
   if(pg==='admin'&&adminTab==='contact'){const e=$('#ctlist');if(e)e.innerHTML=ctList()}},()=>{})}
@@ -228,10 +232,22 @@ function oidR(){const e=$('#oidc');if(!e||!S||(eo&&$('#oi')))return;
 function saveOid(){const v=$('#oi').value.trim();if(!/^[A-Za-z0-9_-]{5,30}$/.test(v)){say('Open ID ต้องเป็นตัวเลข/ตัวอักษร 5-30 ตัว ไม่มีเว้นวรรค');return}
  S.oid=v;eo=false;save();R()}
 
+function fmtDur(sec){sec=Math.floor(sec||0);const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600),m=Math.floor(sec%3600/60),s=sec%60;
+ const parts=[];if(d)parts.push(d+'วัน');if(h||d)parts.push(h+'ชม.');if(m||h||d)parts.push(m+'นาที');parts.push(s+'วิ');return parts.join(' ')}
+function medal(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}
+function rankRow(r,i,val){const me=uid&&r.uid===uid;
+ return `<div class="row" style="padding:10px 0;border-top:1px solid var(--line)"><div class="gap"><b class="n" style="width:40px;text-align:center;flex:none">${medal(i)}</b><div style="min-width:0"><b class="n">${esc(r.email||'(ไม่ทราบชื่อ)')}</b>${me?' <span class="chip ok">คุณ</span>':''}${(r.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase()?' <span class="chip wn">แอดมิน</span>':''}</div></div><b class="n">${val}</b></div>`}
+function vRank(){const byPts=leaderboard.slice().sort((a,b)=>(b.pts||0)-(a.pts||0));
+ const byLife=leaderboard.slice().sort((a,b)=>(b.life||0)-(a.life||0));
+ const list=rankTab==='pts'?byPts:byLife;
+ return `<div class="tabs"><button class="tab ${rankTab==='pts'?'on':''}" onclick="rankTab='pts';R()">🏅 อันดับเหรียญ</button><button class="tab ${rankTab==='life'?'on':''}" onclick="rankTab='life';R()">⏱️ อันดับออนไลน์</button></div>
+ <div class="card"><div class="mut" style="margin-bottom:4px">${rankTab==='pts'?'เรียงตามคะแนนสะสมทั้งหมด':'เรียงตามเวลาออนไลน์สะสมทั้งหมดบนเว็บนี้'} · แสดงผู้เล่นทุกคนที่เคยสมัคร (${list.length} คน)</div>
+ ${list.length?list.map((r,i)=>rankRow(r,i,rankTab==='pts'?fmt(r.pts||0)+' คะแนน':fmtDur(r.life))).join(''):'<div class="mut" style="margin-top:10px">ยังไม่มีข้อมูล</div>'}</div>`}
+
 // ---------- nav / pages ----------
-const NAV=[['home','🏠','หน้าหลัก'],['missions','🎯','ภารกิจ'],['lib','📚','คลัง'],['redeem','🎟️','แลกคูปอง'],['more','☰','เพิ่มเติม']];
-const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],login:['ROV Point Hub','เข้าสู่ระบบ']};
-const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more'}[pg]||pg)===k;
+const NAV=[['home','🏠','หน้าหลัก'],['missions','🎯','ภารกิจ'],['lib','📚','คลัง'],['rank','🏆','อันดับ'],['more','☰','เพิ่มเติม']];
+const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],rank:['อันดับผู้เล่น','เหรียญคะแนน และเวลาออนไลน์สะสม'],login:['ROV Point Hub','เข้าสู่ระบบ']};
+const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more'}[pg]||pg)===k;
 function go(k){pg=k;cur=null;R();window.scrollTo(0,0)}
 function openC(id){cur=id;pg='view';R();window.scrollTo(0,0)}
 function claimC(id){const c=content.find(x=>x.id===id);if(!c||S.seen[id])return;S.seen[id]=true;add(c.pts,(tn(c.type)||'เนื้อหา')+': '+c.title);R()}
@@ -255,7 +271,7 @@ function vView(){const c=content.find(x=>x.id===cur);if(!c)return '<div class="c
  <div class="card"><div class="row"><b class="n">ความคืบหน้า</b>${d?'<span class="chip ok">รับแล้ว ✓</span>':rd?`<button class="btn gold" onclick="claimC('${c.id}')">รับ +${fmt(c.pts)}</button>`:`<span class="chip wn" id="ct2">${mm(q)} / ${mm(c.sec)}</span>`}</div><div class="bar"><i id="cb2" style="width:${d?100:Math.min(100,q/c.sec*100)}%"></i></div></div>`}
 function vMore(){const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-direction:row;align-items:center;gap:12px" onclick="${k}"><span class="em">${e}</span><b>${t}</b></button>`;
  return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน (อีเมลนี้ถูกกำหนดไว้ล่วงหน้า)':'ผู้เล่น'}</div></div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>
- <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
+ <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('redeem')",'🎟️','แลกคูปอง')}${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
 
 // ---------- contact admin (player side) ----------
 function readB64Img(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
@@ -348,7 +364,7 @@ function guide(o){const e=$('#gd');if(!o){e.innerHTML='';return}
  <button class="btn pri" style="width:100%;margin-top:16px" onclick="guide(0)">เข้าใจแล้ว</button></div></div>`}
 
 // ---------- render loop ----------
-const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact};
+const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank};
 function R(){head();$('#v').innerHTML=pg==='login'?vLogin():V[pg]();if(pg!=='login')oidR()}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;roll();S.on++;S.life=(S.life||0)+1;{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
@@ -367,7 +383,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachUser();attachContent();attachAnnounce();if(isAdmin)attachContacts();if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachUser();attachContent();attachAnnounce();attachLeaderboard();if(isAdmin)attachContacts();if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
