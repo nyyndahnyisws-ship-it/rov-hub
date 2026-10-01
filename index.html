@@ -77,7 +77,7 @@ let S=null,run=null,saveOk=null,lastSave=null,pushTimer=null;
 let content=[],pg='login',cur=null,adminTab='content';
 let announce=[],announceRefOff=null;
 let contacts=[],contactsRefOff=null;
-let leaderboard=[],leaderboardRefOff=null,rankTab='pts';
+let leaderboard=[],leaderboardRefOff=null,rankTab='pts',leaderboardErr=false;
 let userRefOff=null,contentRefOff=null;
 
 const dlg=(m,y='ยืนยัน',n='ยกเลิก')=>new Promise(res=>{const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:20px"><div class="gb" style="border-radius:22px;max-width:380px;max-height:none;padding:20px"><div style="white-space:pre-wrap;line-height:1.7">${esc(m)}</div><div style="display:grid;grid-template-columns:${n?'1fr 1fr':'1fr'};gap:10px;margin-top:16px">${n?`<button class="btn" id="dn">${n}</button>`:''}<button class="btn pri" id="dy">${y}</button></div></div></div>`;const c=v=>{e.innerHTML='';res(v)};$('#dy').onclick=()=>c(true);if(n)$('#dn').onclick=()=>c(false)});
@@ -128,8 +128,8 @@ function attachAnnounce(){announceRefOff=db.ref('announce');
   if(pg==='admin'){if(adminTab==='announce'){const e=$('#annlist');if(e)e.innerHTML=annList()}return}
   if(pg==='home')R()},()=>{})}
 function attachLeaderboard(){leaderboardRefOff=db.ref('leaderboard');
- leaderboardRefOff.on('value',snap=>{const v=snap.val()||{};leaderboard=Object.keys(v).map(id=>Object.assign({uid:id},v[id]));
-  if(pg==='rank')R()},()=>{})}
+ leaderboardRefOff.on('value',snap=>{const v=snap.val()||{};leaderboard=Object.keys(v).map(id=>Object.assign({uid:id},v[id]));leaderboardErr=false;
+  if(pg==='rank')R()},e=>{leaderboardErr=true;if(pg==='rank')R()})}
 function attachContacts(){contactsRefOff=db.ref('contacts');
  contactsRefOff.on('value',snap=>{const v=snap.val()||{};contacts=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
   if(pg==='admin'&&adminTab==='contact'){const e=$('#ctlist');if(e)e.innerHTML=ctList()}},()=>{})}
@@ -237,7 +237,8 @@ function fmtDur(sec){sec=Math.floor(sec||0);const d=Math.floor(sec/86400),h=Math
 function medal(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}
 function rankRow(r,i,val){const me=uid&&r.uid===uid;
  return `<div class="row" style="padding:10px 0;border-top:1px solid var(--line)"><div class="gap"><b class="n" style="width:40px;text-align:center;flex:none">${medal(i)}</b><div style="min-width:0"><b class="n">${esc(r.email||'(ไม่ทราบชื่อ)')}</b>${me?' <span class="chip ok">คุณ</span>':''}${(r.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase()?' <span class="chip wn">แอดมิน</span>':''}</div></div><b class="n">${val}</b></div>`}
-function vRank(){const byPts=leaderboard.slice().sort((a,b)=>(b.pts||0)-(a.pts||0));
+function vRank(){if(leaderboardErr)return '<div class="card"><div class="mut">⚠️ โหลดอันดับไม่ได้ — Database Rules ยังไม่อนุญาตให้อ่าน "leaderboard" (ต้องมี .read ที่ตัวโหนด leaderboard เอง ไม่ใช่แค่ใน $uid) ให้แอดมินตรวจ Rules ใน Firebase Console อีกครั้ง</div></div>';
+ const byPts=leaderboard.slice().sort((a,b)=>(b.pts||0)-(a.pts||0));
  const byLife=leaderboard.slice().sort((a,b)=>(b.life||0)-(a.life||0));
  const list=rankTab==='pts'?byPts:byLife;
  return `<div class="tabs"><button class="tab ${rankTab==='pts'?'on':''}" onclick="rankTab='pts';R()">🏅 อันดับเหรียญ</button><button class="tab ${rankTab==='life'?'on':''}" onclick="rankTab='life';R()">⏱️ อันดับออนไลน์</button></div>
