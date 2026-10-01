@@ -69,12 +69,14 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ico=t=>({video:'🎬',news:'📰',image:'🖼️'}[t]||'📄'),tn=t=>({video:'วิดีโอ',news:'ข่าว',image:'รูปภาพ'}[t]||'');
 const tstr=()=>{const d=new Date();return p2(d.getDate())+'/'+p2(d.getMonth()+1)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
-const fresh=()=>({pts:0,day:day(),done:{},on:0,streak:0,last:null,log:[],my:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0,boxN:0});
+const fresh=()=>({pts:0,day:day(),done:{},on:0,streak:0,last:null,log:[],my:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0,boxOpen:{}});
 
 let fbApp,auth,db,ready=false;
 let user=null,uid=null,isAdmin=false,authMode='in';
 let S=null,run=null,saveOk=null,lastSave=null,pushTimer=null;
-let content=[],pg='login',cur=null;
+let content=[],pg='login',cur=null,adminTab='content';
+let announce=[],announceRefOff=null;
+let contacts=[],contactsRefOff=null;
 let userRefOff=null,contentRefOff=null;
 
 const dlg=(m,y='ยืนยัน',n='ยกเลิก')=>new Promise(res=>{const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:20px"><div class="gb" style="border-radius:22px;max-width:380px;max-height:none;padding:20px"><div style="white-space:pre-wrap;line-height:1.7">${esc(m)}</div><div style="display:grid;grid-template-columns:${n?'1fr 1fr':'1fr'};gap:10px;margin-top:16px">${n?`<button class="btn" id="dn">${n}</button>`:''}<button class="btn pri" id="dy">${y}</button></div></div></div>`;const c=v=>{e.innerHTML='';res(v)};$('#dy').onclick=()=>c(true);if(n)$('#dn').onclick=()=>c(false)});
@@ -107,19 +109,26 @@ function attachUser(){userRefOff=db.ref('users/'+uid);
   if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return}
   const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();pg==='admin'?head():R()
  },e=>{markSave(false)})}
-function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();userRefOff=null;contentRefOff=null;S=null;content=[];run=null}
+function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;S=null;content=[];announce=[];contacts=[];run=null}
 function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
 function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
 async function pushUser(direct){if(!S||!uid)return;if(!direct&&pushTimer){clearTimeout(pushTimer);pushTimer=null}const d=clone(S);try{await db.ref('users/'+uid).set(d);markSave(true)}catch(e){markSave(false)}}
 function flush(){return pushUser(true)}
-function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.on=0;S.boxN=0;run=null;save()}}
+function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.on=0;S.boxOpen={};run=null;save()}}
 function add(n,t){S.pts+=n;S.log.unshift({t:tstr(),m:t,n});S.log=S.log.slice(0,80);save()}
 
 // ---------- realtime content ----------
 function attachContent(){contentRefOff=db.ref('content');
  contentRefOff.on('value',snap=>{const v=snap.val()||{};content=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
-  if(pg==='admin'){const e=$('#alist');if(e)e.innerHTML=alist();return}
+  if(pg==='admin'){if(adminTab==='content'){const e=$('#alist');if(e)e.innerHTML=alist()}return}
   if(['lib','home','view'].includes(pg))R()},()=>{})}
+function attachAnnounce(){announceRefOff=db.ref('announce');
+ announceRefOff.on('value',snap=>{const v=snap.val()||{};announce=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(pg==='admin'){if(adminTab==='announce'){const e=$('#annlist');if(e)e.innerHTML=annList()}return}
+  if(pg==='home')R()},()=>{})}
+function attachContacts(){contactsRefOff=db.ref('contacts');
+ contactsRefOff.on('value',snap=>{const v=snap.val()||{};contacts=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(pg==='admin'&&adminTab==='contact'){const e=$('#ctlist');if(e)e.innerHTML=ctList()}},()=>{})}
 
 const BOX=[
 {id:'gray',name:'กล่องสีเทา',tag:'ธรรมดา',rarity:'พบได้บ่อย',w:30,min:20,max:50,c1:'#b0b8c1',c2:'#6b7684'},
@@ -127,6 +136,7 @@ const BOX=[
 {id:'blue',name:'กล่องสีฟ้า',tag:'หายาก',rarity:'พบได้น้อย',w:20,min:120,max:250,c1:'#6cc3f5',c2:'#1976d2'},
 {id:'purple',name:'กล่องสีม่วง',tag:'หาโครตยาก',rarity:'พบได้ยากมาก',w:15,min:300,max:600,c1:'#c98cec',c2:'#7b1fa2'},
 {id:'gold',name:'กล่องทอง',tag:'ตำนาน',rarity:'พบได้ยากที่สุด',w:10,min:800,max:2000,c1:'#ffd54f',c2:'#f4511e'}];
+const UPGRADE_CHANCE=.25; // chance a single tap levels the box up one tier
 function chestSVG(c1,c2,s){s=s||96;return `<svg viewBox="0 0 140 120" width="${s}" height="${Math.round(s*120/140)}">
 <ellipse cx="70" cy="110" rx="46" ry="7" fill="rgba(0,0,0,.18)"/>
 <rect x="58" y="20" width="24" height="26" rx="7" fill="${c1}"/>
@@ -137,22 +147,42 @@ function chestSVG(c1,c2,s){s=s||96;return `<svg viewBox="0 0 140 120" width="${s
 <path d="M70 71c-6-5-11-9-11-14a6 6 0 0 1 11-3 6 6 0 0 1 11 3c0 5-5 9-11 14z" fill="#fff"/>
 </svg>`}
 function boxMini(b){return `<div style="text-align:center;flex:1;min-width:0"><div>${chestSVG(b.c1,b.c2,52)}</div><div class="mut" style="font-size:10px;margin-top:2px;white-space:nowrap">${b.name}</div><div class="mut" style="font-size:10px;font-weight:700;color:${b.c2}">${b.w}%</div></div>`}
-function vBox(){const left=5-(S.boxN||0);
- return `<div class="card"><div class="row"><div class="gap"><span class="em">🎁</span><div><b class="n">กล่องสุ่มประจำวัน</b><div class="mut">เปิดได้อีก ${Math.max(0,left)}/5 กล่องวันนี้</div></div></div>
- <button class="btn gold" ${left<=0?'disabled':''} onclick="openBox()">${left<=0?'ครบแล้ววันนี้':'เปิดกล่อง'}</button></div>
- <div style="display:flex;gap:4px;margin-top:14px">${BOX.map(boxMini).join('')}</div></div>`}
-function pickBox(){const r=Math.random()*100;let acc=0;for(const b of BOX){acc+=b.w;if(r<acc)return b}return BOX[0]}
-function revealBox(b,reward){return new Promise(res=>{const e=$('#dlg');
- e.innerHTML=`<div class="ov" style="align-items:center;justify-content:center;background:${b.c2}"><div style="text-align:center;color:#fff;padding:20px">
- <div style="font-weight:800;letter-spacing:1px;opacity:.9">${b.tag}</div>
- <div style="font-size:13px;opacity:.85;margin-top:2px">${b.name} · ${b.rarity}</div>
- <div style="margin:18px auto;animation:boxshake .6s ease-in-out 2" >${chestSVG(b.c1,b.c2,120)}</div>
- <div id="brw" style="opacity:0"><div style="font-size:36px;font-weight:800;animation:boxpop .35s ease-out">+${fmt(reward)}</div><div style="opacity:.9">คะแนน</div></div>
- <button id="bok" class="btn" style="width:220px;margin-top:22px;background:#fff;font-weight:700;opacity:0" >ไปต่อ</button>
- </div></div>`;
- setTimeout(()=>{const rw=$('#brw'),ok=$('#bok');if(rw)rw.style.opacity=1;if(ok){ok.style.opacity=1;ok.onclick=()=>{e.innerHTML='';res()}}},1150)})}
-async function openBox(){if((S.boxN||0)>=5)return;const b=pickBox(),reward=Math.floor(Math.random()*(b.max-b.min+1))+b.min;
- S.boxN=(S.boxN||0)+1;R();await revealBox(b,reward);add(reward,'เปิด'+b.name);R()}
+function pickBoxIndex(){const r=Math.random()*100;let acc=0;for(let i=0;i<BOX.length;i++){acc+=BOX[i].w;if(r<acc)return i}return 0}
+const SLOTS=[
+{id:'s1',name:'กล่องเช็กอิน',need:'เช็กอินวันนี้ให้เสร็จ',check:()=>!!(S.done&&S.done.ci)},
+{id:'s2',name:'กล่องนักอ่าน',need:'ดู/อ่านเนื้อหาในคลัง 1 รายการ',check:()=>Object.keys(S.seen||{}).length>=1},
+{id:'s3',name:'กล่องนักเล่น',need:'ทำภารกิจ "เล่นเว็บ 5 นาที" สำเร็จ 1 ครั้ง',check:()=>!!(S.done&&S.done.p1)},
+{id:'s4',name:'กล่องนักเสี่ยงโชค',need:'หมุนวงล้อรายวันแล้ว',check:()=>!!(S.done&&S.done.wheel)},
+{id:'s5',name:'กล่องขยันสุดๆ',need:'ทำภารกิจให้ครบ 3 อย่างในวันนี้ (ชนิดใดก็ได้)',check:()=>Object.keys(S.done||{}).length>=3}];
+function slotCard(slot,i){const done=(S.boxOpen||{})[slot.id];const ok=slot.check();
+ return `<div class="card"><div class="row"><div class="gap"><span class="em">🎁</span><div><b class="n">${slot.name}</b><div class="mut">${slot.need}</div></div></div>
+ ${done?'<span class="chip ok">เปิดแล้ว ✓</span>':ok?`<button class="btn gold" onclick="openSlot(${i})">เปิดกล่อง</button>`:'<span class="chip wn">ยังไม่ปลดล็อก</span>'}</div></div>`}
+function vBox(){return '<div class="mut" style="margin:18px 4px 8px">🎁 กล่องสุ่มประจำวัน · ทำภารกิจให้ครบเพื่อปลดล็อกแต่ละกล่อง · เปิดแล้วมีโอกาสสุ่มเลื่อนระดับ 3 ครั้ง</div>'
+ +`<div class="card"><div style="display:flex;gap:4px">${BOX.map(boxMini).join('')}</div></div>`
+ +SLOTS.map(slotCard).join('')}
+function openSlot(i){const slot=SLOTS[i];if((S.boxOpen||{})[slot.id]||!slot.check())return;
+ let tier=pickBoxIndex(),chances=3;
+ function reward(){const b=BOX[tier];return Math.floor(Math.random()*(b.max-b.min+1))+b.min}
+ function drawTap(){const b=BOX[tier],atMax=tier===BOX.length-1;
+  $('#dlg').innerHTML=`<div class="ov" style="align-items:center;justify-content:center;background:${b.c2}"><div style="text-align:center;color:#fff;padding:20px;width:100%;max-width:340px">
+  <div style="font-weight:800;letter-spacing:1px;opacity:.9">${b.tag}</div>
+  <div style="font-size:13px;opacity:.85;margin-top:2px">${b.name} · ${b.rarity}</div>
+  <div style="margin:18px auto;animation:boxshake .5s ease-in-out 1">${chestSVG(b.c1,b.c2,120)}</div>
+  ${atMax?`<div style="opacity:.9">ถึงระดับสูงสุดแล้ว!</div><button id="bnext" class="btn" style="width:220px;margin-top:14px;background:#fff;font-weight:700;color:${b.c2}">กดเปิดดูเลย!</button>`
+  :`<div style="opacity:.9">เหลือโอกาสอีก ${chances} ครั้ง!</div><button id="bnext" class="btn" style="width:220px;margin-top:14px;background:#fff;font-weight:700;color:${b.c2}">กดเพื่อสุ่มเลื่อนระดับ</button>`}
+  </div></div>`;
+  $('#bnext').onclick=()=>{if(!atMax){chances--;if(Math.random()<UPGRADE_CHANCE&&tier<BOX.length-1)tier++}
+   if(atMax||chances<=0||tier===BOX.length-1)finalize();else drawTap()};}
+ function finalize(){const b=BOX[tier],rw=reward();
+  $('#dlg').innerHTML=`<div class="ov" style="align-items:center;justify-content:center;background:${b.c2}"><div style="text-align:center;color:#fff;padding:20px">
+  <div style="font-weight:800;letter-spacing:1px;opacity:.9">${b.tag}</div>
+  <div style="font-size:13px;opacity:.85;margin-top:2px">${b.name} · ${b.rarity}</div>
+  <div style="margin:18px auto;animation:boxpop .4s ease-out">${chestSVG(b.c1,b.c2,120)}</div>
+  <div style="font-size:36px;font-weight:800;animation:boxpop .35s ease-out">+${fmt(rw)}</div><div style="opacity:.9">คะแนน</div>
+  <button id="bok" class="btn" style="width:220px;margin-top:22px;background:#fff;font-weight:700;color:${b.c2}">ไปต่อ</button>
+  </div></div>`;
+  $('#bok').onclick=()=>{$('#dlg').innerHTML='';S.boxOpen=S.boxOpen||{};S.boxOpen[slot.id]=true;add(rw,'เปิด'+b.name+' ('+slot.name+')');R()};}
+ drawTap();}
 // ---------- missions ----------
 function claim(id){const m=M.find(x=>x.id===id);let n=m.p,t=m.n;
  if(id==='ci'){const y=new Date(Date.now()-864e5).toLocaleDateString('en-CA');S.streak=S.last===y?S.streak+1:1;S.last=day();
@@ -200,8 +230,8 @@ function saveOid(){const v=$('#oi').value.trim();if(!/^[A-Za-z0-9_-]{5,30}$/.tes
 
 // ---------- nav / pages ----------
 const NAV=[['home','🏠','หน้าหลัก'],['missions','🎯','ภารกิจ'],['lib','📚','คลัง'],['redeem','🎟️','แลกคูปอง'],['more','☰','เพิ่มเติม']];
-const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],login:['ROV Point Hub','เข้าสู่ระบบ']};
-const navOn=k=>({view:'lib',mine:'more',admin:'more'}[pg]||pg)===k;
+const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],login:['ROV Point Hub','เข้าสู่ระบบ']};
+const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more'}[pg]||pg)===k;
 function go(k){pg=k;cur=null;R();window.scrollTo(0,0)}
 function openC(id){cur=id;pg='view';R();window.scrollTo(0,0)}
 function claimC(id){const c=content.find(x=>x.id===id);if(!c||S.seen[id])return;S.seen[id]=true;add(c.pts,(tn(c.type)||'เนื้อหา')+': '+c.title);R()}
@@ -209,8 +239,10 @@ function head(){const P=PG[pg]||PG.home;$('#h1').textContent=P[0];$('#hp').textC
  $('#hact').innerHTML=(pg==='login')?'':`<span class="sw" style="margin:0">⭐ ${fmt(S?S.pts:0)}</span><button class="sw" style="margin:0" onclick="guide(1)">❓ วิธีใช้</button>`;
  $('#nav').style.display=pg==='login'?'none':'flex';
  $('#nav').innerHTML=NAV.map(([k,i,l])=>`<button class="nv ${navOn(k)?'on':''}" onclick="go('${k}')"><span>${i}</span>${l}</button>`).join('')}
+function annCard(a){return `<div class="card" style="border-color:var(--gold)"><div class="row"><span class="em">📢</span><b class="n" style="flex:1">${esc(a.title)}</b></div><div class="mut" style="margin-top:6px;white-space:pre-wrap">${esc(a.body)}</div><div class="mut" style="margin-top:8px;font-size:11px">${a.ts?new Date(a.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div></div>`}
 function vHome(){const nx=T.find(t=>S.pts<t[1]),nw=content.filter(c=>!S.seen[c.id]).length;
- return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'} · ข้อมูลผูกกับบัญชีนี้ถาวร</div></div></div></div></div>
+ return (announce.length?'<div class="mut" style="margin:2px 4px 6px">📢 ประกาศจากแอดมิน</div>'+announce.slice(0,5).map(annCard).join(''):'')
+ +`<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'} · ข้อมูลผูกกับบัญชีนี้ถาวร</div></div></div></div></div>
  <div class="card"><div class="row"><div><div class="mut">คะแนนของคุณ</div><div class="big" id="pts">${fmt(S.pts)}</div></div><div style="text-align:right"><span class="chip wn">🔥 เช็กอินติดกัน ${S.streak} วัน</span><div class="mut" style="margin-top:6px" id="onl">ออนไลน์วันนี้ ${mm(S.on)}</div><div class="mut" style="margin-top:4px" id="sv"></div></div></div>
  ${nx?`<div class="bar"><i style="width:${Math.min(100,S.pts/nx[1]*100)}%"></i></div><div class="mut" style="margin-top:6px">อีก ${fmt(nx[1]-S.pts)} คะแนน แลก ${nx[0]} คูปองได้</div>`:''}</div>
  <div class="card" id="oidc"></div><div class="grid">${[['missions','🎯','ภารกิจประจำวัน','เช็กอิน ดูคลิป เล่นเว็บ'],['lib','📚','คลังเนื้อหา',nw?nw+' รายการใหม่':'วิดีโอ ข่าว รูป'],['redeem','🎟️','แลกคูปอง','ใช้คะแนนแลก'],['mine','🧾','คูปองของฉัน',S.my.length+' ใบ']].map(([k,e,t,d])=>`<button class="menu" onclick="go('${k}')"><span class="em">${e}</span><b>${t}</b><span class="mut">${d}</span></button>`).join('')}</div>`}
@@ -223,20 +255,66 @@ function vView(){const c=content.find(x=>x.id===cur);if(!c)return '<div class="c
  <div class="card"><div class="row"><b class="n">ความคืบหน้า</b>${d?'<span class="chip ok">รับแล้ว ✓</span>':rd?`<button class="btn gold" onclick="claimC('${c.id}')">รับ +${fmt(c.pts)}</button>`:`<span class="chip wn" id="ct2">${mm(q)} / ${mm(c.sec)}</span>`}</div><div class="bar"><i id="cb2" style="width:${d?100:Math.min(100,q/c.sec*100)}%"></i></div></div>`}
 function vMore(){const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-direction:row;align-items:center;gap:12px" onclick="${k}"><span class="em">${e}</span><b>${t}</b></button>`;
  return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน (อีเมลนี้ถูกกำหนดไว้ล่วงหน้า)':'ผู้เล่น'}</div></div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>
- <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('mine')",'🧾','คูปองและประวัติ')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน · อัปโหลดเนื้อหา'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
+ <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
 
-// ---------- admin content ----------
+// ---------- contact admin (player side) ----------
+function readB64Img(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
+function vContact(){return `<div class="card" style="margin-top:0"><b class="n">ติดต่อแอดมิน</b><div class="mut" style="margin-top:4px">กรอกอีเมลที่ให้แอดมินติดต่อกลับ เลือกหัวข้อ อธิบายรายละเอียด แนบรูปได้ถ้าต้องการ — ข้อความจะส่งเข้าระบบทันที และเปิดแอปอีเมลของคุณให้ส่งสำเนาจริงถึงแอดมินด้วย</div>
+<label class="mut">อีเมลติดต่อกลับ</label><input id="ctem" type="email" class="inp" placeholder="you@example.com" value="${esc((user&&user.email)||'')}">
+<label class="mut" style="display:block;margin-top:10px">หัวข้อ</label><select id="cttp" class="inp"><option>ปัญหาการใช้งาน</option><option>ปัญหาคะแนน/คูปอง</option><option>รายงานผู้เล่นทุจริต</option><option>ข้อเสนอแนะ</option><option>อื่นๆ</option></select>
+<label class="mut" style="display:block;margin-top:10px">รายละเอียด</label><textarea id="ctbd" rows="5" class="inp" placeholder="อธิบายปัญหาหรือคำถามของคุณ"></textarea>
+<label class="mut" style="display:block;margin-top:10px">แนบรูป (ถ้ามี)</label><input id="ctim" type="file" accept="image/png,image/jpeg,image/webp" class="inp"><div class="mut" style="margin-top:4px">ไม่เกิน 1.5MB · หมายเหตุ: รูปจะแนบไปกับระบบเท่านั้น อีเมลที่เปิดขึ้นไม่รองรับไฟล์แนบ</div>
+<div class="mut" id="ctst" style="margin-top:8px"></div>
+<button class="btn pri" id="ctbtn" style="width:100%;margin-top:6px" onclick="sendContact()">ส่งข้อความ</button></div>`}
+async function sendContact(){const st=$('#ctst'),bt=$('#ctbtn');const email=$('#ctem').value.trim(),topic=$('#cttp').value,body=$('#ctbd').value.trim(),f=$('#ctim').files[0];
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){st.textContent='กรอกอีเมลให้ถูกต้อง';return}
+ if(!body){st.textContent='กรอกรายละเอียด';return}
+ if(f&&f.size>1.5*1048576){st.textContent='รูปเกิน 1.5MB';return}
+ bt.disabled=true;try{let img='';if(f){st.textContent='กำลังแนบรูป...';img=await readB64Img(f)}
+  const id='k'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  await db.ref('contacts/'+id).set({email,topic,body,img,ts:firebase.database.ServerValue.TIMESTAMP,uid:uid||''});
+  const mailto='mailto:'+ADMIN_EMAIL+'?subject='+encodeURIComponent('['+topic+'] ข้อความจากผู้เล่น ROV Point Hub')+'&body='+encodeURIComponent('จาก: '+email+'\n\n'+body+(img?'\n\n(ผู้เล่นแนบรูปมาด้วย ดูได้ในแผงแอดมิน)':''));
+  st.textContent='✅ ส่งเข้าระบบแล้ว กำลังเปิดแอปอีเมลให้ส่งสำเนาถึงแอดมิน...';
+  setTimeout(()=>{try{location.href=mailto}catch(e){}},400);
+  $('#ctbd').value='';$('#ctim').value=''}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+
+// ---------- admin content (real Storage + Realtime DB) ----------
 function fileSel(){const f=$('#af').files[0];if(!f)return;$('#at').value=f.type.startsWith('video/')?'video':f.type.startsWith('image/')?($('#at').value==='news'?'news':'image'):$('#at').value;
  if(f.type.startsWith('video/')){const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{const d=Math.max(5,Math.floor(v.duration));URL.revokeObjectURL(v.src);$('#as').value=d;$('#as').max=d;$('#afh').textContent='ความยาววิดีโอ '+mm(d)+' — ตั้งเวลาได้ไม่เกินความยาว'};v.src=URL.createObjectURL(f)}}
 const alist=()=>content.length?`<table class="tbl">${content.map(c=>`<tr><td>${ico(c.type)} ${esc(c.title)}<div class="mut">+${fmt(c.pts)} · ${mm(c.sec)}</div></td><td align="right"><button class="chip" onclick="delC('${c.id}')">ลบ</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มี</div>';
 function vAdmin(){if(!isAdmin)return '<div class="card"><div class="mut">เฉพาะบัญชีแอดมินเท่านั้น</div></div>';
- return `<div class="card" style="margin-top:0"><b class="n">เพิ่มเนื้อหาใหม่ (เผยแพร่จริงทันที)</b><div class="mut" style="margin-top:4px">อัปโหลดแล้วผู้เล่นทุกคนที่เปิดหน้าอยู่จะเห็นทันทีโดยไม่ต้องรีเฟรช</div>
+ const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ']];
+ let h=`<div class="tabs" style="margin:0 0 4px">${tabs.map(([k,l])=>`<button class="tab ${adminTab===k?'on':''}" onclick="adminTab='${k}';R()">${l}</button>`).join('')}</div>`;
+ if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else h+=vAdminContact();
+ return h}
+function vAdminContent(){return `<div class="card" style="margin-top:0"><b class="n">เพิ่มเนื้อหาใหม่ (เผยแพร่จริงทันที)</b><div class="mut" style="margin-top:4px">อัปโหลดแล้วผู้เล่นทุกคนที่เปิดหน้าอยู่จะเห็นทันทีโดยไม่ต้องรีเฟรช</div>
  <select id="at" class="inp"><option value="video">🎬 วิดีโอ (mp4/webm)</option><option value="news">📰 ข่าว/บทความ</option><option value="image">🖼️ รูปภาพ</option></select>
  <input id="ati" placeholder="หัวข้อ" maxlength="120" class="inp"><textarea id="abd" rows="5" placeholder="เนื้อหาข่าว/คำอธิบาย (ข่าวต้องกรอก)" class="inp"></textarea>
  <input id="af" type="file" accept="video/mp4,video/webm,image/png,image/jpeg,image/webp,image/gif" onchange="fileSel()" class="inp"><div class="mut" id="afh">วิดีโอไม่เกิน 4MB (คลิปสั้นๆ) · รูปไม่เกิน 2MB — จำกัดเพราะเก็บในแพ็กเกจฟรีของ Firebase (ไม่ใช้ Storage ที่ต้องผูกบัตร)</div>
  <div class="row" style="gap:8px;margin-top:8px;align-items:flex-start"><label class="mut" style="flex:1">คะแนนที่ได้ (5–10,000)<input id="ap" type="number" min="5" max="10000" value="50" class="inp"></label><label class="mut" style="flex:1">ต้องอยู่ (วินาที)<input id="as" type="number" min="5" max="7200" value="60" class="inp"></label></div>
  <button class="btn pri" id="abtn" style="width:100%;margin-top:12px" onclick="addContent()">อัปโหลดและเผยแพร่</button><div class="mut" id="ast" style="margin-top:6px"></div></div>
  <div class="card"><b class="n">เนื้อหาที่เผยแพร่แล้ว</b><div id="alist">${alist()}</div></div>`}
+function vAdminAnnounce(){return `<div class="card" style="margin-top:0"><b class="n">สร้างประกาศใหม่ (เห็นทันทีที่หน้าแรกของทุกคน)</b>
+ <input id="anti" placeholder="หัวข้อประกาศ" maxlength="120" class="inp"><textarea id="anbd" rows="4" placeholder="รายละเอียด" class="inp"></textarea>
+ <button class="btn pri" id="anbtn" style="width:100%;margin-top:10px" onclick="addAnnounce()">เผยแพร่ประกาศ</button><div class="mut" id="anst" style="margin-top:6px"></div></div>
+ <div class="card"><b class="n">ประกาศที่เผยแพร่แล้ว</b><div id="annlist">${annList()}</div></div>`}
+async function addAnnounce(){const st=$('#anst'),bt=$('#anbtn'),title=$('#anti').value.trim(),body=$('#anbd').value.trim();
+ if(!title){st.textContent='กรอกหัวข้อ';return}if(!body){st.textContent='กรอกรายละเอียด';return}
+ bt.disabled=true;try{const id='a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  await db.ref('announce/'+id).set({title,body,ts:firebase.database.ServerValue.TIMESTAMP});
+  st.textContent='✅ เผยแพร่แล้ว ทุกคนเห็นทันที';$('#anti').value='';$('#anbd').value=''}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+const annList=()=>announce.length?`<table class="tbl">${announce.map(a=>`<tr><td>${esc(a.title)}<div class="mut">${a.ts?new Date(a.ts).toLocaleString('th-TH'):''}</div></td><td align="right"><button class="chip" onclick="delAnnounce('${a.id}')">ลบ</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มี</div>';
+async function delAnnounce(id){if(!(await dlg('ลบประกาศนี้?','ลบ')))return;try{await db.ref('announce/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
+function vAdminContact(){return `<div class="mut" style="margin:2px 4px">ข้อความจากผู้เล่น · กด "ตอบกลับทางอีเมล" เพื่อเปิดแอปอีเมลของคุณแล้วส่งจริง</div><div id="ctlist">${ctList()}</div>`}
+const ctList=()=>contacts.length?contacts.map(c=>`<div class="card"><div class="row"><span class="chip">${esc(c.topic||'')}</span><span class="mut">${c.ts?new Date(c.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</span></div>
+<div class="mut" style="margin-top:6px">จาก: ${esc(c.email)}</div><div style="margin-top:6px;white-space:pre-wrap">${esc(c.body)}</div>
+${c.img?`<img src="${c.img}" style="max-width:160px;border-radius:10px;margin-top:8px" onclick="say('<img src=\\'${c.img}\\' style=\\'width:100%;border-radius:10px\\'>')">`:''}
+<div class="row" style="margin-top:10px"><button class="btn pri" onclick="replyContact('${c.id}')">ตอบกลับทางอีเมล</button><button class="chip" onclick="delContact('${c.id}')">ลบ</button></div></div>`).join(''):'<div class="mut" style="margin-top:6px">ยังไม่มีข้อความ</div>';
+function replyContact(id){const c=contacts.find(x=>x.id===id);if(!c)return;
+ location.href='mailto:'+encodeURIComponent(c.email)+'?subject='+encodeURIComponent('Re: ['+(c.topic||'')+'] ROV Point Hub')+'&body='+encodeURIComponent('เรียนผู้เล่น\n\n\n\n----- ข้อความเดิม -----\n'+c.body)}
+async function delContact(id){if(!(await dlg('ลบข้อความนี้?','ลบ')))return;try{await db.ref('contacts/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
 function readB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
 async function addContent(){const st=$('#ast'),bt=$('#abtn');const type=$('#at').value,title=$('#ati').value.trim(),body=$('#abd').value.trim(),f=$('#af').files[0];let pts=Math.round(+$('#ap').value),sec=Math.round(+$('#as').value);
  if(!title){st.textContent='กรอกหัวข้อ';return}if(type!=='news'&&!f){st.textContent='เลือกไฟล์ก่อน';return}if(type==='news'&&!body){st.textContent='กรอกเนื้อหาข่าว';return}
@@ -270,7 +348,7 @@ function guide(o){const e=$('#gd');if(!o){e.innerHTML='';return}
  <button class="btn pri" style="width:100%;margin-top:16px" onclick="guide(0)">เข้าใจแล้ว</button></div></div>`}
 
 // ---------- render loop ----------
-const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin};
+const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact};
 function R(){head();$('#v').innerHTML=pg==='login'?vLogin():V[pg]();if(pg!=='login')oidR()}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;roll();S.on++;S.life=(S.life||0)+1;{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
@@ -281,12 +359,15 @@ setInterval(()=>{if(!S||document.visibilityState!=='visible')return;roll();S.on+
  if(S.on%5===0||re||rv)save();if(rv||(re&&pg==='missions'))R()},1000);
 
 // ---------- boot ----------
+let attachedUid=null;
 function boot(){try{
   fbApp=firebase.initializeApp(FIREBASE_CONFIG);auth=firebase.auth();db=firebase.database();
   auth.onAuthStateChanged(u=>{user=u;
-   if(!u){detachAll();pg='login';ready=true;R();return}
+   if(!u){attachedUid=null;detachAll();pg='login';ready=true;R();return}
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
-   attachUser();attachContent();if(pg==='login')pg='home';ready=true;R()});
+   if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
+   attachedUid=uid;
+   attachUser();attachContent();attachAnnounce();if(isAdmin)attachContacts();if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
