@@ -305,17 +305,31 @@ function vRedeemCode(){return `<div class="card" style="margin-top:0"><b class="
 <label class="mut" style="display:block;margin-top:10px">โค้ด</label><input id="rcin" class="inp" placeholder="เช่น ROV2026" style="text-transform:uppercase">
 <div class="mut" id="rcst" style="margin-top:8px"></div>
 <button class="btn gold" id="rcbtn" style="width:100%;margin-top:6px" onclick="redeemCode()">ใช้โค้ด</button></div>`}
+function showCodeReward(code,data){return new Promise(res=>{
+ $('#dlg').innerHTML=`<div class="ov" style="align-items:center;justify-content:center;background:var(--pri)"><div style="text-align:center;color:#fff;padding:20px;width:100%;max-width:340px">
+ <div style="font-size:44px">🎁</div>
+ <div style="font-weight:800;letter-spacing:1px;margin-top:6px">ใช้โค้ดสำเร็จ!</div>
+ <div style="font-size:13px;opacity:.85;margin-top:4px">โค้ด ${esc(code)}${data.desc?' · '+esc(data.desc):''}</div>
+ <div style="font-size:36px;font-weight:800;margin-top:18px;animation:boxpop .4s ease-out">+${fmt(data.points||0)}</div><div style="opacity:.9">คะแนน</div>
+ <button id="crok" class="btn" style="width:220px;margin-top:22px;background:#fff;font-weight:700;color:var(--pri)">รับรางวัล</button>
+ </div></div>`;
+ $('#crok').onclick=()=>{$('#dlg').innerHTML='';res()};
+})}
 async function redeemCode(){const st=$('#rcst'),bt=$('#rcbtn'),code=$('#rcin').value.trim().toUpperCase().replace(/\s+/g,'');
  if(!code){st.textContent='กรอกโค้ด';return}
- bt.disabled=true;st.textContent='กำลังตรวจสอบ...';
+ bt.disabled=true;st.textContent='กำลังตรวจสอบโค้ด...';
+ const wait=new Promise(r=>setTimeout(r,1500+Math.random()*1500)); // 1.5–3s "checking" suspense
  try{const snap=await db.ref('promocodes/'+code).once('value');const data=snap.val();
+  await wait;
   if(!data){st.textContent='ไม่พบโค้ดนี้';bt.disabled=false;return}
   if(data.expiresAt&&Date.now()>data.expiresAt){st.textContent='โค้ดนี้หมดอายุแล้ว';bt.disabled=false;return}
   if(data.usedBy&&data.usedBy[uid]){st.textContent='คุณใช้โค้ดนี้ไปแล้ว';bt.disabled=false;return}
   await db.ref('promocodes/'+code+'/usedBy/'+uid).set(true);
+  st.textContent='';
+  await showCodeReward(code,data);
   add(data.points||0,'ใช้โค้ด '+code+(data.desc?' ('+data.desc+')':''));
-  st.textContent='🎉 รับ '+fmt(data.points||0)+' คะแนนแล้ว!'+(data.desc?' — '+data.desc:'');$('#rcin').value='';R()}
- catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+  $('#rcin').value='';R()}
+ catch(e){await wait;st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
 
 // ---------- admin content (real Storage + Realtime DB) ----------
 function fileSel(){const f=$('#af').files[0];if(!f)return;$('#at').value=f.type.startsWith('video/')?'video':f.type.startsWith('image/')?($('#at').value==='news'?'news':'image'):$('#at').value;
