@@ -69,7 +69,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ico=t=>({video:'🎬',news:'📰',image:'🖼️'}[t]||'📄'),tn=t=>({video:'วิดีโอ',news:'ข่าว',image:'รูปภาพ'}[t]||'');
 const tstr=()=>{const d=new Date();return p2(d.getDate())+'/'+p2(d.getMonth()+1)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
-const fresh=()=>({pts:0,day:day(),done:{},on:0,streak:0,last:null,log:[],my:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0,boxOpen:{}});
+const fresh=()=>({pts:0,gold:0,day:day(),done:{},goldDone:{},on:0,streak:0,last:null,log:[],my:[],inventory:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0,boxOpen:{},shopSeen:false});
 
 let fbApp,auth,db,ready=false;
 let user=null,uid=null,isAdmin=false,authMode='in';
@@ -79,6 +79,8 @@ let announce=[],announceRefOff=null;
 let contacts=[],contactsRefOff=null;
 let leaderboard=[],leaderboardRefOff=null,rankTab='pts',leaderboardErr=false;
 let codes=[],codesRefOff=null;
+let shop=[],shopRefOff=null;
+let goldRun=null,missionsTab='pts';
 let userRefOff=null,contentRefOff=null;
 
 const dlg=(m,y='ยืนยัน',n='ยกเลิก')=>new Promise(res=>{const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:20px"><div class="gb" style="border-radius:22px;max-width:380px;max-height:none;padding:20px"><div style="white-space:pre-wrap;line-height:1.7">${esc(m)}</div><div style="display:grid;grid-template-columns:${n?'1fr 1fr':'1fr'};gap:10px;margin-top:16px">${n?`<button class="btn" id="dn">${n}</button>`:''}<button class="btn pri" id="dy">${y}</button></div></div></div>`;const c=v=>{e.innerHTML='';res(v)};$('#dy').onclick=()=>c(true);if(n)$('#dn').onclick=()=>c(false)});
@@ -111,13 +113,14 @@ function attachUser(){userRefOff=db.ref('users/'+uid);
   if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return} // echo of our own write — local state already correct, skip re-render so nothing on screen (e.g. a form you're typing in) gets wiped
   const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();pg==='admin'?head():R() // on the admin page a background update only refreshes the header (points/nav), never the form itself
  },e=>{markSave(false)})}
-function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();if(leaderboardRefOff)leaderboardRefOff.off();if(codesRefOff)codesRefOff.off();userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;leaderboardRefOff=null;codesRefOff=null;S=null;content=[];announce=[];contacts=[];leaderboard=[];codes=[];run=null}
+function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();if(leaderboardRefOff)leaderboardRefOff.off();if(codesRefOff)codesRefOff.off();if(shopRefOff)shopRefOff.off();userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;leaderboardRefOff=null;codesRefOff=null;shopRefOff=null;S=null;content=[];announce=[];contacts=[];leaderboard=[];codes=[];shop=[];run=null;goldRun=null}
 function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
 function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
 async function pushUser(direct){if(!S||!uid)return;if(!direct&&pushTimer){clearTimeout(pushTimer);pushTimer=null}const d=clone(S);try{await db.ref('users/'+uid).set(d);markSave(true);db.ref('leaderboard/'+uid).set({email:(user&&user.email)||'',pts:S.pts,life:S.life||0,ts:Date.now()}).catch(()=>{})}catch(e){markSave(false)}}
 function flush(){return pushUser(true)}
-function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.on=0;S.boxOpen={};run=null;save()}}
-function add(n,t){S.pts+=n;S.log.unshift({t:tstr(),m:t,n});S.log=S.log.slice(0,80);save()}
+function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.goldDone={};S.on=0;S.boxOpen={};S.shopSeen=false;run=null;goldRun=null;save()}}
+function add(n,t){S.pts+=n;S.log.unshift({t:tstr(),m:t,n,cur:'pts'});S.log=S.log.slice(0,80);save()}
+function addGold(n,t){S.gold=(S.gold||0)+n;S.log.unshift({t:tstr(),m:t,n,cur:'gold'});S.log=S.log.slice(0,80);save()}
 
 // ---------- realtime content ----------
 function attachContent(){contentRefOff=db.ref('content');
@@ -131,6 +134,10 @@ function attachAnnounce(){announceRefOff=db.ref('announce');
 function attachLeaderboard(){leaderboardRefOff=db.ref('leaderboard');
  leaderboardRefOff.on('value',snap=>{const v=snap.val()||{};leaderboard=Object.keys(v).map(id=>Object.assign({uid:id},v[id]));leaderboardErr=false;
   if(pg==='rank')R()},e=>{leaderboardErr=true;if(pg==='rank')R()})}
+function attachShop(){shopRefOff=db.ref('shop');
+ shopRefOff.on('value',snap=>{const v=snap.val()||{};shop=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(a.price||0)-(b.price||0));
+  if(pg==='admin'){if(adminTab==='shop'){const e=$('#shlist');if(e)e.innerHTML=shopAdminList()}return}
+  if(pg==='shop')R()},()=>{})}
 function attachCodes(){codesRefOff=db.ref('promocodes');
  codesRefOff.on('value',snap=>{const v=snap.val()||{};codes=Object.keys(v).map(id=>Object.assign({code:id},v[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   if(pg==='admin'&&adminTab==='codes'){const e=$('#cdlist');if(e)e.innerHTML=codesList()}},()=>{})}
@@ -214,9 +221,55 @@ const MS=[['oid','🆔','ตั้งค่า ROV Open ID','กรอกคร�
 function msClaim(id){const m=MS.find(x=>x[0]===id);if(!m||S.ms[id]||m[5]()<m[6])return;S.ms[id]=1;add(m[4],m[2]);R()}
 function msCard(m){const [id,e,n,d,p,f,t]=m,c=Math.min(f(),t),ok=c>=t,dn=S.ms[id];
  return `<div class="card"><div class="row"><div class="gap"><span class="em">${e}</span><div style="min-width:0"><b class="n">${n}</b><div class="mut">+${fmt(p)} คะแนน · ${Math.floor(c)}/${t}${d?' · '+d:''}</div></div></div>${dn?'<span class="chip ok">รับแล้ว ✓</span>':ok?`<button class="btn gold" onclick="msClaim('${id}')">รับ +${fmt(p)}</button>`:`<span class="chip">${Math.floor(c/t*100)}%</span>`}</div>${dn||ok?'':`<div class="bar"><i style="width:${c/t*100}%"></i></div>`}</div>`}
-function vM(){return '<div class="mut" style="margin:14px 4px 0">เลือก "เริ่ม" แล้วเปิดหน้านี้ค้างไว้ · เวลาจะนับเฉพาะตอนที่อยู่ในหน้านี้ · ทำได้ครั้งละ 1 ภารกิจ</div>'
+const GM=[
+{id:'g1',e:'🪙',n:'เก็บเหรียญประจำวัน',d:'กดรับเหรียญทองวันนี้',g:20,s:0,max:1},
+{id:'g2',e:'🎥',n:'ดูคลิปโฆษณา 15 วินาที',d:'เปิดหน้านี้ค้างไว้ให้ครบเวลา',g:10,s:15,max:5},
+{id:'g3',e:'🧩',n:'เล่นเว็บสะสมเหรียญ 10 นาที',d:'อยู่ในหน้านี้ให้ครบเวลา',g:50,s:600,max:3},
+{id:'g4',e:'🛒',n:'แวะชมร้านค้าวันนี้',d:'เปิดหน้าร้านค้าอย่างน้อย 1 ครั้งวันนี้',g:15,s:0,max:1,check:()=>!!S.shopSeen}];
+function claimGold(id){const m=GM.find(x=>x.id===id);if(!m)return;S.goldDone=S.goldDone||{};S.goldDone[id]=(S.goldDone[id]||0)+1;if(goldRun&&goldRun.id===id)goldRun=null;addGold(m.g,m.n);R()}
+function startGold(id){goldRun={id,el:0};R()}
+function stopGold(){goldRun=null;R()}
+function missionGold(m){const c=(S.goldDone||{})[m.id]||0,full=c>=m.max,r=goldRun&&goldRun.id===m.id;
+ const el=r?goldRun.el:0,timeOk=m.s===0||el>=m.s,unlocked=!m.check||m.check();let b;
+ if(full)b='<span class="chip ok">ครบวันนี้</span>';
+ else if(!unlocked)b='<span class="chip wn">ไปที่หน้าร้านค้าก่อน</span>';
+ else if(timeOk)b=`<button class="btn gold" onclick="claimGold('${m.id}')">รับ +${fmt(m.g)} 🪙</button>`;
+ else if(r)b=`<button class="btn" onclick="stopGold()">หยุด</button>`;
+ else b=`<button class="btn pri" onclick="startGold('${m.id}')">เริ่ม</button>`;
+ return `<div class="card"><div class="row"><div class="gap"><span class="em">${m.e}</span><div style="min-width:0"><b class="n">${m.n}</b><div class="mut">${m.d}</div><div class="mut">+${fmt(m.g)} เหรียญทอง · วันนี้ ${c}/${m.max}</div></div></div>${b}</div>
+ ${(m.s&&!full&&r)?`<div class="bar"><i id="gb-${m.id}" style="width:${Math.min(100,el/m.s*100)}%"></i></div><div class="mut" style="margin-top:6px" id="gt-${m.id}">${mm(el)} / ${mm(m.s)}</div>`:''}</div>`}
+function vGoldMissions(){return '<div class="mut" style="margin:14px 4px 0">🪙 เหรียญทองเป็นสกุลเงินแยกต่างหาก ใช้ซื้อของในร้านค้าได้เท่านั้น แลกเป็นคะแนนหรือคูปองไม่ได้</div>'+GM.map(missionGold).join('')}
+// ---------- shop (gold coins only — never exchangeable) ----------
+function vShop(){const g=S.gold||0;
+ let h=`<div class="card" style="margin-top:0"><div class="row"><div><div class="mut">เหรียญทองของคุณ</div><div class="big" id="goldbal">🪙 ${fmt(g)}</div></div></div><div class="mut" style="margin-top:4px">ใช้ซื้อของในร้านได้เท่านั้น ไม่สามารถแลกคืนเป็นคะแนนหรือเงินได้</div></div>`;
+ if(!shop.length)return h+'<div class="card"><div class="mut">ร้านค้ายังไม่มีสินค้า — รอแอดมินเพิ่ม</div></div>';
+ h+=shop.map(it=>{const ok=g>=(it.price||0);return `<div class="card"><div class="row"><div class="gap"><span class="em">${esc(it.icon||'🎁')}</span><div style="min-width:0"><b class="n">${esc(it.name)}</b>${it.desc?`<div class="mut">${esc(it.desc)}</div>`:''}<div class="mut">🪙 ${fmt(it.price||0)}</div></div></div>
+ <button class="btn ${ok?'gold':''}" ${ok?'':'disabled'} onclick="buyItem('${it.id}')">${ok?'ซื้อ':'เหรียญไม่พอ'}</button></div></div>`}).join('');
+ return h}
+async function buyItem(id){const it=shop.find(x=>x.id===id);if(!it)return;if((S.gold||0)<(it.price||0))return;
+ if(!(await dlg('ใช้ 🪙 '+fmt(it.price||0)+' ซื้อ "'+it.name+'" ?')))return;if((S.gold||0)<(it.price||0))return;
+ S.gold-=(it.price||0);S.inventory=S.inventory||[];S.inventory.unshift({name:it.name,icon:it.icon||'🎁',desc:it.desc||'',price:it.price||0,t:tstr()});
+ S.log.unshift({t:tstr(),m:'ซื้อ '+it.name,n:-(it.price||0),cur:'gold'});S.log=S.log.slice(0,80);save();R();say('🎉 ได้รับ "'+it.name+'" แล้ว! ดูได้ที่หน้า คูปองและประวัติ')}
+function vAdminShop(){return `<div class="card" style="margin-top:0"><b class="n">เพิ่มสินค้าในร้าน</b><div class="mut" style="margin-top:4px">ผู้เล่นซื้อด้วยเหรียญทอง (ไม่ใช่คะแนน)</div>
+ <label class="mut" style="display:block;margin-top:10px">ไอคอน (อิโมจิ)</label><input id="shic" class="inp" placeholder="🎁" maxlength="4">
+ <label class="mut" style="display:block;margin-top:10px">ชื่อสินค้า</label><input id="shnm" class="inp" placeholder="เช่น กรอบรูปโปรไฟล์พิเศษ" maxlength="80">
+ <label class="mut" style="display:block;margin-top:10px">คำอธิบาย (ไม่บังคับ)</label><input id="shds" class="inp" placeholder="รายละเอียดสั้นๆ" maxlength="140">
+ <label class="mut" style="display:block;margin-top:10px">ราคา (เหรียญทอง)</label><input id="shpr" type="number" min="1" max="1000000" value="100" class="inp">
+ <button class="btn pri" id="shbtn" style="width:100%;margin-top:12px" onclick="addShopItem()">เพิ่มสินค้า</button><div class="mut" id="shst" style="margin-top:6px"></div></div>
+ <div class="card"><b class="n">สินค้าในร้าน</b><div id="shlist">${shopAdminList()}</div></div>`}
+async function addShopItem(){const st=$('#shst'),bt=$('#shbtn'),icon=$('#shic').value.trim()||'🎁',name=$('#shnm').value.trim(),desc=$('#shds').value.trim(),price=Math.round(+$('#shpr').value);
+ if(!name){st.textContent='กรอกชื่อสินค้า';return}if(!(price>0)){st.textContent='กรอกราคาให้ถูกต้อง (มากกว่า 0)';return}
+ bt.disabled=true;try{const id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  await db.ref('shop/'+id).set({icon,name,desc,price,ts:firebase.database.ServerValue.TIMESTAMP});
+  st.textContent='✅ เพิ่มสินค้าแล้ว';$('#shnm').value='';$('#shds').value='';$('#shic').value=''}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+const shopAdminList=()=>shop.length?`<table class="tbl">${shop.map(it=>`<tr><td>${esc(it.icon||'🎁')} ${esc(it.name)}<div class="mut">🪙 ${fmt(it.price||0)}${it.desc?' · '+esc(it.desc):''}</div></td><td align="right"><button class="chip" onclick="delShopItem('${it.id}')">ลบ</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มีสินค้า</div>';
+async function delShopItem(id){if(!(await dlg('ลบสินค้านี้?','ลบ')))return;try{await db.ref('shop/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
+function vMPts(){return '<div class="mut" style="margin:14px 4px 0">เลือก "เริ่ม" แล้วเปิดหน้านี้ค้างไว้ · เวลาจะนับเฉพาะตอนที่อยู่ในหน้านี้ · ทำได้ครั้งละ 1 ภารกิจ</div>'
  +`<div class="card"><div class="row"><div class="gap"><span class="em">🎡</span><div><b class="n">วงล้อรายวัน</b><div class="mut">หมุนได้วันละ 1 ครั้ง · ได้ 5–1,000 คะแนน</div></div></div>${S.done.wheel?'<span class="chip ok">หมุนแล้ววันนี้</span>':'<button class="btn gold" onclick="spin()">หมุน</button>'}</div></div>`+vBox()
  +M.map(mission).join('')+'<div class="mut" style="margin:18px 4px 0">🏆 เป้าหมายสะสม (รับได้ครั้งเดียว)</div>'+MS.map(msCard).join('')}
+function vM(){const tabs=`<div class="tabs"><button class="tab ${missionsTab==='pts'?'on':''}" onclick="missionsTab='pts';R()">⭐ ภารกิจคะแนน</button><button class="tab ${missionsTab==='gold'?'on':''}" onclick="missionsTab='gold';R()">🪙 ภารกิจเหรียญทอง</button></div>`;
+ return tabs+(missionsTab==='gold'?vGoldMissions():vMPts())}
 
 // ---------- redeem ----------
 function vR(){const nx=T.find(t=>S.pts<t[1]);
@@ -228,7 +281,8 @@ async function redeem(q,c){if(S.pts<c)return;if(!S.oid){await say('กรอก 
  const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',g=n=>Array.from({length:n},()=>ch[Math.floor(Math.random()*ch.length)]).join('');
  const code='ROV-'+g(4)+'-'+g(4);S.my.unshift({t:tstr(),q,code,oid:S.oid});add(-c,'แลก '+q+' คูปอง ('+code+') ID '+S.oid);pg='mine';R()}
 function vH(){return `<div class="card"><b class="n">คูปองของฉัน</b>${S.my.length?`<table class="tbl">${S.my.map(x=>`<tr><td>${x.q} คูปอง<div class="mut">${x.t}${x.oid?' · ID '+x.oid:''}</div></td><td align="right"><span class="code">${x.code}</span> <button class="chip" onclick="cp('${x.code}')">คัดลอก</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มีคูปอง</div>'}</div>
-<div class="card"><b class="n">ประวัติคะแนน</b><table class="tbl">${S.log.map(x=>`<tr><td class="mut" width="90">${x.t}</td><td>${x.m}</td><td align="right"><b style="color:${x.n<0?'#d32f2f':'var(--okt)'}">${x.n>0?'+':''}${fmt(x.n)}</b></td></tr>`).join('')||'<tr><td class="mut">ยังไม่มีประวัติ</td></tr>'}</table></div>`}
+<div class="card"><b class="n">🎒 ไอเทมที่ซื้อจากร้านค้า</b>${(S.inventory&&S.inventory.length)?`<table class="tbl">${S.inventory.map(x=>`<tr><td>${esc(x.icon||'🎁')} ${esc(x.name)}<div class="mut">${x.t}${x.desc?' · '+esc(x.desc):''}</div></td><td align="right" class="mut">🪙 ${fmt(x.price||0)}</td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มีไอเทม</div>'}</div>
+<div class="card"><b class="n">ประวัติคะแนน/เหรียญทอง</b><table class="tbl">${S.log.map(x=>`<tr><td class="mut" width="90">${x.t}</td><td>${x.cur==='gold'?'🪙':'⭐'} ${x.m}</td><td align="right"><b style="color:${x.n<0?'#d32f2f':'var(--okt)'}">${x.n>0?'+':''}${fmt(x.n)}</b></td></tr>`).join('')||'<tr><td class="mut">ยังไม่มีประวัติ</td></tr>'}</table></div>`}
 let eo=false;
 function oidR(){const e=$('#oidc');if(!e||!S||(eo&&$('#oi')))return;
  e.innerHTML=(S.oid&&!eo)?`<div class="row"><div class="gap"><span class="em">🆔</span><div><div class="mut">ROV Open ID ที่รับคูปอง</div><span class="code">${S.oid}</span></div></div><button class="chip" onclick="eo=true;oidR();$('#oi').focus()">แก้ไข</button></div>`
@@ -251,13 +305,13 @@ function vRank(){if(leaderboardErr)return '<div class="card"><div class="mut">�
 
 // ---------- nav / pages ----------
 const NAV=[['home','🏠','หน้าหลัก'],['missions','🎯','ภารกิจ'],['lib','📚','คลัง'],['rank','🏆','อันดับ'],['more','☰','เพิ่มเติม']];
-const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],rank:['อันดับผู้เล่น','เหรียญคะแนน และเวลาออนไลน์สะสม'],redeemcode:['กรอกโค้ดรับของรางวัล','ใช้โค้ดที่แอดมินแจกเพื่อรับคะแนน'],login:['ROV Point Hub','เข้าสู่ระบบ']};
-const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more',redeemcode:'more'}[pg]||pg)===k;
-function go(k){pg=k;cur=null;R();window.scrollTo(0,0)}
+const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],rank:['อันดับผู้เล่น','เหรียญคะแนน และเวลาออนไลน์สะสม'],redeemcode:['กรอกโค้ดรับของรางวัล','ใช้โค้ดที่แอดมินแจกเพื่อรับคะแนน'],shop:['ร้านค้า','ใช้เหรียญทองซื้อของ (แลกคืนไม่ได้)'],login:['ROV Point Hub','เข้าสู่ระบบ']};
+const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more',redeemcode:'more',shop:'more'}[pg]||pg)===k;
+function go(k){pg=k;cur=null;if(k==='shop'&&!S.shopSeen){S.shopSeen=true;save()}R();window.scrollTo(0,0)}
 function openC(id){cur=id;pg='view';R();window.scrollTo(0,0)}
 function claimC(id){const c=content.find(x=>x.id===id);if(!c||S.seen[id])return;S.seen[id]=true;add(c.pts,(tn(c.type)||'เนื้อหา')+': '+c.title);R()}
 function head(){const P=PG[pg]||PG.home;$('#h1').textContent=P[0];$('#hp').textContent=P[1];
- $('#hact').innerHTML=(pg==='login')?'':`<span class="sw" style="margin:0">⭐ ${fmt(S?S.pts:0)}</span><button class="sw" style="margin:0" onclick="guide(1)">❓ วิธีใช้</button>`;
+ $('#hact').innerHTML=(pg==='login')?'':`<span class="sw" style="margin:0">⭐ ${fmt(S?S.pts:0)}</span><span class="sw" style="margin:0">🪙 ${fmt(S?S.gold||0:0)}</span><button class="sw" style="margin:0" onclick="guide(1)">❓ วิธีใช้</button>`;
  $('#nav').style.display=pg==='login'?'none':'flex';
  $('#nav').innerHTML=NAV.map(([k,i,l])=>`<button class="nv ${navOn(k)?'on':''}" onclick="go('${k}')"><span>${i}</span>${l}</button>`).join('')}
 function annCard(a){return `<div class="card" style="border-color:var(--gold)"><div class="row"><span class="em">📢</span><b class="n" style="flex:1">${esc(a.title)}</b></div><div class="mut" style="margin-top:6px;white-space:pre-wrap">${esc(a.body)}</div><div class="mut" style="margin-top:8px;font-size:11px">${a.ts?new Date(a.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div></div>`}
@@ -265,8 +319,9 @@ function vHome(){const nx=T.find(t=>S.pts<t[1]),nw=content.filter(c=>!S.seen[c.i
  return (announce.length?'<div class="mut" style="margin:2px 4px 6px">📢 ประกาศจากแอดมิน</div>'+announce.slice(0,5).map(annCard).join(''):'')
  +`<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'} · ข้อมูลผูกกับบัญชีนี้ถาวร</div></div></div></div></div>
  <div class="card"><div class="row"><div><div class="mut">คะแนนของคุณ</div><div class="big" id="pts">${fmt(S.pts)}</div></div><div style="text-align:right"><span class="chip wn">🔥 เช็กอินติดกัน ${S.streak} วัน</span><div class="mut" style="margin-top:6px" id="onl">ออนไลน์วันนี้ ${mm(S.on)}</div><div class="mut" style="margin-top:4px" id="sv"></div></div></div>
+ <div class="row" style="margin-top:10px"><span class="chip wn">🪙 เหรียญทอง ${fmt(S.gold||0)}</span></div>
  ${nx?`<div class="bar"><i style="width:${Math.min(100,S.pts/nx[1]*100)}%"></i></div><div class="mut" style="margin-top:6px">อีก ${fmt(nx[1]-S.pts)} คะแนน แลก ${nx[0]} คูปองได้</div>`:''}</div>
- <div class="card" id="oidc"></div><div class="grid">${[['missions','🎯','ภารกิจประจำวัน','เช็กอิน ดูคลิป เล่นเว็บ'],['lib','📚','คลังเนื้อหา',nw?nw+' รายการใหม่':'วิดีโอ ข่าว รูป'],['redeem','🎟️','แลกคูปอง','ใช้คะแนนแลก'],['mine','🧾','คูปองของฉัน',S.my.length+' ใบ']].map(([k,e,t,d])=>`<button class="menu" onclick="go('${k}')"><span class="em">${e}</span><b>${t}</b><span class="mut">${d}</span></button>`).join('')}</div>`}
+ <div class="card" id="oidc"></div><div class="grid">${[['missions','🎯','ภารกิจประจำวัน','เช็กอิน ดูคลิป เล่นเว็บ'],['lib','📚','คลังเนื้อหา',nw?nw+' รายการใหม่':'วิดีโอ ข่าว รูป'],['shop','🛒','ร้านค้า','ใช้เหรียญทองซื้อของ'],['mine','🧾','คูปองของฉัน',S.my.length+' ใบ']].map(([k,e,t,d])=>`<button class="menu" onclick="go('${k}')"><span class="em">${e}</span><b>${t}</b><span class="mut">${d}</span></button>`).join('')}</div>`}
 function vLib(){return '<div class="mut" style="margin:2px 4px">เนื้อหาที่แอดมินอัปโหลด · ดู/อ่านจนครบเวลาแล้วกดรับคะแนน (รับได้ครั้งเดียวต่อรายการ) · อัปเดตทันทีเมื่อแอดมินเพิ่ม</div>'+(content.length?content.map(c=>{const d=!!S.seen[c.id],q=S.cp[c.id]||0;
  return `<div class="card" onclick="openC('${c.id}')"><div class="row"><div class="gap"><span class="em">${ico(c.type)}</span><div style="min-width:0"><b class="n">${esc(c.title)}</b><div class="mut">${tn(c.type)} · ต้องอยู่ ${mm(c.sec)} · +${fmt(c.pts)} คะแนน</div></div></div>${d?'<span class="chip ok">รับแล้ว ✓</span>':q?'<span class="chip wn">'+mm(Math.min(q,c.sec))+'/'+mm(c.sec)+'</span>':'<span class="chip">ใหม่</span>'}</div></div>`}).join(''):'<div class="card"><div class="mut">ยังไม่มีเนื้อหา — รอแอดมินอัปโหลด</div></div>')}
 function vView(){const c=content.find(x=>x.id===cur);if(!c)return '<div class="card"><button class="btn" onclick="go(\'lib\')">← กลับคลัง</button><div class="mut" style="margin-top:8px">ไม่พบเนื้อหา (อาจถูกลบ)</div></div>';
@@ -276,7 +331,7 @@ function vView(){const c=content.find(x=>x.id===cur);if(!c)return '<div class="c
  <div class="card"><div class="row"><b class="n">ความคืบหน้า</b>${d?'<span class="chip ok">รับแล้ว ✓</span>':rd?`<button class="btn gold" onclick="claimC('${c.id}')">รับ +${fmt(c.pts)}</button>`:`<span class="chip wn" id="ct2">${mm(q)} / ${mm(c.sec)}</span>`}</div><div class="bar"><i id="cb2" style="width:${d?100:Math.min(100,q/c.sec*100)}%"></i></div></div>`}
 function vMore(){const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-direction:row;align-items:center;gap:12px" onclick="${k}"><span class="em">${e}</span><b>${t}</b></button>`;
  return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน (อีเมลนี้ถูกกำหนดไว้ล่วงหน้า)':'ผู้เล่น'}</div></div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>
- <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('redeem')",'🎟️','แลกคูปอง')}${b("go('redeemcode')",'🎁','กรอกโค้ดรับของรางวัล')}${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
+ <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('redeem')",'🎟️','แลกคูปอง')}${b("go('redeemcode')",'🎁','กรอกโค้ดรับของรางวัล')}${b("go('shop')",'🛒','ร้านค้า (เหรียญทอง)')}${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
 
 // ---------- contact admin (player side) ----------
 function readB64Img(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
@@ -336,9 +391,9 @@ function fileSel(){const f=$('#af').files[0];if(!f)return;$('#at').value=f.type.
  if(f.type.startsWith('video/')){const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{const d=Math.max(5,Math.floor(v.duration));URL.revokeObjectURL(v.src);$('#as').value=d;$('#as').max=d;$('#afh').textContent='ความยาววิดีโอ '+mm(d)+' — ตั้งเวลาได้ไม่เกินความยาว'};v.src=URL.createObjectURL(f)}}
 const alist=()=>content.length?`<table class="tbl">${content.map(c=>`<tr><td>${ico(c.type)} ${esc(c.title)}<div class="mut">+${fmt(c.pts)} · ${mm(c.sec)}</div></td><td align="right"><button class="chip" onclick="delC('${c.id}')">ลบ</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มี</div>';
 function vAdmin(){if(!isAdmin)return '<div class="card"><div class="mut">เฉพาะบัญชีแอดมินเท่านั้น</div></div>';
- const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด']];
+ const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า']];
  let h=`<div class="tabs" style="margin:0 0 4px">${tabs.map(([k,l])=>`<button class="tab ${adminTab===k?'on':''}" onclick="adminTab='${k}';R()">${l}</button>`).join('')}</div>`;
- if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else h+=vAdminCodes();
+ if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else h+=vAdminShop();
  return h}
 function vAdminContent(){return `<div class="card" style="margin-top:0"><b class="n">เพิ่มเนื้อหาใหม่ (เผยแพร่จริงทันที)</b><div class="mut" style="margin-top:4px">อัปโหลดแล้วผู้เล่นทุกคนที่เปิดหน้าอยู่จะเห็นทันทีโดยไม่ต้องรีเฟรช</div>
  <select id="at" class="inp"><option value="video">🎬 วิดีโอ (mp4/webm)</option><option value="news">📰 ข่าว/บทความ</option><option value="image">🖼️ รูปภาพ</option></select>
@@ -423,11 +478,13 @@ function guide(o){const e=$('#gd');if(!o){e.innerHTML='';return}
  <button class="btn pri" style="width:100%;margin-top:16px" onclick="guide(0)">เข้าใจแล้ว</button></div></div>`}
 
 // ---------- render loop ----------
-const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode};
+const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop};
 function R(){head();$('#v').innerHTML=pg==='login'?vLogin():V[pg]();if(pg!=='login')oidR()}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;roll();S.on++;S.life=(S.life||0)+1;{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
   const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
+ if(goldRun){const gm=GM.find(x=>x.id===goldRun.id);goldRun.el++;if(goldRun.el>=gm.s)re=true;
+  const t=$('#gt-'+gm.id),b=$('#gb-'+gm.id);if(t)t.textContent=mm(goldRun.el)+' / '+mm(gm.s);if(b)b.style.width=Math.min(100,goldRun.el/gm.s*100)+'%'}
  const big=M[M.length-1];if(pg==='missions'){const t=$('#t-big'),b=$('#b-big');if(t)t.textContent=mm(S.on)+' / '+mm(big.s);if(b)b.style.width=Math.min(100,S.on/big.s*100)+'%';if(S.on===big.s)re=true}
  let rv=false;if(pg==='view'&&cur){const it=content.find(x=>x.id===cur);if(it&&!S.seen[cur]&&(S.cp[cur]||0)<it.sec){const v=$('#vid'),act=it.type==='video'?!!(v&&!v.paused&&!v.ended):true;
   if(act){S.cp[cur]=(S.cp[cur]||0)+1;const t=$('#ct2'),b=$('#cb2');if(t)t.textContent=mm(S.cp[cur])+' / '+mm(it.sec);if(b)b.style.width=Math.min(100,S.cp[cur]/it.sec*100)+'%';if(S.cp[cur]>=it.sec)rv=true}}}
@@ -442,7 +499,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachUser();attachContent();attachAnnounce();attachLeaderboard();if(isAdmin){attachContacts();attachCodes()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachUser();attachContent();attachAnnounce();attachLeaderboard();attachShop();if(isAdmin){attachContacts();attachCodes()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
