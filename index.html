@@ -250,20 +250,41 @@ async function buyItem(id){const it=shop.find(x=>x.id===id);if(!it)return;if((S.
  if(!(await dlg('ใช้ 🪙 '+fmt(it.price||0)+' ซื้อ "'+it.name+'" ?')))return;if((S.gold||0)<(it.price||0))return;
  S.gold-=(it.price||0);S.inventory=S.inventory||[];S.inventory.unshift({name:it.name,icon:it.icon||'🎁',desc:it.desc||'',price:it.price||0,t:tstr()});
  S.log.unshift({t:tstr(),m:'ซื้อ '+it.name,n:-(it.price||0),cur:'gold'});S.log=S.log.slice(0,80);save();R();say('🎉 ได้รับ "'+it.name+'" แล้ว! ดูได้ที่หน้า คูปองและประวัติ')}
-function vAdminShop(){return `<div class="card" style="margin-top:0"><b class="n">เพิ่มสินค้าในร้าน</b><div class="mut" style="margin-top:4px">ผู้เล่นซื้อด้วยเหรียญทอง (ไม่ใช่คะแนน)</div>
+const DEFAULT_SHOP_ITEMS=[
+{icon:'👑',name:'มงกุฎนักสะสม',desc:'ป้ายมงกุฎพิเศษโชว์หน้าโปรไฟล์',price:200},
+{icon:'🔥',name:'ป้ายไฟแรง',desc:'สำหรับผู้เล่นขยันสุดๆ',price:150},
+{icon:'🎖️',name:'เหรียญเกียรติยศ',desc:'สะสมไว้อวดเพื่อน',price:300},
+{icon:'⭐',name:'ป้าย VIP',desc:'แสดงว่าคุณคือสมาชิกพิเศษ',price:500},
+{icon:'🎭',name:'อวตารพิเศษ',desc:'ไอคอนสุดเท่ประจำตัว',price:250},
+{icon:'🧧',name:'ซองนำโชค',desc:'ไอเทมสะสมสุดคลาสสิก',price:100}];
+function vAdminShop(){return `<div class="card" style="margin-top:0"><b class="n">✨ เพิ่มสินค้าแนะนำอัตโนมัติ</b><div class="mut" style="margin-top:4px">เพิ่มสินค้าสำเร็จรูป ${DEFAULT_SHOP_ITEMS.length} รายการให้ทันที ไม่ต้องพิมพ์เอง — ปรับราคาทีหลังได้จากรายการด้านล่าง</div>
+ <button class="btn gold" id="seedbtn" style="width:100%;margin-top:10px" onclick="seedDefaultShop()">เพิ่มสินค้าแนะนำทั้งหมด</button><div class="mut" id="seedst" style="margin-top:6px"></div></div>
+ <div class="card"><b class="n">หรือเพิ่มสินค้าเอง</b>
  <label class="mut" style="display:block;margin-top:10px">ไอคอน (อิโมจิ)</label><input id="shic" class="inp" placeholder="🎁" maxlength="4">
  <label class="mut" style="display:block;margin-top:10px">ชื่อสินค้า</label><input id="shnm" class="inp" placeholder="เช่น กรอบรูปโปรไฟล์พิเศษ" maxlength="80">
  <label class="mut" style="display:block;margin-top:10px">คำอธิบาย (ไม่บังคับ)</label><input id="shds" class="inp" placeholder="รายละเอียดสั้นๆ" maxlength="140">
  <label class="mut" style="display:block;margin-top:10px">ราคา (เหรียญทอง)</label><input id="shpr" type="number" min="1" max="1000000" value="100" class="inp">
  <button class="btn pri" id="shbtn" style="width:100%;margin-top:12px" onclick="addShopItem()">เพิ่มสินค้า</button><div class="mut" id="shst" style="margin-top:6px"></div></div>
- <div class="card"><b class="n">สินค้าในร้าน</b><div id="shlist">${shopAdminList()}</div></div>`}
+ <div class="mut" style="margin:14px 4px 0">สินค้าในร้าน · ปรับราคาขึ้น/ลงได้ตรงนี้</div><div id="shlist">${shopAdminList()}</div>`}
+async function seedDefaultShop(){const st=$('#seedst'),bt=$('#seedbtn');bt.disabled=true;st.textContent='กำลังเพิ่ม...';
+ try{const existing=new Set(shop.map(x=>x.name));let added=0;
+  for(const it of DEFAULT_SHOP_ITEMS){if(existing.has(it.name))continue;
+   const id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+   await db.ref('shop/'+id).set({icon:it.icon,name:it.name,desc:it.desc,price:it.price,ts:firebase.database.ServerValue.TIMESTAMP});added++}
+  st.textContent=added?'✅ เพิ่มแล้ว '+added+' รายการ':'มีครบทุกรายการอยู่แล้ว'}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
 async function addShopItem(){const st=$('#shst'),bt=$('#shbtn'),icon=$('#shic').value.trim()||'🎁',name=$('#shnm').value.trim(),desc=$('#shds').value.trim(),price=Math.round(+$('#shpr').value);
  if(!name){st.textContent='กรอกชื่อสินค้า';return}if(!(price>0)){st.textContent='กรอกราคาให้ถูกต้อง (มากกว่า 0)';return}
  bt.disabled=true;try{const id='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   await db.ref('shop/'+id).set({icon,name,desc,price,ts:firebase.database.ServerValue.TIMESTAMP});
   st.textContent='✅ เพิ่มสินค้าแล้ว';$('#shnm').value='';$('#shds').value='';$('#shic').value=''}
  catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
-const shopAdminList=()=>shop.length?`<table class="tbl">${shop.map(it=>`<tr><td>${esc(it.icon||'🎁')} ${esc(it.name)}<div class="mut">🪙 ${fmt(it.price||0)}${it.desc?' · '+esc(it.desc):''}</div></td><td align="right"><button class="chip" onclick="delShopItem('${it.id}')">ลบ</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มีสินค้า</div>';
+const shopAdminList=()=>shop.length?shop.map(it=>`<div class="card"><div class="row"><div class="gap"><span class="em">${esc(it.icon||'🎁')}</span><div style="min-width:0"><b class="n">${esc(it.name)}</b>${it.desc?`<div class="mut">${esc(it.desc)}</div>`:''}</div></div><button class="chip" onclick="delShopItem('${it.id}')">ลบ</button></div>
+ <div class="row" style="margin-top:10px;flex-wrap:nowrap;gap:8px"><input id="pr-${it.id}" type="number" min="1" max="1000000" value="${it.price||0}" class="inp" style="margin-top:0"><button class="btn pri" onclick="updatePrice('${it.id}')">บันทึกราคา</button></div>
+ <div class="mut" id="prst-${it.id}" style="margin-top:4px"></div></div>`).join(''):'<div class="card"><div class="mut">ยังไม่มีสินค้า</div></div>';
+async function updatePrice(id){const inp=$('#pr-'+id),st=$('#prst-'+id),price=Math.round(+inp.value);
+ if(!(price>0)){st.textContent='ราคาต้องมากกว่า 0';return}
+ try{await db.ref('shop/'+id+'/price').set(price);st.textContent='✅ บันทึกราคาใหม่แล้ว'}catch(e){st.textContent='ผิดพลาด ลองใหม่'}}
 async function delShopItem(id){if(!(await dlg('ลบสินค้านี้?','ลบ')))return;try{await db.ref('shop/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
 function vMPts(){return '<div class="mut" style="margin:14px 4px 0">เลือก "เริ่ม" แล้วเปิดหน้านี้ค้างไว้ · เวลาจะนับเฉพาะตอนที่อยู่ในหน้านี้ · ทำได้ครั้งละ 1 ภารกิจ</div>'
  +`<div class="card"><div class="row"><div class="gap"><span class="em">🎡</span><div><b class="n">วงล้อรายวัน</b><div class="mut">หมุนได้วันละ 1 ครั้ง · ได้ 5–1,000 คะแนน</div></div></div>${S.done.wheel?'<span class="chip ok">หมุนแล้ววันนี้</span>':'<button class="btn gold" onclick="spin()">หมุน</button>'}</div></div>`+vBox()
@@ -335,7 +356,7 @@ function vMore(){const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-d
 
 // ---------- contact admin (player side) ----------
 function readB64Img(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
-function vContact(){return `<div class="card" style="margin-top:0"><b class="n">ติดต่อแอดมิน</b><div class="mut" style="margin-top:4px">กรอกอีเมลที่ให้แอดมินติดต่อกลับ เลือกหัวข้อ อธิบายรายละเอียด แนบรูปได้ถ้าต้องการ — ข้อความจะส่งเข้าระบบทันที และเปิดแอปอีเมลของคุณให้ส่งสำเนาจริงถึงแอดมินด้วย</div>
+function vContact(){return `<div class="card" style="margin-top:0"><b class="n">ติดต่อแอดมิน</b><div class="mut" style="margin-top:4px">กรอกอีเมลที่ให้แอดมินติดต่อกลับ เลือกหัวข้อ อธิบายรายละเอียด แนบรูปได้ถ้าต้องการ — ข้อความจะเข้าระบบให้แอดมินเห็นทันที และจะเปิดแอปอีเมลของคุณให้ด้วย (ต้องกดส่งเองอีกครั้งถ้าอยากส่งสำเนาทางอีเมล ไม่บังคับ)</div>
 <label class="mut">อีเมลติดต่อกลับ</label><input id="ctem" type="email" class="inp" placeholder="you@example.com" value="${esc((user&&user.email)||'')}">
 <label class="mut" style="display:block;margin-top:10px">หัวข้อ</label><select id="cttp" class="inp"><option>ปัญหาการใช้งาน</option><option>ปัญหาคะแนน/คูปอง</option><option>รายงานผู้เล่นทุจริต</option><option>ข้อเสนอแนะ</option><option>อื่นๆ</option></select>
 <label class="mut" style="display:block;margin-top:10px">รายละเอียด</label><textarea id="ctbd" rows="5" class="inp" placeholder="อธิบายปัญหาหรือคำถามของคุณ"></textarea>
@@ -350,7 +371,7 @@ async function sendContact(){const st=$('#ctst'),bt=$('#ctbtn');const email=$('#
   const id='k'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   await db.ref('contacts/'+id).set({email,topic,body,img,ts:firebase.database.ServerValue.TIMESTAMP,uid:uid||''});
   const mailto='mailto:'+ADMIN_EMAIL+'?subject='+encodeURIComponent('['+topic+'] ข้อความจากผู้เล่น ROV Point Hub')+'&body='+encodeURIComponent('จาก: '+email+'\n\n'+body+(img?'\n\n(ผู้เล่นแนบรูปมาด้วย ดูได้ในแผงแอดมิน)':''));
-  st.textContent='✅ ส่งเข้าระบบแล้ว กำลังเปิดแอปอีเมลให้ส่งสำเนาถึงแอดมิน...';
+  st.textContent='✅ ส่งถึงแอดมินในระบบแล้ว (กำลังเปิดแอปอีเมล — กดส่งในนั้นด้วยถ้าอยากส่งสำเนาทางอีเมล)';
   setTimeout(()=>{try{location.href=mailto}catch(e){}},400);
   $('#ctbd').value='';$('#ctim').value=''}
  catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
@@ -414,13 +435,14 @@ async function addAnnounce(){const st=$('#anst'),bt=$('#anbtn'),title=$('#anti')
  catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
 const annList=()=>announce.length?`<table class="tbl">${announce.map(a=>`<tr><td>${esc(a.title)}<div class="mut">${a.ts?new Date(a.ts).toLocaleString('th-TH'):''}</div></td><td align="right"><button class="chip" onclick="delAnnounce('${a.id}')">ลบ</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มี</div>';
 async function delAnnounce(id){if(!(await dlg('ลบประกาศนี้?','ลบ')))return;try{await db.ref('announce/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
-function vAdminContact(){return `<div class="mut" style="margin:2px 4px">ข้อความจากผู้เล่น · กด "ตอบกลับทางอีเมล" เพื่อเปิดแอปอีเมลของคุณแล้วส่งจริง</div><div id="ctlist">${ctList()}</div>`}
+function vAdminContact(){return `<div class="mut" style="margin:2px 4px">ข้อความจากผู้เล่น · กด "ตอบกลับทางอีเมล" จะเปิดแอปอีเมลของคุณพร้อมร่างข้อความ — <b>ต้องกดส่ง (Send) ในแอปอีเมลเองอีกครั้ง</b> ถึงจะถึงผู้เล่นจริง ระบบนี้ส่งอีเมลเองอัตโนมัติไม่ได้</div><div id="ctlist">${ctList()}</div>`}
 const ctList=()=>contacts.length?contacts.map(c=>`<div class="card"><div class="row"><span class="chip">${esc(c.topic||'')}</span><span class="mut">${c.ts?new Date(c.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</span></div>
 <div class="mut" style="margin-top:6px">จาก: ${esc(c.email)}</div><div style="margin-top:6px;white-space:pre-wrap">${esc(c.body)}</div>
 ${c.img?`<img src="${c.img}" style="max-width:160px;border-radius:10px;margin-top:8px" onclick="say('<img src=\\'${c.img}\\' style=\\'width:100%;border-radius:10px\\'>')">`:''}
-<div class="row" style="margin-top:10px"><button class="btn pri" onclick="replyContact('${c.id}')">ตอบกลับทางอีเมล</button><button class="chip" onclick="delContact('${c.id}')">ลบ</button></div></div>`).join(''):'<div class="mut" style="margin-top:6px">ยังไม่มีข้อความ</div>';
-function replyContact(id){const c=contacts.find(x=>x.id===id);if(!c)return;
- location.href='mailto:'+encodeURIComponent(c.email)+'?subject='+encodeURIComponent('Re: ['+(c.topic||'')+'] ROV Point Hub')+'&body='+encodeURIComponent('เรียนผู้เล่น\n\n\n\n----- ข้อความเดิม -----\n'+c.body)}
+<div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px"><button class="btn pri" onclick="replyContact('${c.id}')">ตอบกลับทางอีเมล</button><button class="chip" onclick="cp('${c.email}')">คัดลอกอีเมล</button><button class="chip" onclick="delContact('${c.id}')">ลบ</button></div></div>`).join(''):'<div class="mut" style="margin-top:6px">ยังไม่มีข้อความ</div>';
+async function replyContact(id){const c=contacts.find(x=>x.id===id);if(!c)return;
+ if(!(await dlg('จะเปิดแอปอีเมลของคุณ พร้อมร่างข้อความถึง '+c.email+'\n\n⚠️ ต้องกดส่ง (Send) ในแอปอีเมลเองอีกครั้ง ไม่ส่งให้อัตโนมัติ','เปิดแอปอีเมล')))return;
+ location.href='mailto:'+c.email+'?subject='+encodeURIComponent('Re: ['+(c.topic||'')+'] ROV Point Hub')+'&body='+encodeURIComponent('เรียนผู้เล่น\n\n\n\n----- ข้อความเดิม -----\n'+c.body)}
 async function delContact(id){if(!(await dlg('ลบข้อความนี้?','ลบ')))return;try{await db.ref('contacts/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
 function readB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
 async function addContent(){const st=$('#ast'),bt=$('#abtn');const type=$('#at').value,title=$('#ati').value.trim(),body=$('#abd').value.trim(),f=$('#af').files[0];let pts=Math.round(+$('#ap').value),sec=Math.round(+$('#as').value);
