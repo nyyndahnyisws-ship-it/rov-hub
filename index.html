@@ -69,7 +69,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ico=t=>({video:'🎬',news:'📰',image:'🖼️'}[t]||'📄'),tn=t=>({video:'วิดีโอ',news:'ข่าว',image:'รูปภาพ'}[t]||'');
 const tstr=()=>{const d=new Date();return p2(d.getDate())+'/'+p2(d.getMonth()+1)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
-const fresh=()=>({pts:0,gold:0,day:day(),done:{},goldDone:{},on:0,streak:0,last:null,log:[],my:[],inventory:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0,boxOpen:{},shopSeen:false});
+const fresh=()=>({pts:0,gold:0,day:day(),done:{},goldDone:{},on:0,streak:0,last:null,log:[],my:[],inventory:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0,boxOpen:{},goldBoxOpen:{},shopSeen:false});
 
 let fbApp,auth,db,ready=false;
 let user=null,uid=null,isAdmin=false,authMode='in';
@@ -118,7 +118,7 @@ function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)
 function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
 async function pushUser(direct){if(!S||!uid)return;if(!direct&&pushTimer){clearTimeout(pushTimer);pushTimer=null}const d=clone(S);try{await db.ref('users/'+uid).set(d);markSave(true);db.ref('leaderboard/'+uid).set({email:(user&&user.email)||'',pts:S.pts,life:S.life||0,ts:Date.now()}).catch(()=>{})}catch(e){markSave(false)}}
 function flush(){return pushUser(true)}
-function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.goldDone={};S.on=0;S.boxOpen={};S.shopSeen=false;run=null;goldRun=null;save()}}
+function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.goldDone={};S.on=0;S.boxOpen={};S.goldBoxOpen={};S.shopSeen=false;run=null;goldRun=null;save()}}
 function add(n,t){S.pts+=n;S.log.unshift({t:tstr(),m:t,n,cur:'pts'});S.log=S.log.slice(0,80);save()}
 function addGold(n,t){S.gold=(S.gold||0)+n;S.log.unshift({t:tstr(),m:t,n,cur:'gold'});S.log=S.log.slice(0,80);save()}
 
@@ -225,20 +225,64 @@ const GM=[
 {id:'g1',e:'🪙',n:'เก็บเหรียญประจำวัน',d:'กดรับเหรียญทองวันนี้',g:20,s:0,max:1},
 {id:'g2',e:'🎥',n:'ดูคลิปโฆษณา 15 วินาที',d:'เปิดหน้านี้ค้างไว้ให้ครบเวลา',g:10,s:15,max:5},
 {id:'g3',e:'🧩',n:'เล่นเว็บสะสมเหรียญ 10 นาที',d:'อยู่ในหน้านี้ให้ครบเวลา',g:50,s:600,max:3},
-{id:'g4',e:'🛒',n:'แวะชมร้านค้าวันนี้',d:'เปิดหน้าร้านค้าอย่างน้อย 1 ครั้งวันนี้',g:15,s:0,max:1,check:()=>!!S.shopSeen}];
+{id:'g4',e:'🛒',n:'แวะชมร้านค้าวันนี้',d:'เปิดหน้าร้านค้าอย่างน้อย 1 ครั้งวันนี้',g:15,s:0,max:1,check:()=>!!S.shopSeen,lockMsg:'ไปที่หน้าร้านค้าก่อน'},
+{id:'g5',e:'🎯',n:'ทำภารกิจคะแนนสำเร็จ 1 อย่าง',d:'ทำภารกิจใดก็ได้ในแท็บ ⭐ ภารกิจคะแนน ให้สำเร็จก่อน',g:15,s:0,max:1,check:()=>Object.keys(S.done||{}).length>=1,lockMsg:'ไปทำภารกิจคะแนนก่อน'},
+{id:'g6',e:'🏆',n:'ทำภารกิจเหรียญทองอื่นให้ครบ 3 อย่าง',d:'ทำภารกิจเหรียญทองข้ออื่นในวันนี้ให้ครบ 3 อย่าง',g:40,s:0,max:1,check:()=>Object.keys(S.goldDone||{}).length>=3,lockMsg:'ทำภารกิจเหรียญทองอื่นให้ครบ 3 ก่อน'},
+{id:'g7',e:'⏱️',n:'เล่นเว็บสะสมเหรียญ 20 นาที',d:'อยู่ในหน้านี้ให้ครบเวลา (ภารกิจเวลานานพิเศษ)',g:100,s:1200,max:1}];
 function claimGold(id){const m=GM.find(x=>x.id===id);if(!m)return;S.goldDone=S.goldDone||{};S.goldDone[id]=(S.goldDone[id]||0)+1;if(goldRun&&goldRun.id===id)goldRun=null;addGold(m.g,m.n);R()}
 function startGold(id){goldRun={id,el:0};R()}
 function stopGold(){goldRun=null;R()}
 function missionGold(m){const c=(S.goldDone||{})[m.id]||0,full=c>=m.max,r=goldRun&&goldRun.id===m.id;
  const el=r?goldRun.el:0,timeOk=m.s===0||el>=m.s,unlocked=!m.check||m.check();let b;
  if(full)b='<span class="chip ok">ครบวันนี้</span>';
- else if(!unlocked)b='<span class="chip wn">ไปที่หน้าร้านค้าก่อน</span>';
+ else if(!unlocked)b=`<span class="chip wn">${m.lockMsg||'ยังไม่ปลดล็อก'}</span>`;
  else if(timeOk)b=`<button class="btn gold" onclick="claimGold('${m.id}')">รับ +${fmt(m.g)} 🪙</button>`;
  else if(r)b=`<button class="btn" onclick="stopGold()">หยุด</button>`;
  else b=`<button class="btn pri" onclick="startGold('${m.id}')">เริ่ม</button>`;
  return `<div class="card"><div class="row"><div class="gap"><span class="em">${m.e}</span><div style="min-width:0"><b class="n">${m.n}</b><div class="mut">${m.d}</div><div class="mut">+${fmt(m.g)} เหรียญทอง · วันนี้ ${c}/${m.max}</div></div></div>${b}</div>
  ${(m.s&&!full&&r)?`<div class="bar"><i id="gb-${m.id}" style="width:${Math.min(100,el/m.s*100)}%"></i></div><div class="mut" style="margin-top:6px" id="gt-${m.id}">${mm(el)} / ${mm(m.s)}</div>`:''}</div>`}
-function vGoldMissions(){return '<div class="mut" style="margin:14px 4px 0">🪙 เหรียญทองเป็นสกุลเงินแยกต่างหาก ใช้ซื้อของในร้านค้าได้เท่านั้น แลกเป็นคะแนนหรือคูปองไม่ได้</div>'+GM.map(missionGold).join('')}
+// ---------- gold box (same 5 tiers as the points box, but 2/day and a lower 5% per-tap upgrade chance) ----------
+const GBOX=[
+{id:'gray',name:'กล่องสีเทา',tag:'ธรรมดา',rarity:'พบได้บ่อย',w:30,min:5,max:15,c1:'#b0b8c1',c2:'#6b7684'},
+{id:'green',name:'กล่องสีเขียว',tag:'ธรรมดา',rarity:'พบได้บ่อย',w:25,min:15,max:30,c1:'#7ed17a',c2:'#2e8b3d'},
+{id:'blue',name:'กล่องสีฟ้า',tag:'หายาก',rarity:'พบได้น้อย',w:20,min:30,max:60,c1:'#6cc3f5',c2:'#1976d2'},
+{id:'purple',name:'กล่องสีม่วง',tag:'หาโครตยาก',rarity:'พบได้ยากมาก',w:15,min:70,max:150,c1:'#c98cec',c2:'#7b1fa2'},
+{id:'gold',name:'กล่องทอง',tag:'ตำนาน',rarity:'พบได้ยากที่สุด',w:10,min:200,max:500,c1:'#ffd54f',c2:'#f4511e'}];
+const GOLD_UPGRADE_CHANCE=.05; // lower than the points box's 25%, as requested
+function pickGBoxIndex(){const r=Math.random()*100;let acc=0;for(let i=0;i<GBOX.length;i++){acc+=GBOX[i].w;if(r<acc)return i}return 0}
+const GOLD_SLOTS=[
+{id:'gs1',name:'กล่องเหรียญ A',need:'ทำภารกิจ "เก็บเหรียญประจำวัน" สำเร็จ',check:()=>!!(S.goldDone&&S.goldDone.g1)},
+{id:'gs2',name:'กล่องเหรียญ B',need:'ทำภารกิจเหรียญทองให้ครบ 3 อย่างในวันนี้',check:()=>Object.keys(S.goldDone||{}).length>=3}];
+function goldSlotCard(slot,i){const done=(S.goldBoxOpen||{})[slot.id];const ok=slot.check();
+ return `<div class="card"><div class="row"><div class="gap"><span class="em">🎁</span><div><b class="n">${slot.name}</b><div class="mut">${slot.need}</div></div></div>
+ ${done?'<span class="chip ok">เปิดแล้ว ✓</span>':ok?`<button class="btn gold" onclick="openGoldSlot(${i})">เปิดกล่อง</button>`:'<span class="chip wn">ยังไม่ปลดล็อก</span>'}</div></div>`}
+function vGoldBox(){return '<div class="mut" style="margin:18px 4px 8px">🎁 กล่องเหรียญทอง · เปิดได้วันละ 2 กล่อง · โอกาสสุ่มเลื่อนระดับต่อครั้งแค่ 5% (น้อยกว่ากล่องคะแนนที่ 25%)</div>'
+ +`<div class="card"><div style="display:flex;gap:4px">${GBOX.map(boxMini).join('')}</div></div>`
+ +GOLD_SLOTS.map(goldSlotCard).join('')}
+function openGoldSlot(i){const slot=GOLD_SLOTS[i];if((S.goldBoxOpen||{})[slot.id]||!slot.check())return;
+ let tier=pickGBoxIndex(),chances=3;
+ function reward(){const b=GBOX[tier];return Math.floor(Math.random()*(b.max-b.min+1))+b.min}
+ function drawTap(){const b=GBOX[tier],atMax=tier===GBOX.length-1;
+  $('#dlg').innerHTML=`<div class="ov" style="align-items:center;justify-content:center;background:${b.c2}"><div style="text-align:center;color:#fff;padding:20px;width:100%;max-width:340px">
+  <div style="font-weight:800;letter-spacing:1px;opacity:.9">${b.tag}</div>
+  <div style="font-size:13px;opacity:.85;margin-top:2px">${b.name} · ${b.rarity}</div>
+  <div style="margin:18px auto;animation:boxshake .5s ease-in-out 1">${chestSVG(b.c1,b.c2,120)}</div>
+  ${atMax?`<div style="opacity:.9">ถึงระดับสูงสุดแล้ว!</div><button id="bnext" class="btn" style="width:220px;margin-top:14px;background:#fff;font-weight:700;color:${b.c2}">กดเปิดดูเลย!</button>`
+  :`<div style="opacity:.9">เหลือโอกาสอีก ${chances} ครั้ง! (โอกาสเลื่อนระดับ 5%)</div><button id="bnext" class="btn" style="width:220px;margin-top:14px;background:#fff;font-weight:700;color:${b.c2}">กดเพื่อสุ่มเลื่อนระดับ</button>`}
+  </div></div>`;
+  $('#bnext').onclick=()=>{if(!atMax){chances--;if(Math.random()<GOLD_UPGRADE_CHANCE&&tier<GBOX.length-1)tier++}
+   if(atMax||chances<=0||tier===GBOX.length-1)finalize();else drawTap()};}
+ function finalize(){const b=GBOX[tier],rw=reward();
+  $('#dlg').innerHTML=`<div class="ov" style="align-items:center;justify-content:center;background:${b.c2}"><div style="text-align:center;color:#fff;padding:20px">
+  <div style="font-weight:800;letter-spacing:1px;opacity:.9">${b.tag}</div>
+  <div style="font-size:13px;opacity:.85;margin-top:2px">${b.name} · ${b.rarity}</div>
+  <div style="margin:18px auto;animation:boxpop .4s ease-out">${chestSVG(b.c1,b.c2,120)}</div>
+  <div style="font-size:36px;font-weight:800;animation:boxpop .35s ease-out">+${fmt(rw)} 🪙</div><div style="opacity:.9">เหรียญทอง</div>
+  <button id="bok" class="btn" style="width:220px;margin-top:22px;background:#fff;font-weight:700;color:${b.c2}">ไปต่อ</button>
+  </div></div>`;
+  $('#bok').onclick=()=>{$('#dlg').innerHTML='';S.goldBoxOpen=S.goldBoxOpen||{};S.goldBoxOpen[slot.id]=true;addGold(rw,'เปิด'+b.name+' ('+slot.name+')');R()};}
+ drawTap();}
+function vGoldMissions(){return '<div class="mut" style="margin:14px 4px 0">🪙 เหรียญทองเป็นสกุลเงินแยกต่างหาก ใช้ซื้อของในร้านค้าได้เท่านั้น แลกเป็นคะแนนหรือคูปองไม่ได้</div>'+vGoldBox()+'<div class="mut" style="margin:18px 4px 8px">🎯 ภารกิจเหรียญทอง</div>'+GM.map(missionGold).join('')}
 // ---------- shop (gold coins only — never exchangeable) ----------
 function vShop(){const g=S.gold||0;
  let h=`<div class="card" style="margin-top:0"><div class="row"><div><div class="mut">เหรียญทองของคุณ</div><div class="big" id="goldbal">🪙 ${fmt(g)}</div></div></div><div class="mut" style="margin-top:4px">ใช้ซื้อของในร้านได้เท่านั้น ไม่สามารถแลกคืนเป็นคะแนนหรือเงินได้</div></div>`;
