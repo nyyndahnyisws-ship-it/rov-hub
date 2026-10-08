@@ -69,7 +69,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ico=t=>({video:'🎬',news:'📰',image:'🖼️'}[t]||'📄'),tn=t=>({video:'วิดีโอ',news:'ข่าว',image:'รูปภาพ'}[t]||'');
 const tstr=()=>{const d=new Date();return p2(d.getDate())+'/'+p2(d.getMonth()+1)+' '+p2(d.getHours())+':'+p2(d.getMinutes())};
-const fresh=()=>({pts:0,gold:0,day:day(),done:{},goldDone:{},on:0,streak:0,last:null,log:[],my:[],inventory:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0,boxOpen:{},goldBoxOpen:{},shopSeen:false});
+const fresh=()=>({pts:0,gold:0,jade:0,day:day(),done:{},goldDone:{},on:0,streak:0,last:null,log:[],my:[],inventory:[],oid:'',cp:{},seen:{},ms:{},life:0,ts:0,boxOpen:{},goldBoxOpen:{},shopSeen:false,bpXP:0,bpPremium:false,bpSeason:'',bpClaimedFree:{},bpClaimedPremium:{}});
 
 let fbApp,auth,db,ready=false;
 let user=null,uid=null,isAdmin=false,authMode='in';
@@ -80,6 +80,10 @@ let contacts=[],contactsRefOff=null;
 let leaderboard=[],leaderboardRefOff=null,rankTab='pts',leaderboardErr=false;
 let codes=[],codesRefOff=null;
 let shop=[],shopRefOff=null;
+let topups=[],topupsRefOff=null;
+let bpLevels={},bpLevelsRefOff=null,bpEdit=1;
+let myTopups=[],myTopupsRefOff=null;
+let qrImage='',qrRefOff=null;
 let goldRun=null,missionsTab='pts';
 let userRefOff=null,contentRefOff=null;
 
@@ -113,12 +117,17 @@ function attachUser(){userRefOff=db.ref('users/'+uid);
   if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return} // echo of our own write — local state already correct, skip re-render so nothing on screen (e.g. a form you're typing in) gets wiped
   const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();pg==='admin'?head():R() // on the admin page a background update only refreshes the header (points/nav), never the form itself
  },e=>{markSave(false)})}
-function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();if(leaderboardRefOff)leaderboardRefOff.off();if(codesRefOff)codesRefOff.off();if(shopRefOff)shopRefOff.off();userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;leaderboardRefOff=null;codesRefOff=null;shopRefOff=null;S=null;content=[];announce=[];contacts=[];leaderboard=[];codes=[];shop=[];run=null;goldRun=null}
+function detachAll(){if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();if(leaderboardRefOff)leaderboardRefOff.off();if(codesRefOff)codesRefOff.off();if(shopRefOff)shopRefOff.off();if(topupsRefOff)topupsRefOff.off();if(myTopupsRefOff)myTopupsRefOff.off();if(qrRefOff)qrRefOff.off();if(bpLevelsRefOff)bpLevelsRefOff.off();userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;leaderboardRefOff=null;codesRefOff=null;shopRefOff=null;topupsRefOff=null;myTopupsRefOff=null;qrRefOff=null;bpLevelsRefOff=null;S=null;content=[];announce=[];contacts=[];leaderboard=[];codes=[];shop=[];topups=[];myTopups=[];bpLevels={};run=null;goldRun=null}
 function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
 function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
 async function pushUser(direct){if(!S||!uid)return;if(!direct&&pushTimer){clearTimeout(pushTimer);pushTimer=null}const d=clone(S);try{await db.ref('users/'+uid).set(d);markSave(true);db.ref('leaderboard/'+uid).set({email:(user&&user.email)||'',pts:S.pts,life:S.life||0,ts:Date.now()}).catch(()=>{})}catch(e){markSave(false)}}
 function flush(){return pushUser(true)}
-function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.goldDone={};S.on=0;S.boxOpen={};S.goldBoxOpen={};S.shopSeen=false;run=null;goldRun=null;save()}}
+const bpSeasonKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const BP_XP_PER_LV=100,BP_MAX_LV=70;
+const bpLevel=()=>Math.min(BP_MAX_LV,Math.floor((S.bpXP||0)/BP_XP_PER_LV));
+function bpAddXP(n){S.bpXP=(S.bpXP||0)+n;save()}
+function roll(){if(!S)return;if(S.day!==day()){S.day=day();S.done={};S.goldDone={};S.on=0;S.boxOpen={};S.goldBoxOpen={};S.shopSeen=false;run=null;goldRun=null;save()}
+ if(S.bpSeason!==bpSeasonKey()){S.bpSeason=bpSeasonKey();S.bpXP=0;S.bpPremium=false;S.bpClaimedFree={};S.bpClaimedPremium={};save()}}
 function add(n,t){S.pts+=n;S.log.unshift({t:tstr(),m:t,n,cur:'pts'});S.log=S.log.slice(0,80);save()}
 function addGold(n,t){S.gold=(S.gold||0)+n;S.log.unshift({t:tstr(),m:t,n,cur:'gold'});S.log=S.log.slice(0,80);save()}
 
@@ -138,6 +147,20 @@ function attachShop(){shopRefOff=db.ref('shop');
  shopRefOff.on('value',snap=>{const v=snap.val()||{};shop=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(a.price||0)-(b.price||0));
   if(pg==='admin'){if(adminTab==='shop'){const e=$('#shlist');if(e)e.innerHTML=shopAdminList()}return}
   if(pg==='shop')R()},()=>{})}
+function attachBpLevels(){bpLevelsRefOff=db.ref('battlepass/levels');
+ bpLevelsRefOff.on('value',snap=>{bpLevels=snap.val()||{};
+  if(pg==='bp')R();if(pg==='admin'&&adminTab==='bp'){const e=$('#bplist');if(e)e.innerHTML=bpAdminListHTML()}},()=>{})}
+function attachQR(){qrRefOff=db.ref('settings/qr');
+ qrRefOff.on('value',snap=>{const v=snap.val();qrImage=(v&&v.image)||'';
+  if(pg==='topup')R();if(pg==='admin'&&adminTab==='topup'){const e=$('#qrprev');if(e)e.innerHTML=qrPreview()}},()=>{})}
+function attachTopups(){topupsRefOff=db.ref('topups');
+ topupsRefOff.on('value',snap=>{const v=snap.val()||{};const list=[];
+  Object.keys(v).forEach(u=>Object.keys(v[u]).forEach(id=>list.push(Object.assign({uid:u,id},v[u][id]))));
+  topups=list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(pg==='admin'&&adminTab==='topup'){const e=$('#tulist');if(e)e.innerHTML=topupAdminList()}},()=>{})}
+function attachMyTopups(){myTopupsRefOff=db.ref('topups/'+uid);
+ myTopupsRefOff.on('value',snap=>{const v=snap.val()||{};myTopups=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(pg==='topup')R()},()=>{})}
 function attachCodes(){codesRefOff=db.ref('promocodes');
  codesRefOff.on('value',snap=>{const v=snap.val()||{};codes=Object.keys(v).map(id=>Object.assign({code:id},v[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   if(pg==='admin'&&adminTab==='codes'){const e=$('#cdlist');if(e)e.innerHTML=codesList()}},()=>{})}
@@ -196,10 +219,10 @@ function openSlot(i){const slot=SLOTS[i];if((S.boxOpen||{})[slot.id]||!slot.chec
   <div style="font-size:36px;font-weight:800;animation:boxpop .35s ease-out">+${fmt(rw)}</div><div style="opacity:.9">คะแนน</div>
   <button id="bok" class="btn" style="width:220px;margin-top:22px;background:#fff;font-weight:700;color:${b.c2}">ไปต่อ</button>
   </div></div>`;
-  $('#bok').onclick=()=>{$('#dlg').innerHTML='';S.boxOpen=S.boxOpen||{};S.boxOpen[slot.id]=true;add(rw,'เปิด'+b.name+' ('+slot.name+')');R()};}
+  $('#bok').onclick=()=>{$('#dlg').innerHTML='';S.boxOpen=S.boxOpen||{};S.boxOpen[slot.id]=true;bpAddXP(15);add(rw,'เปิด'+b.name+' ('+slot.name+')');R()};}
  drawTap();}
 // ---------- missions ----------
-function claim(id){const m=M.find(x=>x.id===id);let n=m.p,t=m.n;
+function claim(id){const m=M.find(x=>x.id===id);let n=m.p,t=m.n;bpAddXP(10);
  if(id==='ci'){const y=new Date(Date.now()-864e5).toLocaleDateString('en-CA');S.streak=S.last===y?S.streak+1:1;S.last=day();
   if(S.streak%7===0){n+=5000;t+=' + โบนัสครบ 7 วัน'}}
  S.done[id]=(S.done[id]||0)+1;if(run&&run.id===id)run=null;add(n,t);R()}
@@ -229,7 +252,7 @@ const GM=[
 {id:'g5',e:'🎯',n:'ทำภารกิจคะแนนสำเร็จ 1 อย่าง',d:'ทำภารกิจใดก็ได้ในแท็บ ⭐ ภารกิจคะแนน ให้สำเร็จก่อน',g:15,s:0,max:1,check:()=>Object.keys(S.done||{}).length>=1,lockMsg:'ไปทำภารกิจคะแนนก่อน'},
 {id:'g6',e:'🏆',n:'ทำภารกิจเหรียญทองอื่นให้ครบ 3 อย่าง',d:'ทำภารกิจเหรียญทองข้ออื่นในวันนี้ให้ครบ 3 อย่าง',g:40,s:0,max:1,check:()=>Object.keys(S.goldDone||{}).length>=3,lockMsg:'ทำภารกิจเหรียญทองอื่นให้ครบ 3 ก่อน'},
 {id:'g7',e:'⏱️',n:'เล่นเว็บสะสมเหรียญ 20 นาที',d:'อยู่ในหน้านี้ให้ครบเวลา (ภารกิจเวลานานพิเศษ)',g:100,s:1200,max:1}];
-function claimGold(id){const m=GM.find(x=>x.id===id);if(!m)return;S.goldDone=S.goldDone||{};S.goldDone[id]=(S.goldDone[id]||0)+1;if(goldRun&&goldRun.id===id)goldRun=null;addGold(m.g,m.n);R()}
+function claimGold(id){const m=GM.find(x=>x.id===id);if(!m)return;S.goldDone=S.goldDone||{};S.goldDone[id]=(S.goldDone[id]||0)+1;if(goldRun&&goldRun.id===id)goldRun=null;bpAddXP(8);addGold(m.g,m.n);R()}
 function startGold(id){goldRun={id,el:0};R()}
 function stopGold(){goldRun=null;R()}
 function missionGold(m){const c=(S.goldDone||{})[m.id]||0,full=c>=m.max,r=goldRun&&goldRun.id===m.id;
@@ -280,7 +303,7 @@ function openGoldSlot(i){const slot=GOLD_SLOTS[i];if((S.goldBoxOpen||{})[slot.id
   <div style="font-size:36px;font-weight:800;animation:boxpop .35s ease-out">+${fmt(rw)} 🪙</div><div style="opacity:.9">เหรียญทอง</div>
   <button id="bok" class="btn" style="width:220px;margin-top:22px;background:#fff;font-weight:700;color:${b.c2}">ไปต่อ</button>
   </div></div>`;
-  $('#bok').onclick=()=>{$('#dlg').innerHTML='';S.goldBoxOpen=S.goldBoxOpen||{};S.goldBoxOpen[slot.id]=true;addGold(rw,'เปิด'+b.name+' ('+slot.name+')');R()};}
+  $('#bok').onclick=()=>{$('#dlg').innerHTML='';S.goldBoxOpen=S.goldBoxOpen||{};S.goldBoxOpen[slot.id]=true;bpAddXP(12);addGold(rw,'เปิด'+b.name+' ('+slot.name+')');R()};}
  drawTap();}
 function vGoldMissions(){return '<div class="mut" style="margin:14px 4px 0">🪙 เหรียญทองเป็นสกุลเงินแยกต่างหาก ใช้ซื้อของในร้านค้าได้เท่านั้น แลกเป็นคะแนนหรือคูปองไม่ได้</div>'+vGoldBox()+'<div class="mut" style="margin:18px 4px 8px">🎯 ภารกิจเหรียญทอง</div>'+GM.map(missionGold).join('')}
 // ---------- shop (gold coins only — never exchangeable) ----------
@@ -294,6 +317,131 @@ async function buyItem(id){const it=shop.find(x=>x.id===id);if(!it)return;if((S.
  if(!(await dlg('ใช้ 🪙 '+fmt(it.price||0)+' ซื้อ "'+it.name+'" ?')))return;if((S.gold||0)<(it.price||0))return;
  S.gold-=(it.price||0);S.inventory=S.inventory||[];S.inventory.unshift({name:it.name,icon:it.icon||'🎁',desc:it.desc||'',price:it.price||0,t:tstr()});
  S.log.unshift({t:tstr(),m:'ซื้อ '+it.name,n:-(it.price||0),cur:'gold'});S.log=S.log.slice(0,80);save();R();say('🎉 ได้รับ "'+it.name+'" แล้ว! ดูได้ที่หน้า คูปองและประวัติ')}
+// ---------- green jade top-up (manual QR + slip, admin verifies by hand — no real payment gateway exists here) ----------
+const PACKS=[
+{jade:9,bonus:0,baht:10},{jade:49,bonus:0,baht:69},{jade:109,bonus:0,baht:119},{jade:209,bonus:0,baht:220},
+{jade:499,bonus:15,baht:549},{jade:899,bonus:25,baht:999},{jade:1499,bonus:50,baht:1520},
+{jade:4799,bonus:100,baht:4900},{jade:7899,bonus:150,baht:8000}];
+let tuPick=-1;
+function readB64Slip(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
+const stChip=st=>st==='approved'?'<span class="chip ok">✅ อนุมัติแล้ว</span>':st==='rejected'?'<span class="chip wn">❌ ไม่ผ่าน</span>':'<span class="chip">⏳ รอตรวจสอบ</span>';
+function vTopup(){const j=S.jade||0;
+ let h=`<div class="card" style="margin-top:0"><div class="row"><div><div class="mut">หยกเขียวของคุณ</div><div class="big" id="jadebal">💎 ${fmt(j)}</div></div></div><div class="mut" style="margin-top:4px">ใช้ปลดล็อกเวอร์พาสพรีเมียม · เติมด้วยเงินจริงผ่านการโอนและแนบสลิป แอดมินตรวจสอบก่อนเครดิตให้</div></div>`;
+ h+='<div class="card"><b class="n">เลือกแพ็กเกจ</b><div class="mut" style="margin-top:2px">แตะเลือก 1 แพ็กเกจ</div><div class="grid">'+PACKS.map((p,i)=>{const total=p.jade+p.bonus,on=tuPick===i;
+  return `<button class="menu" style="text-align:center;align-items:center;border-color:${on?'var(--gold)':'var(--line)'};border-width:${on?'2px':'1px'}" onclick="tuPick=${i};R()"><span class="em">💎</span><b>${fmt(total)} หยก${p.bonus?` <span class="mut">(+${fmt(p.bonus)} โบนัส)</span>`:''}</b><span class="mut">${fmt(p.baht)} บาท</span></button>`}).join('')+'</div></div>';
+ if(tuPick>=0){const p=PACKS[tuPick];
+  h+=`<div class="card"><b class="n">สแกนจ่ายเงิน</b><div class="mut" style="margin-top:4px">โอน <b>${fmt(p.baht)} บาท</b> ตามคิวอาร์โค้ดด้านล่าง แล้วแนบสลิปโอนเงินส่งให้แอดมินตรวจสอบ</div>
+  ${qrImage?`<img src="${qrImage}" style="width:100%;max-width:280px;display:block;margin:12px auto;border-radius:14px">`:'<div class="mut" style="margin-top:10px">แอดมินยังไม่ได้แนบคิวอาร์โค้ด — รอแอดมินอัปโหลดก่อน</div>'}
+  <label class="mut" style="display:block;margin-top:10px">แนบสลิปการโอนเงิน</label><input id="tuslip" type="file" accept="image/png,image/jpeg,image/webp" class="inp">
+  <div class="mut" id="tust" style="margin-top:8px"></div>
+  <button class="btn gold" id="tubtn" style="width:100%;margin-top:6px" onclick="submitTopup()">ส่งสลิปให้ตรวจสอบ</button></div>`}
+ h+='<div class="mut" style="margin:18px 4px 8px">ประวัติการเติมของฉัน</div>'+(myTopups.length?myTopups.map(t=>`<div class="card"><div class="row"><b class="n">💎 ${fmt(t.jade+t.bonus)} หยก · ${fmt(t.baht)} บาท</b>${stChip(t.status)}</div><div class="mut" style="margin-top:4px">${t.ts?new Date(t.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div>${t.status==='rejected'&&t.note?`<div class="mut" style="margin-top:4px;color:#d32f2f">เหตุผล: ${esc(t.note)}</div>`:''}</div>`).join(''):'<div class="card"><div class="mut">ยังไม่มีประวัติการเติม</div></div>');
+ return h}
+async function submitTopup(){if(tuPick<0)return;const st=$('#tust'),bt=$('#tubtn'),f=$('#tuslip').files[0],p=PACKS[tuPick];
+ if(!f){st.textContent='แนบสลิปก่อน';return}if(f.size>2*1048576){st.textContent='ไฟล์สลิปเกิน 2MB';return}
+ bt.disabled=true;st.textContent='กำลังส่ง...';try{const slip=await readB64Slip(f);
+  const id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  await db.ref('topups/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',jade:p.jade,bonus:p.bonus,baht:p.baht,slip,status:'pending',ts:firebase.database.ServerValue.TIMESTAMP});
+  st.textContent='✅ ส่งแล้ว รอแอดมินตรวจสอบ';tuPick=-1;$('#tuslip').value='';R()}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+// ---------- admin: QR upload + review queue ----------
+function qrPreview(){return qrImage?`<img src="${qrImage}" style="width:160px;border-radius:12px;margin-top:8px">`:'<div class="mut" style="margin-top:8px">ยังไม่มีคิวอาร์โค้ด</div>'}
+function vAdminTopup(){return `<div class="card" style="margin-top:0"><b class="n">คิวอาร์โค้ดรับเงิน</b><div class="mut" style="margin-top:4px">ใช้คิวอาร์เดียวสำหรับทุกแพ็กเกจ ผู้เล่นพิมพ์ยอดโอนเองตามแพ็กเกจที่เลือก</div>
+ <div id="qrprev">${qrPreview()}</div><input id="qrfile" type="file" accept="image/png,image/jpeg,image/webp" class="inp" style="margin-top:10px">
+ <button class="btn pri" id="qrbtn" style="width:100%;margin-top:10px" onclick="uploadQR()">อัปโหลด/เปลี่ยนคิวอาร์โค้ด</button><div class="mut" id="qrst" style="margin-top:6px"></div></div>
+ <div class="mut" style="margin:14px 4px 0">คำขอเติมหยกเขียว</div><div id="tulist">${topupAdminList()}</div>`}
+async function uploadQR(){const st=$('#qrst'),bt=$('#qrbtn'),f=$('#qrfile').files[0];if(!f){st.textContent='เลือกรูปคิวอาร์ก่อน';return}
+ if(f.size>2*1048576){st.textContent='ไฟล์เกิน 2MB';return}
+ bt.disabled=true;st.textContent='กำลังอัปโหลด...';try{const img=await readB64Slip(f);await db.ref('settings/qr').set({image:img,ts:firebase.database.ServerValue.TIMESTAMP});st.textContent='✅ อัปเดตคิวอาร์แล้ว';$('#qrfile').value=''}
+ catch(e){st.textContent='ผิดพลาด ลองใหม่'}bt.disabled=false}
+const topupAdminList=()=>{const pend=topups.filter(t=>t.status==='pending'),done=topups.filter(t=>t.status!=='pending');
+ const row=t=>`<div class="card"><div class="row"><b class="n">💎 ${fmt((t.jade||0)+(t.bonus||0))} หยก · ${fmt(t.baht||0)} บาท</b>${stChip(t.status)}</div>
+ <div class="mut" style="margin-top:4px">${esc(t.email||'')} · ${t.ts?new Date(t.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div>
+ ${t.slip?`<img src="${t.slip}" style="max-width:180px;border-radius:10px;margin-top:8px" onclick="say('<img src=\\'${t.slip}\\' style=\\'width:100%;border-radius:10px\\'>')">`:''}
+ ${t.status==='pending'?`<div class="row" style="margin-top:10px;gap:8px"><button class="btn gold" onclick="approveTopup('${t.uid}','${t.id}')">✅ อนุมัติ</button><button class="btn" style="color:#d32f2f" onclick="rejectTopup('${t.uid}','${t.id}')">❌ ปฏิเสธ</button></div>`
+ :t.note?`<div class="mut" style="margin-top:6px">หมายเหตุ: ${esc(t.note)}</div>`:''}</div>`;
+ return (pend.length?'<div class="mut" style="margin:4px 4px 0">⏳ รอตรวจสอบ ('+pend.length+')</div>'+pend.map(row).join(''):'<div class="card"><div class="mut">ไม่มีรายการรอตรวจสอบ</div></div>')
+ +(done.length?'<div class="mut" style="margin:14px 4px 0">ประวัติที่ตรวจแล้ว</div>'+done.slice(0,20).map(row).join(''):'')}
+async function approveTopup(uid2,id){const t=topups.find(x=>x.uid===uid2&&x.id===id);if(!t)return;
+ if(!(await dlg('ยืนยันอนุมัติ และเครดิต 💎 '+fmt((t.jade||0)+(t.bonus||0))+' หยกเขียวให้ '+(t.email||uid2)+' ?','อนุมัติ')))return;
+ try{const snap=await db.ref('users/'+uid2).once('value');const u=snap.val()||{};const newJade=(u.jade||0)+(t.jade||0)+(t.bonus||0);
+  await db.ref('users/'+uid2+'/jade').set(newJade);
+  const log=(u.log||[]);log.unshift({t:tstr(),m:'เติมหยกเขียว '+fmt(t.baht||0)+' บาท (อนุมัติโดยแอดมิน)',n:(t.jade||0)+(t.bonus||0),cur:'jade'});
+  await db.ref('users/'+uid2+'/log').set(log.slice(0,80));
+  await db.ref('topups/'+uid2+'/'+id+'/status').set('approved');await db.ref('topups/'+uid2+'/'+id+'/reviewedAt').set(firebase.database.ServerValue.TIMESTAMP)}
+ catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+async function rejectTopup(uid2,id){const t=topups.find(x=>x.uid===uid2&&x.id===id);if(!t)return;
+ if(!(await dlg('ปฏิเสธคำขอนี้?','ปฏิเสธ')))return;
+ const flagged=await dlg('สลิปนี้ดูเหมือนปลอม/ทุจริตหรือไม่?\n(เลือก "ใช่" จะติดป้ายไว้สำหรับดำเนินการต่อนอกระบบ เช่น แจ้งความ — ระบบนี้ดำเนินคดีให้อัตโนมัติไม่ได้)','ใช่ ทุจริต','ไม่ใช่ แค่ข้อมูลไม่ครบ');
+ try{await db.ref('topups/'+uid2+'/'+id+'/status').set('rejected');
+  await db.ref('topups/'+uid2+'/'+id+'/note').set(flagged?'ตรวจพบความผิดปกติ/ต้องสงสัยทุจริต':'หลักฐานไม่ชัดเจน กรุณาติดต่อแอดมิน');
+  if(flagged)await db.ref('topups/'+uid2+'/'+id+'/flagged').set(true);
+  await db.ref('topups/'+uid2+'/'+id+'/reviewedAt').set(firebase.database.ServerValue.TIMESTAMP)}
+ catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+// ---------- battle pass (เวอร์พาส) — 70 levels, free + premium tracks, resets monthly, premium costs jade only ----------
+const bpMonthLabel=()=>{const d=new Date(),MN=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];return MN[d.getMonth()]+' '+(d.getFullYear()+543)};
+const bpReward=(lv,track)=>(bpLevels[lv]&&bpLevels[lv][track])||null;
+function bpRewardChip(cfg){if(!cfg)return'';return cfg.type==='pts'?'⭐ +'+fmt(cfg.amount||0):cfg.type==='gold'?'🪙 +'+fmt(cfg.amount||0):(cfg.icon||'🎁')+' '+esc(cfg.label||'ไอเทม')}
+function vBP(){const lv=bpLevel(),xpIn=((S.bpXP||0)%BP_XP_PER_LV),prem=!!S.bpPremium;
+ let h=`<div class="card" style="margin-top:0;background:linear-gradient(135deg,var(--pri),#06313a);color:#fff;border:0">
+ <div class="row"><div><div class="mut" style="color:rgba(255,255,255,.8)">เวอร์พาส ซีซัน ${bpMonthLabel()}</div><div class="big" style="color:#fff">เลเวล ${lv}<span style="font-size:18px;opacity:.75">/${BP_MAX_LV}</span></div></div><span class="chip ${prem?'ok':'wn'}" style="background:${prem?'rgba(255,255,255,.25)':'rgba(255,255,255,.18)'};color:#fff">${prem?'⭐ พรีเมียม':'ฟรี'}</span></div>
+ <div class="bar" style="background:rgba(255,255,255,.25)"><i style="width:${lv>=BP_MAX_LV?100:xpIn/BP_XP_PER_LV*100}%;background:#fff"></i></div><div class="mut" style="color:rgba(255,255,255,.75);margin-top:6px">${lv>=BP_MAX_LV?'ถึงเลเวลสูงสุดแล้ว':xpIn+' / '+BP_XP_PER_LV+' XP สู่เลเวลถัดไป'}</div></div>`;
+ if(!prem)h+=`<div class="card"><b class="n">ปลดล็อกเวอร์พาสพรีเมียม</b><div class="mut" style="margin-top:4px">รับรางวัลฝั่งพรีเมียมของทุกเลเวลที่ถึงแล้วและเลเวลถัดไป ใช้หยกเขียวเท่านั้น</div>
+ <div class="grid"><button class="menu" style="text-align:center;align-items:center" onclick="buyBpPremium(399,0)"><span class="em">⭐</span><b>ปลดล็อกพรีเมียม</b><span class="mut">💎 399</span></button>
+ <button class="menu" style="text-align:center;align-items:center;border-color:var(--gold)" onclick="buyBpPremium(899,50)"><span class="em">🚀</span><b>ปลดล็อก + เลเวล 50 ทันที</b><span class="mut">💎 899</span></button></div></div>`;
+ h+='<div class="mut" style="margin:18px 4px 8px">รางวัลแต่ละเลเวล</div>';
+ for(let n=1;n<=BP_MAX_LV;n++){const reached=n<=lv,fr=bpReward(n,'free'),pr=bpReward(n,'premium'),fc=(S.bpClaimedFree||{})[n],pc=(S.bpClaimedPremium||{})[n];
+  h+=`<div class="card" style="padding:12px 14px"><div class="row"><b class="n" style="width:46px;flex:none">Lv.${n}</b>
+  <div style="flex:1;min-width:0">${fr?`<div class="mut">ฟรี: ${bpRewardChip(fr)}</div>`:'<div class="mut">ฟรี: —</div>'}${pr?`<div class="mut" style="margin-top:2px">พรีเมียม: ${bpRewardChip(pr)}</div>`:''}</div>
+  <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+  ${fr?(fc?'<span class="chip ok">รับแล้ว</span>':reached?`<button class="chip" style="background:var(--gold);color:#fff" onclick="claimBpReward(${n},'free')">รับฟรี</button>`:'<span class="chip wn">ยังไม่ถึง</span>'):''}
+  ${pr?(pc?'<span class="chip ok">รับแล้ว</span>':!prem?'<span class="chip wn">ต้องพรีเมียม</span>':reached?`<button class="chip" style="background:var(--pri);color:#fff" onclick="claimBpReward(${n},'premium')">รับพรีเมียม</button>`:'<span class="chip wn">ยังไม่ถึง</span>'):''}
+  </div></div></div>`}
+ return h}
+async function buyBpPremium(cost,jumpLevel){if(S.bpPremium)return;if((S.jade||0)<cost)return;
+ if(!(await dlg('ใช้ 💎 '+fmt(cost)+' หยกเขียว ปลดล็อกเวอร์พาสพรีเมียม'+(jumpLevel?' พร้อมเลเวล '+jumpLevel+' ทันที':'')+' ?')))return;if((S.jade||0)<cost)return;
+ S.jade-=cost;S.bpPremium=true;if(jumpLevel)S.bpXP=Math.max(S.bpXP||0,jumpLevel*BP_XP_PER_LV);
+ S.log.unshift({t:tstr(),m:'ปลดล็อกเวอร์พาสพรีเมียม'+(jumpLevel?' + เลเวล '+jumpLevel:''),n:-cost,cur:'jade'});S.log=S.log.slice(0,80);save();R()}
+function claimBpReward(lv,track){const cfg=bpReward(lv,track);if(!cfg)return;if(lv>bpLevel())return;if(track==='premium'&&!S.bpPremium)return;
+ const key=track==='free'?'bpClaimedFree':'bpClaimedPremium';S[key]=S[key]||{};if(S[key][lv])return;S[key][lv]=true;
+ const tag='เวอร์พาส Lv.'+lv+' ('+(track==='free'?'ฟรี':'พรีเมียม')+')';
+ if(cfg.type==='pts')add(cfg.amount||0,tag);else if(cfg.type==='gold')addGold(cfg.amount||0,tag);
+ else{S.inventory=S.inventory||[];S.inventory.unshift({name:cfg.label||'ไอเทมเวอร์พาส',icon:cfg.icon||'🎁',desc:tag,price:0,t:tstr()});S.log.unshift({t:tstr(),m:tag+': '+(cfg.label||'ไอเทม'),n:0,cur:'pts'});S.log=S.log.slice(0,80);save()}
+ R()}
+// ---------- battle pass admin config ----------
+function vAdminBp(){const cfg=(bpLevels[bpEdit]||{}),fr=cfg.free||{},pr=cfg.premium||{};
+ const I="width:100%;font:15px 'Noto Sans Thai';padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);margin-top:6px";
+ return `<div class="card" style="margin-top:0"><b class="n">🎲 เติมรางวัลตัวอย่างอัตโนมัติ</b><div class="mut" style="margin-top:4px">ใส่รางวัลให้ทุก 5 เลเวล (ฟรี) และทุก 5 เลเวล (พรีเมียม) พร้อมรางวัลใหญ่ที่ Lv.70 — เลเวลอื่นเว้นว่างไว้ตามปกติ</div>
+ <button class="btn gold" id="bpseedbtn" style="width:100%;margin-top:10px" onclick="seedBpDefaults()">เติมรางวัลตัวอย่าง</button><div class="mut" id="bpseedst" style="margin-top:6px"></div></div>
+ <div class="card"><b class="n">ตั้งรางวัลรายเลเวล</b>
+ <label class="mut" style="display:block;margin-top:8px">เลเวล (1-70)</label><input id="bplv" type="number" min="1" max="70" value="${bpEdit}" class="inp" onchange="bpEdit=Math.max(1,Math.min(70,Math.round(+this.value)));R()">
+ <div class="mut" style="margin-top:14px;font-weight:700">รางวัลฝั่งฟรี</div>
+ <select id="bpft" style="${I}"><option value="">— ไม่มีรางวัล —</option><option value="pts" ${fr.type==='pts'?'selected':''}>⭐ คะแนน</option><option value="gold" ${fr.type==='gold'?'selected':''}>🪙 เหรียญทอง</option><option value="item" ${fr.type==='item'?'selected':''}>🎁 ไอเทม/คำอธิบายเอง</option></select>
+ <input id="bpfa" type="number" min="0" placeholder="จำนวน" value="${fr.amount||''}" class="inp"><input id="bpfl" placeholder="ชื่อไอเทม/คำอธิบาย (ถ้าเลือกไอเทม)" value="${esc(fr.label||'')}" class="inp"><input id="bpfi" placeholder="ไอคอน (อิโมจิ ถ้าเลือกไอเทม)" value="${esc(fr.icon||'')}" maxlength="4" class="inp">
+ <div class="mut" style="margin-top:14px;font-weight:700">รางวัลฝั่งพรีเมียม</div>
+ <select id="bppt" style="${I}"><option value="">— ไม่มีรางวัล —</option><option value="pts" ${pr.type==='pts'?'selected':''}>⭐ คะแนน</option><option value="gold" ${pr.type==='gold'?'selected':''}>🪙 เหรียญทอง</option><option value="item" ${pr.type==='item'?'selected':''}>🎁 ไอเทม/คำอธิบายเอง</option></select>
+ <input id="bppa" type="number" min="0" placeholder="จำนวน" value="${pr.amount||''}" class="inp"><input id="bppl" placeholder="ชื่อไอเทม/คำอธิบาย (ถ้าเลือกไอเทม)" value="${esc(pr.label||'')}" class="inp"><input id="bppi" placeholder="ไอคอน (อิโมจิ ถ้าเลือกไอเทม)" value="${esc(pr.icon||'')}" maxlength="4" class="inp">
+ <button class="btn pri" id="bpbtn" style="width:100%;margin-top:12px" onclick="saveBpLevel()">บันทึกเลเวล ${bpEdit}</button><div class="mut" id="bpst" style="margin-top:6px"></div></div>
+ <div class="mut" style="margin:14px 4px 0">ภาพรวมทั้ง 70 เลเวล (แตะเพื่อแก้ไข)</div><div id="bplist">${bpAdminListHTML()}</div>`}
+function bpAdminListHTML(){let h='<div class="card"><div style="display:flex;flex-wrap:wrap;gap:6px">';
+ for(let n=1;n<=BP_MAX_LV;n++){const has=bpLevels[n]&&(bpLevels[n].free||bpLevels[n].premium);
+  h+=`<button class="chip ${has?'ok':''}" style="min-width:38px" onclick="bpEdit=${n};R()">${n}</button>`}
+ return h+'</div></div>'}
+async function saveBpLevel(){const st=$('#bpst'),bt=$('#bpbtn');const ft=$('#bpft').value,fa=Math.round(+$('#bpfa').value)||0,fl=$('#bpfl').value.trim(),fi=$('#bpfi').value.trim();
+ const pt=$('#bppt').value,pa=Math.round(+$('#bppa').value)||0,pl=$('#bppl').value.trim(),pi=$('#bppi').value.trim();
+ if(ft==='item'&&!fl){st.textContent='กรอกชื่อไอเทมฝั่งฟรี';return}if(pt==='item'&&!pl){st.textContent='กรอกชื่อไอเทมฝั่งพรีเมียม';return}
+ bt.disabled=true;try{const data={};
+  if(ft)data.free=ft==='item'?{type:ft,label:fl,icon:fi||'🎁'}:{type:ft,amount:fa};
+  if(pt)data.premium=pt==='item'?{type:pt,label:pl,icon:pi||'🎁'}:{type:pt,amount:pa};
+  await db.ref('battlepass/levels/'+bpEdit).set(data);st.textContent='✅ บันทึกเลเวล '+bpEdit+' แล้ว'}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+async function seedBpDefaults(){const st=$('#bpseedst'),bt=$('#bpseedbtn');bt.disabled=true;st.textContent='กำลังเติม...';
+ try{let added=0;for(let n=5;n<=BP_MAX_LV;n+=5){if(bpLevels[n])continue;
+   const data={free:{type:'pts',amount:100+n},premium:{type:'gold',amount:50+n}};
+   if(n===BP_MAX_LV)data.premium={type:'item',label:'ไอเทมตำนานประจำซีซัน',icon:'👑'};
+   await db.ref('battlepass/levels/'+n).set(data);added++}
+  st.textContent=added?'✅ เติมแล้ว '+added+' เลเวล':'มีรางวัลอยู่แล้วทุกเลเวลที่กำหนด'}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
 const DEFAULT_SHOP_ITEMS=[
 {icon:'👑',name:'มงกุฎนักสะสม',desc:'ป้ายมงกุฎพิเศษโชว์หน้าโปรไฟล์',price:200},
 {icon:'🔥',name:'ป้ายไฟแรง',desc:'สำหรับผู้เล่นขยันสุดๆ',price:150},
@@ -347,7 +495,7 @@ async function redeem(q,c){if(S.pts<c)return;if(!S.oid){await say('กรอก 
  const code='ROV-'+g(4)+'-'+g(4);S.my.unshift({t:tstr(),q,code,oid:S.oid});add(-c,'แลก '+q+' คูปอง ('+code+') ID '+S.oid);pg='mine';R()}
 function vH(){return `<div class="card"><b class="n">คูปองของฉัน</b>${S.my.length?`<table class="tbl">${S.my.map(x=>`<tr><td>${x.q} คูปอง<div class="mut">${x.t}${x.oid?' · ID '+x.oid:''}</div></td><td align="right"><span class="code">${x.code}</span> <button class="chip" onclick="cp('${x.code}')">คัดลอก</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มีคูปอง</div>'}</div>
 <div class="card"><b class="n">🎒 ไอเทมที่ซื้อจากร้านค้า</b>${(S.inventory&&S.inventory.length)?`<table class="tbl">${S.inventory.map(x=>`<tr><td>${esc(x.icon||'🎁')} ${esc(x.name)}<div class="mut">${x.t}${x.desc?' · '+esc(x.desc):''}</div></td><td align="right" class="mut">🪙 ${fmt(x.price||0)}</td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มีไอเทม</div>'}</div>
-<div class="card"><b class="n">ประวัติคะแนน/เหรียญทอง</b><table class="tbl">${S.log.map(x=>`<tr><td class="mut" width="90">${x.t}</td><td>${x.cur==='gold'?'🪙':'⭐'} ${x.m}</td><td align="right"><b style="color:${x.n<0?'#d32f2f':'var(--okt)'}">${x.n>0?'+':''}${fmt(x.n)}</b></td></tr>`).join('')||'<tr><td class="mut">ยังไม่มีประวัติ</td></tr>'}</table></div>`}
+<div class="card"><b class="n">ประวัติคะแนน/เหรียญทอง/หยกเขียว</b><table class="tbl">${S.log.map(x=>`<tr><td class="mut" width="90">${x.t}</td><td>${x.cur==='gold'?'🪙':x.cur==='jade'?'💎':'⭐'} ${x.m}</td><td align="right"><b style="color:${x.n<0?'#d32f2f':'var(--okt)'}">${x.n>0?'+':''}${fmt(x.n)}</b></td></tr>`).join('')||'<tr><td class="mut">ยังไม่มีประวัติ</td></tr>'}</table></div>`}
 let eo=false;
 function oidR(){const e=$('#oidc');if(!e||!S||(eo&&$('#oi')))return;
  e.innerHTML=(S.oid&&!eo)?`<div class="row"><div class="gap"><span class="em">🆔</span><div><div class="mut">ROV Open ID ที่รับคูปอง</div><span class="code">${S.oid}</span></div></div><button class="chip" onclick="eo=true;oidR();$('#oi').focus()">แก้ไข</button></div>`
@@ -370,13 +518,13 @@ function vRank(){if(leaderboardErr)return '<div class="card"><div class="mut">�
 
 // ---------- nav / pages ----------
 const NAV=[['home','🏠','หน้าหลัก'],['missions','🎯','ภารกิจ'],['lib','📚','คลัง'],['rank','🏆','อันดับ'],['more','☰','เพิ่มเติม']];
-const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],rank:['อันดับผู้เล่น','เหรียญคะแนน และเวลาออนไลน์สะสม'],redeemcode:['กรอกโค้ดรับของรางวัล','ใช้โค้ดที่แอดมินแจกเพื่อรับคะแนน'],shop:['ร้านค้า','ใช้เหรียญทองซื้อของ (แลกคืนไม่ได้)'],login:['ROV Point Hub','เข้าสู่ระบบ']};
-const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more',redeemcode:'more',shop:'more'}[pg]||pg)===k;
+const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],rank:['อันดับผู้เล่น','เหรียญคะแนน และเวลาออนไลน์สะสม'],redeemcode:['กรอกโค้ดรับของรางวัล','ใช้โค้ดที่แอดมินแจกเพื่อรับคะแนน'],shop:['ร้านค้า','ใช้เหรียญทองซื้อของ (แลกคืนไม่ได้)'],topup:['เติมหยกเขียว','สแกนจ่าย แนบสลิป รอแอดมินตรวจสอบ'],bp:['เวอร์พาส','เลเวล 1-70 · รีเซ็ตทุกเดือน'],login:['ROV Point Hub','เข้าสู่ระบบ']};
+const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more',redeemcode:'more',shop:'more',topup:'more',bp:'more'}[pg]||pg)===k;
 function go(k){pg=k;cur=null;if(k==='shop'&&!S.shopSeen){S.shopSeen=true;save()}R();window.scrollTo(0,0)}
 function openC(id){cur=id;pg='view';R();window.scrollTo(0,0)}
 function claimC(id){const c=content.find(x=>x.id===id);if(!c||S.seen[id])return;S.seen[id]=true;add(c.pts,(tn(c.type)||'เนื้อหา')+': '+c.title);R()}
 function head(){const P=PG[pg]||PG.home;$('#h1').textContent=P[0];$('#hp').textContent=P[1];
- $('#hact').innerHTML=(pg==='login')?'':`<span class="sw" style="margin:0">⭐ ${fmt(S?S.pts:0)}</span><span class="sw" style="margin:0">🪙 ${fmt(S?S.gold||0:0)}</span><button class="sw" style="margin:0" onclick="guide(1)">❓ วิธีใช้</button>`;
+ $('#hact').innerHTML=(pg==='login')?'':`<span class="sw" style="margin:0">⭐ ${fmt(S?S.pts:0)}</span><span class="sw" style="margin:0">🪙 ${fmt(S?S.gold||0:0)}</span><span class="sw" style="margin:0">💎 ${fmt(S?S.jade||0:0)}</span><button class="sw" style="margin:0" onclick="guide(1)">❓ วิธีใช้</button>`;
  $('#nav').style.display=pg==='login'?'none':'flex';
  $('#nav').innerHTML=NAV.map(([k,i,l])=>`<button class="nv ${navOn(k)?'on':''}" onclick="go('${k}')"><span>${i}</span>${l}</button>`).join('')}
 function annCard(a){return `<div class="card" style="border-color:var(--gold)"><div class="row"><span class="em">📢</span><b class="n" style="flex:1">${esc(a.title)}</b></div><div class="mut" style="margin-top:6px;white-space:pre-wrap">${esc(a.body)}</div><div class="mut" style="margin-top:8px;font-size:11px">${a.ts?new Date(a.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div></div>`}
@@ -396,7 +544,7 @@ function vView(){const c=content.find(x=>x.id===cur);if(!c)return '<div class="c
  <div class="card"><div class="row"><b class="n">ความคืบหน้า</b>${d?'<span class="chip ok">รับแล้ว ✓</span>':rd?`<button class="btn gold" onclick="claimC('${c.id}')">รับ +${fmt(c.pts)}</button>`:`<span class="chip wn" id="ct2">${mm(q)} / ${mm(c.sec)}</span>`}</div><div class="bar"><i id="cb2" style="width:${d?100:Math.min(100,q/c.sec*100)}%"></i></div></div>`}
 function vMore(){const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-direction:row;align-items:center;gap:12px" onclick="${k}"><span class="em">${e}</span><b>${t}</b></button>`;
  return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน (อีเมลนี้ถูกกำหนดไว้ล่วงหน้า)':'ผู้เล่น'}</div></div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>
- <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('redeem')",'🎟️','แลกคูปอง')}${b("go('redeemcode')",'🎁','กรอกโค้ดรับของรางวัล')}${b("go('shop')",'🛒','ร้านค้า (เหรียญทอง)')}${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
+ <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('bp')",'🎫','เวอร์พาส')}${b("go('redeem')",'🎟️','แลกคูปอง')}${b("go('redeemcode')",'🎁','กรอกโค้ดรับของรางวัล')}${b("go('shop')",'🛒','ร้านค้า (เหรียญทอง)')}${b("go('topup')",'💎','เติมหยกเขียว')}${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
 
 // ---------- contact admin (player side) ----------
 function readB64Img(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
@@ -456,9 +604,9 @@ function fileSel(){const f=$('#af').files[0];if(!f)return;$('#at').value=f.type.
  if(f.type.startsWith('video/')){const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{const d=Math.max(5,Math.floor(v.duration));URL.revokeObjectURL(v.src);$('#as').value=d;$('#as').max=d;$('#afh').textContent='ความยาววิดีโอ '+mm(d)+' — ตั้งเวลาได้ไม่เกินความยาว'};v.src=URL.createObjectURL(f)}}
 const alist=()=>content.length?`<table class="tbl">${content.map(c=>`<tr><td>${ico(c.type)} ${esc(c.title)}<div class="mut">+${fmt(c.pts)} · ${mm(c.sec)}</div></td><td align="right"><button class="chip" onclick="delC('${c.id}')">ลบ</button></td></tr>`).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มี</div>';
 function vAdmin(){if(!isAdmin)return '<div class="card"><div class="mut">เฉพาะบัญชีแอดมินเท่านั้น</div></div>';
- const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า']];
+ const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า'],['topup','💎 เติมหยก'],['bp','🎫 เวอร์พาส']];
  let h=`<div class="tabs" style="margin:0 0 4px">${tabs.map(([k,l])=>`<button class="tab ${adminTab===k?'on':''}" onclick="adminTab='${k}';R()">${l}</button>`).join('')}</div>`;
- if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else h+=vAdminShop();
+ if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else if(adminTab==='shop')h+=vAdminShop();else if(adminTab==='topup')h+=vAdminTopup();else h+=vAdminBp();
  return h}
 function vAdminContent(){return `<div class="card" style="margin-top:0"><b class="n">เพิ่มเนื้อหาใหม่ (เผยแพร่จริงทันที)</b><div class="mut" style="margin-top:4px">อัปโหลดแล้วผู้เล่นทุกคนที่เปิดหน้าอยู่จะเห็นทันทีโดยไม่ต้องรีเฟรช</div>
  <select id="at" class="inp"><option value="video">🎬 วิดีโอ (mp4/webm)</option><option value="news">📰 ข่าว/บทความ</option><option value="image">🖼️ รูปภาพ</option></select>
@@ -544,7 +692,7 @@ function guide(o){const e=$('#gd');if(!o){e.innerHTML='';return}
  <button class="btn pri" style="width:100%;margin-top:16px" onclick="guide(0)">เข้าใจแล้ว</button></div></div>`}
 
 // ---------- render loop ----------
-const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop};
+const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP};
 function R(){head();$('#v').innerHTML=pg==='login'?vLogin():V[pg]();if(pg!=='login')oidR()}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;roll();S.on++;S.life=(S.life||0)+1;{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
@@ -565,7 +713,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachUser();attachContent();attachAnnounce();attachLeaderboard();attachShop();if(isAdmin){attachContacts();attachCodes()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachUser();attachContent();attachAnnounce();attachLeaderboard();attachShop();attachQR();attachMyTopups();attachBpLevels();if(isAdmin){attachContacts();attachCodes();attachTopups()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
