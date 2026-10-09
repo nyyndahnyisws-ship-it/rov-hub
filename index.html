@@ -250,8 +250,9 @@ function attachAnnounce(){announceRefOff=db.ref('announce');
  announceRefOff.on('value',snap=>{const v=snap.val()||{};announce=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
   if(pg==='admin'){if(adminTab==='announce'){const e=$('#annlist');if(e)e.innerHTML=annList()}return}
   if(pg==='home')R();else head();checkAnnPopup()},()=>{})}
+let lbSync='';
 function attachLeaderboard(){leaderboardRefOff=db.ref('leaderboard');
- leaderboardRefOff.on('value',snap=>{const v=snap.val()||{};leaderboard=Object.keys(v).map(id=>Object.assign({uid:id},v[id]));leaderboardErr=false;
+ leaderboardRefOff.on('value',snap=>{const v=snap.val()||{};leaderboard=Object.keys(v).map(id=>Object.assign({uid:id},v[id]));leaderboardErr=false;try{const me=v[uid];if(S&&me&&me.theme!==profTheme()&&lbSync!==profTheme()){lbSync=profTheme();pushUser(true)}}catch(e){}
   if(pg==='admin'){if(adminTab==='players'){const e=$('#pllist');if(e)e.innerHTML=plList()}return}
   if(pg==='rank')R()},e=>{leaderboardErr=true;if(pg==='rank')R()})}
 function attachShop(){shopRefOff=db.ref('shop');
@@ -687,7 +688,7 @@ function annCard(a){return `<div class="card" style="border-color:var(--gold)"><
 // ---------- social: profile / friends / report ----------
 let profs={},myFriends={},myReq={},userRel=null,pu=null,pfAvNew,profRefOff=null,frRefOff=null,rqRefOff=null;
 const maskEmail=e=>{e=String(e||'');const i=e.indexOf('@');if(i<1)return e||'ผู้เล่น';return e.slice(0,Math.min(2,i))+'***'+e.slice(i)};
-function profTheme(){const v=S&&S.prof&&S.prof.pth;if(v&&THEMES.some(t=>t.id===v)&&themeOk(v))return v;return(S&&S.theme==='fantasy'&&themeOk('fantasy'))?'fantasy':'default'}
+function profTheme(){const v=S&&S.prof&&S.prof.pth;if(v&&THEMES.some(t=>t.id===v)&&themeOk(v))return v;return 'default'}
 const thName=t=>((THEMES.find(x=>x.id===t)||THEMES[0]).name);
 function pthTag(t){return t==='fantasy'?`<div style="margin-top:8px"><span class="pthtag"><img src="${IMG.lg}" alt="">ธีม ${esc(thName(t))}</span></div>`:`<div style="margin-top:8px"><span class="chip">ธีม ${esc(thName(t))}</span></div>`}
 const pthWrap=(t,h)=>t==='fantasy'?`<div class="pth-fantasy">${h}</div>`:h;
@@ -716,15 +717,29 @@ function setBgPreset(v){pfBgNew=v;bgPrevRefresh()}
 async function loadBg(id){if(id===uid||pbg[id]!==undefined)return;try{const v=(await db.ref('profbg/'+id).once('value')).val();pbg[id]=v||'';if(pg==='user'&&pu===id)R()}catch(e){pbg[id]=''}}
 function cropSquare(f,sz){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const m=Math.min(im.width,im.height),c=document.createElement('canvas');c.width=c.height=sz;c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,sz,sz);res(c.toDataURL('image/jpeg',.78))};im.src=r.result};r.readAsDataURL(f)})}
 async function pickAvatar(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('image/')){$('#pfst').textContent='เลือกไฟล์รูปภาพ';return}
- try{pfAvNew=await cropSquare(f,112);const e=$('#pfav');if(e)e.innerHTML=avPrev()}catch(e){$('#pfst').textContent='อ่านรูปไม่ได้'}}
+ try{pfAvNew=await cropSquare(f,112);const e=$('#pfav2');if(e)e.innerHTML=avPrev()}catch(e){$('#pfst').textContent='อ่านรูปไม่ได้'}}
 function avPrev(){const a=pfAvNew!==undefined?pfAvNew:(S.prof&&S.prof.av);return a?`<img class="avs" src="${a}" style="width:92px;height:92px" alt="">`:`<span class="avs ini" style="width:92px;height:92px;font-size:42px">${esc([...pName(uid,{email:user&&user.email})][0]||'?')}</span>`}
-function clearAvatar(){pfAvNew='';const e=$('#pfav');if(e)e.innerHTML=avPrev()}
+function clearAvatar(){pfAvNew='';const e=$('#pfav2');if(e)e.innerHTML=avPrev()}
+let pfNickOk='';
 async function saveProfile(){const st=$('#pfst'),locked=!!(S.prof&&S.prof.name),name=locked?S.prof.name:$('#pfn').value.trim(),bio=$('#pfb').value.trim();
- if(!locked){const er=nickBad(name,uid);if(er){st.textContent=er;return}if(!(await dlg('ตั้งชื่อเล่นเป็น "'+name+'" ?\nตั้งได้ครั้งเดียว เปลี่ยนภายหลังไม่ได้','ยืนยัน')))return}
- const av=pfAvNew!==undefined?pfAvNew:((S.prof&&S.prof.av)||'');const bg=curBg();const pth=($('#pfth')||{}).value||'';S.prof={name,bio,av,bg,pth};pfAvNew=undefined;pfBgNew=undefined;save();st.textContent='กำลังบันทึก...';
- try{await db.ref('profiles/'+uid).set({name,bio,av,ts:Date.now()});try{await db.ref('profbg/'+uid).set(bg||null)}catch(e){st.textContent='บันทึกแล้ว แต่พื้นหลังยังไม่แสดงให้ผู้อื่นเห็น (ต้องเพิ่มกฎ "profbg")';head();return}st.textContent='✅ บันทึกโปรไฟล์แล้ว'}
- catch(e){st.textContent='บันทึกในบัญชีแล้ว แต่ยังไม่แสดงให้ผู้เล่นอื่นเห็น (ต้องอัปเดตกฎ Database ให้มี "profiles")'}
- head()}
+ if(!locked){const er=nickBad(name,uid);if(er){st.textContent=er;return}if(pfNickOk!==name){pfNickOk=name;st.textContent='ตั้งชื่อเล่น "'+name+'" ได้ครั้งเดียว เปลี่ยนภายหลังไม่ได้ — กด "บันทึกโปรไฟล์" อีกครั้งเพื่อยืนยัน';return}}
+ const av=pfAvNew!==undefined?pfAvNew:((S.prof&&S.prof.av)||'');const bg=curBg();const pth=($('#pfth')||{}).value||'default';S.prof={name,bio,av,bg,pth};pfAvNew=undefined;pfBgNew=undefined;save();st.textContent='กำลังบันทึก...';
+ let msg='';
+ try{await db.ref('profiles/'+uid).set({name,bio,av,ts:Date.now()});try{await db.ref('profbg/'+uid).set(bg||null)}catch(e){msg='บันทึกแล้ว แต่พื้นหลังยังไม่แสดงให้ผู้อื่นเห็น (ต้องเพิ่มกฎ "profbg")'}}
+ catch(e){msg='บันทึกในบัญชีแล้ว แต่ยังไม่แสดงให้ผู้เล่นอื่นเห็น (ต้องอัปเดตกฎ Database ให้มี "profiles")'}
+ closeProfEdit();head();if(pg==='profile'||pg==='rank')R();if(msg)say(msg)}
+function pfForm(){const pr=S.prof||{};return `<b class="n" style="font-size:18px">แก้ไขโปรไฟล์</b>
+ <div style="text-align:center;margin-top:10px"><div id="pfav2" style="display:inline-block">${avPrev()}</div></div>
+ <label class="mut" style="display:block;margin-top:8px">รูปโปรไฟล์</label><div class="row" style="gap:8px"><input type="file" accept="image/*" class="inp" style="margin-top:6px" onchange="pickAvatar(this)"><button class="btn" onclick="clearAvatar()">ลบรูป</button></div>
+ <label class="mut" style="display:block;margin-top:10px">ธีมโปรไฟล์ที่โชว์ให้ผู้อื่นเห็น</label><select id="pfth" class="inp">${THEMES.filter(t=>themeOk(t.id)).map(t=>`<option value="${t.id}" ${profTheme()===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select><div class="mut" style="font-size:12px;margin-top:4px">ใช้แยกกับธีม UI ในหน้าตั้งค่า — ผู้เล่นอื่นจะเห็นโปรไฟล์คุณเป็นธีมนี้</div>
+ <label class="mut" style="display:block;margin-top:10px">พื้นหลังโปรไฟล์</label><div id="pfbgp" style="${bgCss(curBg())};height:90px;border-radius:14px;background-size:cover;background-position:center;margin-top:6px"></div>
+ <div class="bgp">${BGP.map((_,i)=>`<i data-v="g${i}" class="${curBg()==='g'+i?'on':''}" style="background-image:${BGP[i]}" onclick="setBgPreset('g${i}')"></i>`).join('')}</div>
+ <div class="row" style="gap:8px;margin-top:8px"><input type="file" accept="image/*" class="inp" onchange="pickBg(this)"><button class="btn" onclick="setBgPreset('')">ค่าเริ่มต้น</button></div>
+ <label class="mut" style="display:block;margin-top:10px">ชื่อเล่น ${pr.name?'(ตั้งแล้ว เปลี่ยนไม่ได้)':'(2–20 ตัวอักษร ตั้งได้ครั้งเดียว)'}</label><input id="pfn" class="inp" maxlength="20" value="${esc(pr.name||'')}" ${pr.name?'readonly style="opacity:.7"':''} placeholder="เช่น นักล่าคะแนน">
+ <label class="mut" style="display:block;margin-top:10px">แนะนำตัว</label><textarea id="pfb" rows="3" class="inp" maxlength="80" placeholder="สั้นๆ ไม่เกิน 80 ตัวอักษร">${esc(pr.bio||'')}</textarea>
+ <div class="mut" id="pfst" style="margin-top:8px"></div>`}
+function openProfEdit(){pfAvNew=undefined;pfBgNew=undefined;const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:14px"><div class="gb" style="border-radius:22px;max-width:420px;max-height:90vh;padding:18px">${pfForm()}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px"><button class="btn" onclick="closeProfEdit()">ยกเลิก</button><button class="btn pri" onclick="saveProfile()">บันทึกโปรไฟล์</button></div></div></div>`}
+function closeProfEdit(){pfAvNew=undefined;pfBgNew=undefined;$('#dlg').innerHTML=''}
 function vProfile(){const pr=S.prof||{},rk=leaderboard.slice().sort((a,b)=>(b.pts||0)-(a.pts||0)).findIndex(r=>r.uid===uid)+1,nf=Object.keys(myFriends).length,nm=pr.name||pName(uid,{email:user&&user.email});
  const stats=[['คะแนน',fmt(S.pts)],['เหรียญทอง',fmt(S.gold||0)],['หยกเขียว',fmt(S.jade||0)],['สตรีคเช็กอิน',S.streak+' วัน'],['เวลาออนไลน์รวม',fmtDur(S.life)],['เริ่มเล่นเมื่อ',S.joined?new Date(S.joined).toLocaleDateString('th-TH',{dateStyle:'medium'}):'-'],['อันดับคะแนน',rk?'#'+rk:'-'],['เลเวลเวอร์พาส',bpLevel()+'/'+BP_MAX_LV],['พาสสะสม',passCount()>90?'ทุกพาส':passCount()+' พาส'],['เพื่อน',nf+' คน'],['คูปองที่แลก',S.my.length+' ใบ'],['Open ID',esc(S.oid||'ยังไม่ได้กรอก')]];
  const vt=vipShow(),pt=plateShow();
@@ -733,15 +748,7 @@ function vProfile(){const pr=S.prof||{},rk=leaderboard.slice().sort((a,b)=>(b.pt
  <div style="margin-top:6px">${vt?vipImg(vt,44):''}${S.title?` <span class="ttl">${esc(S.title)}</span>`:''}</div>${pt?`<div>${plateImg(pt,44)}</div>`:''}${pthTag(profTheme())}${pr.bio?`<div style="margin-top:8px;white-space:pre-wrap">${esc(pr.bio)}</div>`:''}</div></div>`)+`
  <div class="card"><b class="n">ข้อมูลของฉัน</b><div class="pfg">${stats.map(([k,v])=>`<div><div class="mut">${k}</div><b>${v}</b></div>`).join('')}</div>
  <div class="row" style="margin-top:12px;gap:8px"><button class="btn" style="flex:1" onclick="go('friends')">เพื่อน${Object.keys(myReq).length?' ('+Object.keys(myReq).length+' คำขอ)':''}</button><button class="btn" style="flex:1" onclick="go('mine')">คูปองและประวัติ</button></div></div>
- <div class="card"><b class="n">แก้ไขโปรไฟล์</b>
- <label class="mut" style="display:block;margin-top:8px">รูปโปรไฟล์</label><div class="row" style="gap:8px"><input type="file" accept="image/*" class="inp" style="margin-top:6px" onchange="pickAvatar(this)"><button class="btn" onclick="clearAvatar()">ลบรูป</button></div>
- <label class="mut" style="display:block;margin-top:10px">ธีมโปรไฟล์ที่โชว์ให้ผู้อื่นเห็น</label><select id="pfth" class="inp">${THEMES.filter(t=>themeOk(t.id)).map(t=>`<option value="${t.id}" ${profTheme()===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
- <label class="mut" style="display:block;margin-top:10px">พื้นหลังโปรไฟล์</label><div id="pfbgp" style="${bgCss(curBg())};height:90px;border-radius:14px;background-size:cover;background-position:center;margin-top:6px"></div>
- <div class="bgp">${BGP.map((_,i)=>`<i data-v="g${i}" class="${curBg()==='g'+i?'on':''}" style="background-image:${BGP[i]}" onclick="setBgPreset('g${i}')"></i>`).join('')}</div>
- <div class="row" style="gap:8px;margin-top:8px"><input type="file" accept="image/*" class="inp" onchange="pickBg(this)"><button class="btn" onclick="setBgPreset('')">ค่าเริ่มต้น</button></div>
- <label class="mut" style="display:block;margin-top:10px">ชื่อเล่น ${pr.name?'(ตั้งแล้ว เปลี่ยนไม่ได้)':'(2–20 ตัวอักษร ตั้งได้ครั้งเดียว)'}</label><input id="pfn" class="inp" maxlength="20" value="${esc(pr.name||'')}" ${pr.name?'readonly style="opacity:.7"':''} placeholder="เช่น นักล่าคะแนน">
- <label class="mut" style="display:block;margin-top:10px">แนะนำตัว</label><textarea id="pfb" rows="3" class="inp" maxlength="80" placeholder="สั้นๆ ไม่เกิน 80 ตัวอักษร">${esc(pr.bio||'')}</textarea>
- <button class="btn pri" style="width:100%;margin-top:10px" onclick="saveProfile()">บันทึกโปรไฟล์</button><div class="mut" id="pfst" style="margin-top:6px"></div></div>
+ <div class="card"><button class="btn pri" style="width:100%" onclick="openProfEdit()">แก้ไขโปรไฟล์</button></div>
  <div class="card"><b class="n">กิจกรรมล่าสุด</b><table class="tbl">${(S.log||[]).slice(0,10).map(x=>`<tr><td class="mut" width="80">${x.t}</td><td>${x.cur==='gold'?'🪙':x.cur==='jade'?'💎':'⭐'} ${esc(x.m)}</td><td align="right"><b style="color:${x.n<0?'#d32f2f':'var(--okt)'}">${x.n>0?'+':''}${fmt(x.n)}</b></td></tr>`).join('')||'<tr><td class="mut">ยังไม่มีกิจกรรม</td></tr>'}</table></div>`}
 async function openUser(id){if(id===uid){pfBgNew=undefined;go('profile');return}pu=id;userRel=null;go('user');loadRel();loadBg(id)}
 async function loadRel(){const t=pu;let sent=false;try{sent=(await db.ref('friendreq/'+t+'/'+uid).once('value')).exists()}catch(e){}let chat=null;try{const c=(await db.ref('chatreq/'+t+'/'+uid).once('value')).val();chat=c?c.st:null}catch(e){}userRel={friend:!!myFriends[t],incoming:!!myReq[t],sent,chat};if(pg==='user'&&pu===t)R()}
