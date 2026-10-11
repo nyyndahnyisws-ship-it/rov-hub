@@ -319,7 +319,7 @@ main{max-width:820px;margin:0 auto;padding:14px 12px 30px}
 .btn.gold{background:var(--gold);border-color:var(--gold);color:#fff}.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}.btn:disabled{opacity:.45}
 .bar{height:8px;border-radius:9px;background:var(--gr);overflow:hidden;margin-top:10px}.bar i{display:block;height:100%;background:var(--pri);width:0;transition:width .4s}
 .em{font-size:26px;flex:none}.gap{display:flex;gap:12px;align-items:center;min-width:0}
-.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;display:flex;align-items:flex-end;justify-content:center}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:flex-end;justify-content:center}
 .gb{background:var(--card);width:100%;max-width:640px;max-height:88%;overflow:auto;border-radius:24px 24px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px))}
 .gb h2{margin:0 0 4px}.gb h4{margin:16px 0 6px;color:var(--pri)}.gb ol{margin:0;padding-left:20px;line-height:1.9}.gb b{background:var(--gr);padding:1px 7px;border-radius:7px;font-weight:600}
 .stp{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}.no{width:26px;height:26px;border-radius:50%;background:var(--pri);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
@@ -389,12 +389,127 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:var
 .rtc.rt0{color:#e6e9ee}.rtc.rt5{-webkit-text-fill-color:#05303a!important;text-shadow:none;background:linear-gradient(110deg,#e9fcff,#7de8ff 38%,#e0f9ff 52%,#8fd9ff);background-size:220% 100%;animation:rtsh 3.2s linear infinite;border-color:#fff;box-shadow:0 0 12px #7de8ff,0 0 3px #fff}.rtc.rt5 i{background:#fff;box-shadow:0 0 6px #fff}
 @keyframes rtsh{to{background-position:-220% 0}}
 .vcell .rtc{margin-top:3px;font-size:10px;padding:0 7px 0 6px}
+
+/* ---- TikTok-style video feed ---- */
+#vf{position:fixed;inset:0;z-index:300;background:#000;display:none;color:#fff;touch-action:pan-y}
+#vf.on{display:block}
+.vfs{position:absolute;inset:0;overflow-y:scroll;scroll-snap-type:y mandatory;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.vfs::-webkit-scrollbar{display:none}
+.vfi{position:relative;width:100%;height:100vh;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;background:#000}
+.vfbg{position:absolute;inset:-24px;background-size:cover;background-position:center;filter:blur(26px) brightness(.5)}
+.vfmedia{position:absolute;inset:0}
+.vfmedia video{width:100%;height:100%;object-fit:contain;background:transparent;display:block}
+.vftap{position:absolute;inset:0;z-index:2}
+.vfplay{position:absolute;left:50%;top:50%;width:76px;height:76px;margin:-38px 0 0 -38px;border-radius:50%;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;font-size:40px;z-index:3;pointer-events:none}
+.vfplay.on{display:flex}
+.vftop{position:absolute;left:0;right:0;top:0;padding:calc(12px + env(safe-area-inset-top)) 12px 12px;display:flex;align-items:center;justify-content:space-between;z-index:6;background:linear-gradient(rgba(0,0,0,.55),transparent);pointer-events:none}
+.vftop>*{pointer-events:auto}
+.vfx{width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.vfttl{font-weight:700;font-size:15px;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+.vfcnt{min-width:38px;text-align:right;font-size:13px;opacity:.85}
+.vfrail{position:absolute;right:8px;bottom:calc(92px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:15px;z-index:6}
+.vfb{background:none;border:0;color:#fff;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;font-weight:600;filter:drop-shadow(0 1px 3px rgba(0,0,0,.75));cursor:pointer;padding:0;font-family:inherit}
+.vfb svg{width:34px;height:34px}
+.vfb.on.heart svg{color:#ff2d55;fill:#ff2d55}
+.vfb.on.mark svg{color:#ffc933;fill:#ffc933}
+.vfcoin{position:relative;width:66px;display:flex;flex-direction:column;align-items:center;background:none;border:0;color:#fff;padding:0;gap:2px;cursor:pointer;font-family:inherit;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.vfcoin .ring{width:66px;height:66px;transform:rotate(-90deg)}
+.vfcoin .rb{fill:rgba(0,0,0,.4);stroke:rgba(255,255,255,.28);stroke-width:4}
+.vfcoin .rf{fill:none;stroke:#ffd34d;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset .9s linear}
+.vfcoin .disc{position:absolute;left:10px;top:10px;width:46px;height:46px}
+.vfcoin .disc.spin{animation:vfspin 2.6s linear infinite}
+@keyframes vfspin{to{transform:rotate(360deg)}}
+.vfcoin em{font-style:normal;font-weight:800;font-size:13px;background:linear-gradient(#ffe27a,#f5b82e);color:#4a2d00;border-radius:999px;padding:1px 10px;margin-top:-7px;position:relative}
+.vfcoin small{font-size:11px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.vfcoin.ready .rf{stroke:#7cff9a}
+.vfcoin.ready{animation:vfpulse 1s ease-in-out infinite}
+@keyframes vfpulse{50%{transform:scale(1.1)}}
+.vfcoin.done{opacity:.7}
+.vfinfo{position:absolute;left:14px;right:96px;bottom:calc(26px + env(safe-area-inset-bottom));z-index:6;text-shadow:0 1px 4px rgba(0,0,0,.9)}
+.vfinfo b{font-size:17px;display:block;margin-bottom:4px}
+.vfinfo .m{font-size:13px;opacity:.9}
+.vfinfo .d{font-size:13px;opacity:.9;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vfbar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.25);z-index:7}
+.vfbar i{display:block;height:100%;width:0;background:#fff}
+.vfmsg{position:absolute;left:50%;top:22%;transform:translateX(-50%);background:rgba(0,0,0,.65);padding:8px 16px;border-radius:999px;font-size:14px;z-index:8;opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap}
+.vfmsg.on{opacity:1}
+.vfhint{position:absolute;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));transform:translateX(-50%);font-size:13px;background:rgba(0,0,0,.55);padding:6px 14px;border-radius:999px;z-index:8;animation:vfhide 4s forwards;pointer-events:none}
+@keyframes vfhide{0%,70%{opacity:1}100%{opacity:0}}
+.vfbig{margin:0 0 10px;width:100%}
+/* ---- player clips ---- */
+#ug{position:fixed;inset:0;z-index:320;background:#000;display:none;color:#fff}
+#ug.on{display:block}
+.ugcam{position:absolute;inset:0;background:#000}
+.ugcam>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#ugpr{object-fit:contain!important}
+.ugbot{position:absolute;left:0;right:0;bottom:0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(0,0,0,.75));z-index:6}
+.ugtabs{display:flex;justify-content:center;gap:10px;margin-bottom:14px}
+.ugtabs button{border:0;background:transparent;color:#fff;font:600 15px inherit;font-family:inherit;padding:7px 16px;border-radius:999px;opacity:.8}
+.ugtabs button.on{background:#fff;color:#000;opacity:1}
+.ugctl{display:flex;align-items:center;justify-content:space-between}
+.uggal{width:64px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:12px}
+.uggal span{width:44px;height:44px;border-radius:12px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:22px}
+.uggal em{font-style:normal}
+.ugsp{width:64px}
+.ugrec{position:relative;width:84px;height:84px;border:0;background:none;padding:0}
+.ugrec svg{width:84px;height:84px}
+.ugrec i{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:#ff2d55;transition:all .2s}
+.ugrec.on i{width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:9px}
+.ugnote{font-size:12px;opacity:.8;text-align:center;margin-top:10px}
+.ugerr{position:absolute;left:16px;right:16px;top:40%;text-align:center;z-index:7;background:rgba(0,0,0,.7);border-radius:14px;padding:12px;font-size:14px;line-height:1.6}
+.ugerr:empty{display:none}
+.ugform .inp{width:100%;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.35)}
+.ugrow{display:flex;gap:10px}.ugrow .btn{flex:1}
+.ugpg{position:absolute;inset:0;overflow-y:auto;background:#14111f;padding:0 14px 40px}
+.ugph{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;padding:calc(12px + env(safe-area-inset-top)) 0 12px;background:#14111f;z-index:3}
+.ugmsg{font-size:13px;color:#7cff9a;margin:0 2px 8px}.ugmsg:empty{display:none}
+.ugcard{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:12px;margin-bottom:12px}
+.ugrow2{display:flex;gap:12px;align-items:center}
+.ugrow2 img,.ugnoimg{width:56px;height:76px;border-radius:10px;object-fit:cover;background:#333;flex:none}
+.ugs{font-size:12px;opacity:.85;margin-top:5px;line-height:1.5}.ugs.ok{color:#7cff9a;opacity:1}.ugs.wn{color:#ffd34d;opacity:1}.ugs.bad{color:#ff7a8a;opacity:1}
+.ugstats{display:flex;gap:16px;margin:10px 0 4px;font-size:14px;font-weight:600}
+.ugbar{height:6px;border-radius:99px;background:rgba(255,255,255,.18);margin-top:6px;overflow:hidden}.ugbar i{display:block;height:100%;background:linear-gradient(90deg,#ffd34d,#7cff9a)}
+.ugempty{text-align:center;opacity:.8;padding:40px 10px;line-height:1.7}
+.vfau{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:700;font-size:15px}
+.vffl{border:1.5px solid #fff;background:transparent;color:#fff;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700;font-family:inherit}
+.vffl.on{background:rgba(255,255,255,.2);border-color:transparent}
+.vfx{font-family:inherit}
+/* ---- profile + music ---- */
+.vfav{position:relative;width:54px;height:54px;border-radius:50%;border:2px solid #fff;margin-bottom:8px;cursor:pointer;flex:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,.6))}
+.vfav .avs{width:100%!important;height:100%!important;border-radius:50%;object-fit:cover;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.vfadm{background:linear-gradient(#ffe27a,#b9780f);color:#3a2200;font-weight:800;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.vffl{position:absolute;left:50%;bottom:-11px;margin-left:-11px;width:22px;height:22px;border:0;border-radius:50%;background:#ff2d55;color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;cursor:pointer}
+.vffl.on{display:none}
+.vfau{cursor:pointer}
+.vfmus{font-size:13px;margin-bottom:3px}
+.ugpill{border:0;background:rgba(0,0,0,.5);color:#fff;border-radius:999px;padding:9px 16px;font-weight:700;font-size:15px;font-family:inherit;max-width:55%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
+.ugtm{position:absolute;top:calc(64px + env(safe-area-inset-top));left:0;right:0;text-align:center;font-weight:700;z-index:6;text-shadow:0 1px 4px #000}
+.ugsheet{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:flex-end}
+.ugshc{background:#1b1727;width:100%;max-height:70%;border-radius:18px 18px 0 0;display:flex;flex-direction:column;padding:14px 14px calc(18px + env(safe-area-inset-bottom))}
+.ugshh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ugshl{overflow-y:auto}
+.ugmr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 4px;border-top:1px solid rgba(255,255,255,.1)}
+.ugprof .upm{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 14px}
+.ugprof h1{font-size:28px;margin:0;line-height:1.2}
+.ugprof .uph{opacity:.6;margin-top:4px}
+.ugprof .upav .avs{border-radius:50%}
+.upst{display:flex;gap:28px;margin:6px 0 14px}.upst div{display:flex;flex-direction:column}.upst b{font-size:20px}.upst span{font-size:13px;opacity:.6}
+.upbtn{display:flex;gap:8px;margin-bottom:12px}
+.upfl{flex:1;border:0;background:#ff2d55;color:#fff;border-radius:10px;padding:12px;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer}
+.upfl.on{background:rgba(255,255,255,.14)}
+.upbio{margin-bottom:14px;line-height:1.6}
+.upgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.upgrid .ugempty{grid-column:1/-1}
+.upc{position:relative;aspect-ratio:3/4;background:#222;overflow:hidden;cursor:pointer}
+.upc img{width:100%;height:100%;object-fit:cover;display:block}
+.upc i{display:block;width:100%;height:100%;background:#2a2a35}
+.upc span{position:absolute;left:6px;bottom:5px;font-size:13px;font-weight:700;text-shadow:0 1px 3px #000}
 </style></head><body>
 <header><div class="ico">🎮</div><div style="flex:1;min-width:0"><h1 id="h1">ROV Point Hub</h1><p id="hp"></p></div>
 <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex:none" id="hact"></div></header>
 <main><div id="v">
  <div class="card" style="margin-top:0;text-align:center;padding:36px 18px"><div style="font-size:44px">🔌</div><b class="n">กำลังเชื่อมต่อ…</b></div>
-</div></main><nav id="nav" style="display:none"></nav><div id="gd"></div><div id="dlg"></div>
+</div></main><nav id="nav" style="display:none"></nav><div id="gd"></div><div id="vf"></div><div id="ug"></div><div id="dlg"></div>
 <script>
 const FIREBASE_CONFIG={apiKey:"AIzaSyDnd949B306VQztn-Rh41nNMyaJcB10or8",authDomain:"curov-355d1.firebaseapp.com",databaseURL:"https://curov-355d1-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"curov-355d1",storageBucket:"curov-355d1.firebasestorage.app",messagingSenderId:"811437937433",appId:"1:811437937433:web:6a2a85c02c9c17e3856b88"};
 const ADMIN_EMAIL='sakkrin611@gmail.com';
@@ -478,7 +593,7 @@ function attachUser(){userRefOff=db.ref('users/'+uid);
   if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return} // echo of our own write — local state already correct, skip re-render so nothing on screen (e.g. a form you're typing in) gets wiped
   const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();pg==='admin'?head():R() // on the admin page a background update only refreshes the header (points/nav), never the form itself
  },e=>{markSave(false)})}
-function detachAll(){if(cmLegacy){cmLegacy.off();cmLegacy=null}if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();if(leaderboardRefOff)leaderboardRefOff.off();if(codesRefOff)codesRefOff.off();if(shopRefOff)shopRefOff.off();if(topupsRefOff)topupsRefOff.off();if(myTopupsRefOff)myTopupsRefOff.off();if(qrRefOff)qrRefOff.off();if(bpLevelsRefOff)bpLevelsRefOff.off();if(gcRefOff)gcRefOff.off();gcRefOff=null;userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;leaderboardRefOff=null;codesRefOff=null;shopRefOff=null;topupsRefOff=null;myTopupsRefOff=null;qrRefOff=null;bpLevelsRefOff=null;detachSocial();S=null;content=[];announce=[];contacts=[];leaderboard=[];codes=[];shop=[];topups=[];myTopups=[];bpLevels={};run=null;goldRun=null}
+function detachAll(){try{detachUgc()}catch(e){}if(cmLegacy){cmLegacy.off();cmLegacy=null}if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();if(leaderboardRefOff)leaderboardRefOff.off();if(codesRefOff)codesRefOff.off();if(shopRefOff)shopRefOff.off();if(topupsRefOff)topupsRefOff.off();if(myTopupsRefOff)myTopupsRefOff.off();if(qrRefOff)qrRefOff.off();if(bpLevelsRefOff)bpLevelsRefOff.off();if(gcRefOff)gcRefOff.off();gcRefOff=null;userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;leaderboardRefOff=null;codesRefOff=null;shopRefOff=null;topupsRefOff=null;myTopupsRefOff=null;qrRefOff=null;bpLevelsRefOff=null;detachSocial();S=null;content=[];announce=[];contacts=[];leaderboard=[];codes=[];shop=[];topups=[];myTopups=[];bpLevels={};run=null;goldRun=null}
 function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
 function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
 async function pushUser(direct){if(!S||!uid)return;if(!direct&&pushTimer){clearTimeout(pushTimer);pushTimer=null}const d=clone(S);try{await db.ref('users/'+uid).set(d);markSave(true);{const lb={email:(user&&user.email)||'',pts:S.pts,life:S.life||0,ts:Date.now()};db.ref('leaderboard/'+uid).set(Object.assign({title:S.title||'',vip:vipShow(),plate:plateShow(),name:(S.prof&&S.prof.name)||'',joined:S.joined||0,theme:profTheme(),cbs:cbsMine(),csr:cbsShow()?1:0,frame:(S.prof&&S.prof.frame==='hw'&&hwOwn('frame'))?'hw':''},lb)).catch(()=>db.ref('leaderboard/'+uid).set(lb).catch(()=>{}))}}catch(e){markSave(false)}}
@@ -971,7 +1086,7 @@ const NAV=[['home','🏠','หน้าหลัก'],['missions','🎯','ภา
 const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],rank:['อันดับผู้เล่น','เหรียญคะแนน และเวลาออนไลน์สะสม'],redeemcode:['กรอกโค้ดรับของรางวัล','ใช้โค้ดที่แอดมินแจกเพื่อรับคะแนน'],shop:['ร้านค้า','ใช้เหรียญทองซื้อของ (แลกคืนไม่ได้)'],topup:['เติมหยกเขียว','สแกนจ่าย แนบสลิป รอแอดมินตรวจสอบ'],bp:['เวอร์พาส','เลเวล 1-70 · รีเซ็ตทุกเดือน'],settings:['ตั้งค่า','คลังธีม UI และบัญชี'],profile:['โปรไฟล์ของฉัน','ข้อมูลทั้งหมดของคุณ'],user:['โปรไฟล์ผู้เล่น','ประวัติและเพื่อน'],chats:['ช่องแชท','ข้อความส่วนตัว'],gacha:['ตู้กาชาฮาโลวีน','สุ่มรับกรอบ ธีม และหินเพชร'],chat:['แชท','ข้อความส่วนตัว'],friends:['เพื่อน','คำขอและรายชื่อเพื่อน'],login:['ROV Point Hub','เข้าสู่ระบบ']};
 const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more',redeemcode:'more',shop:'more',topup:'more',bp:'more',settings:'more',profile:'more',friends:'more',chats:'more',chat:'more',gacha:'more',user:'rank'}[pg]||pg)===k;
 function go(k){if(k!=='chat')stopChat();pg=k;cur=null;if(k==='shop'&&!S.shopSeen){S.shopSeen=true;save()}R();window.scrollTo(0,0)}
-function openC(id){cur=id;pg='view';R();window.scrollTo(0,0)}
+function openC(id){const c0=content.find(x=>x.id===id);if(c0&&c0.type==='video'){openVF(id);return}cur=id;pg='view';R();window.scrollTo(0,0)}
 function claimC(id){const c=content.find(x=>x.id===id);if(!c||S.seen[id])return;S.seen[id]=true;bpEvt('content');add(c.pts,(tn(c.type)||'เนื้อหา')+': '+c.title);R()}
 
 // ---------- fantasy theme: icons, no-emoji mode ----------
@@ -1163,7 +1278,7 @@ function genThumb(url){return new Promise(res=>{try{const v=document.createEleme
 async function backfillThumbs(){const st=$('#thst');const list=content.filter(c=>c.type==='video'&&c.url&&!c.thumb);if(!list.length){st.textContent='ทุกวิดีโอมีหน้าปกแล้ว';return}
  let ok=0;for(let i=0;i<list.length;i++){st.textContent='กำลังสร้างหน้าปก '+(i+1)+'/'+list.length+'...';const t=await genThumb(list[i].url);if(t){try{await db.ref('content/'+list[i].id+'/thumb').set(t);ok++}catch(e){}}}
  st.textContent='✅ สร้างหน้าปกแล้ว '+ok+'/'+list.length+' รายการ'+(ok<list.length?' (บางไฟล์เบราว์เซอร์นี้อ่านเฟรมไม่ได้)':'')}
-function vLib(){return '<div class="mut" style="margin:2px 4px">เนื้อหาที่แอดมินอัปโหลด · ดู/อ่านจนครบเวลาแล้วกดรับคะแนน (รับได้ครั้งเดียวต่อรายการ) · อัปเดตทันทีเมื่อแอดมินเพิ่ม</div>'+(content.length?content.map(c=>{const d=!!S.seen[c.id],q=S.cp[c.id]||0;
+function vLib(){return (vfList().length?'<button class="btn gold vfbig" onclick="openVF()">▶ เปิดโหมดเลื่อนดูวิดีโอ</button>':'')+'<div class="row vfbig" style="gap:8px"><button class="btn" style="flex:1" onclick="ugOpenCam()">🎥 ถ่าย/ลงคลิป</button><button class="btn" style="flex:1" onclick="ugOpenMine()">คลิปของฉัน</button></div>'+'<div class="mut" style="margin:2px 4px">เนื้อหาที่แอดมินอัปโหลด · ดู/อ่านจนครบเวลาแล้วกดรับคะแนน (รับได้ครั้งเดียวต่อรายการ) · อัปเดตทันทีเมื่อแอดมินเพิ่ม</div>'+(content.length?content.map(c=>{const d=!!S.seen[c.id],q=S.cp[c.id]||0;
  return `<div class="card lcard" onclick="openC('${c.id}')">${thumbHTML(c)}<div class="row" style="margin-top:10px"><div style="min-width:0"><b class="n">${esc(c.title)}</b><div class="mut">${tn(c.type)} · ต้องอยู่ ${mm(c.sec)} · +${fmt(c.pts)} คะแนน</div></div>${d?'<span class="chip ok">รับแล้ว ✓</span>':q?'<span class="chip wn">'+mm(Math.min(q,c.sec))+'/'+mm(c.sec)+'</span>':'<span class="chip">ใหม่</span>'}</div></div>`}).join(''):'<div class="card"><div class="mut">ยังไม่มีเนื้อหา — รอแอดมินอัปโหลด</div></div>')}
 function vView(){const c=content.find(x=>x.id===cur);if(!c)return '<div class="card"><button class="btn" onclick="go(\'lib\')">← กลับคลัง</button><div class="mut" style="margin-top:8px">ไม่พบเนื้อหา (อาจถูกลบ)</div></div>';
  const d=!!S.seen[c.id],q=Math.min(S.cp[c.id]||0,c.sec),rd=q>=c.sec,cu=cuUrl(c);
@@ -1277,9 +1392,9 @@ function vAdminGacha(){if(!gcDraft)gcDraft=JSON.parse(JSON.stringify(GC));
  <div class="card"><b class="n">🎟️ แพ็กขายบัตรสุ่ม (ราคาเป็นหยกเขียว)</b>${gcDraft.packs.map((p,i)=>`<div class="gcg" style="margin-top:8px;grid-template-columns:1fr 1fr auto;align-items:end"><label class="gcl"><span>จำนวนบัตร</span><input class="inp" type="number" min="1" value="${p.n}" oninput="gcPk(${i},'n',this.value)"></label><label class="gcl"><span>ราคา (หยก)</span><input class="inp" type="number" min="0" value="${p.c}" oninput="gcPk(${i},'c',this.value)"></label><button class="btn" onclick="gcPkDel(${i})">ลบ</button></div>`).join('')}
  <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" onclick="gcPkAdd()">+ เพิ่มแพ็ก</button><button class="btn" onclick="if(confirm('คืนค่าเริ่มต้นทั้งหมด (ยังไม่บันทึก)?'))gcReset()">คืนค่าเริ่มต้น</button></div></div>`}
 function vAdmin(){if(!isAdmin)return '<div class="card"><div class="mut">เฉพาะบัญชีแอดมินเท่านั้น</div></div>';
- const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า'],['topup','💎 เติมหยก'],['bp','🎫 เวอร์พาส'],['players','👥 ผู้เล่น'],['gacha','🎰 กาชา'],['stats','📊 สถิติ'],['sys','🛠️ ระบบ']];
+ const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า'],['topup','💎 เติมหยก'],['bp','🎫 เวอร์พาส'],['players','👥 ผู้เล่น'],['gacha','🎰 กาชา'],['stats','📊 สถิติ'],['sys','🛠️ ระบบ'],['ugc','🎬 คลิปผู้เล่น'],['mus','🎵 เสียงเพลง']];
  let h=`<div class="tabs" style="margin:0 0 4px">${tabs.map(([k,l])=>`<button class="tab ${adminTab===k?'on':''}" onclick="adminTab='${k}';R()">${l}</button>`).join('')}</div>`;
- if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else if(adminTab==='shop')h+=vAdminShop();else if(adminTab==='topup')h+=vAdminTopup();else if(adminTab==='players')h+=vAdminPlayers();else if(adminTab==='gacha')h+=vAdminGacha();else if(adminTab==='stats')h+=vAdminStats();else if(adminTab==='sys')h+=vAdminSys();else h+=vAdminBp();
+ if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else if(adminTab==='shop')h+=vAdminShop();else if(adminTab==='topup')h+=vAdminTopup();else if(adminTab==='players')h+=vAdminPlayers();else if(adminTab==='gacha')h+=vAdminGacha();else if(adminTab==='ugc')h+=vAdminUgc();else if(adminTab==='mus')h+=vAdminMus();else if(adminTab==='stats')h+=vAdminStats();else if(adminTab==='sys')h+=vAdminSys();else h+=vAdminBp();
  return h}
 
 // ---------- admin: system settings + stats ----------
@@ -1836,7 +1951,232 @@ setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isB
  const big=M[M.length-1];if(pg==='missions'){const t=$('#t-big'),b=$('#b-big');if(t)t.textContent=mm(S.on)+' / '+mm(big.s);if(b)b.style.width=Math.min(100,S.on/big.s*100)+'%';if(S.on===big.s)re=true}
  let rv=false;if(pg==='view'&&cur){const it=content.find(x=>x.id===cur);if(it&&!S.seen[cur]&&(S.cp[cur]||0)<it.sec){const v=$('#vid'),act=it.type==='video'?!!(v&&!v.paused&&!v.ended):true;
   if(act){S.cp[cur]=(S.cp[cur]||0)+1;const t=$('#ct2'),b=$('#cb2');if(t)t.textContent=mm(S.cp[cur])+' / '+mm(it.sec);if(b)b.style.width=Math.min(100,S.cp[cur]/it.sec*100)+'%';if(S.cp[cur]>=it.sec)rv=true}}}
+ try{vfTick()}catch(e){}
  if(S.on%5===0||re||rv)save();if(rv||(re&&pg==='missions'))R()},1000);
+
+
+// ---------- TikTok-style video feed ----------
+const VF={open:false,cur:null,muted:false,vid:null,io:null,hint:true,P:{}};
+function abN(n){n=+n||0;if(n<1000)return String(n);if(n<1e6){const k=n/1e3;return (k<10?k.toFixed(1):String(Math.round(k))).replace(/\.0$/,'')+'K'}return (n/1e6).toFixed(1).replace(/\.0$/,'')+'M'}
+function ugAsItem(u){return {id:'u_'+u.id,rid:u.id,uid:u.uid,type:'video',title:u.title||'',body:'',pts:+u.pts||0,sec:+u.sec||0,thumb:u.thumb||'',hasUrl:true,ts:u.ts||0,ugc:true,author:u.name||'ผู้เล่น',mus:u.mus||'',mt:u.mt||''}}
+const vfList=()=>content.filter(c=>c.type==='video').concat(UG.map(ugAsItem)).sort((a,b)=>(b.ts||0)-(a.ts||0));
+const vfFind=id=>(VF.items||[]).find(x=>x.id===id)||vfList().find(x=>x.id===id);
+function vfUrl(c){if(c.url)return Promise.resolve(c.url);const pth=c.ugc?'ugcv/'+c.rid:'content/'+c.id+'/url';if(CU[c.id]!==undefined)return Promise.resolve(CU[c.id]);if(!VF.P[c.id])VF.P[c.id]=db.ref(pth).once('value').then(sn=>{CU[c.id]=sn.val()||'';return CU[c.id]}).catch(()=>{delete VF.P[c.id];return ''});return VF.P[c.id]}
+const VF_COIN='<svg viewBox="0 0 48 48" width="100%" height="100%"><defs><radialGradient id="vcg" cx="35%" cy="30%"><stop offset="0" stop-color="#fff3b0"/><stop offset=".55" stop-color="#f5b82e"/><stop offset="1" stop-color="#b9780f"/></radialGradient></defs><circle cx="24" cy="24" r="22" fill="url(#vcg)" stroke="#8a5a08" stroke-width="2"/><circle cx="24" cy="24" r="16.5" fill="none" stroke="#fff3b0" stroke-opacity=".7" stroke-width="1.5"/><path d="M24 11l3.5 8 8.7.8-6.6 5.7 2 8.5L24 29.5 16.4 34l2-8.5-6.6-5.7 8.7-.8z" fill="#fff3b0" stroke="#8a5a08" stroke-width="1"/></svg>';
+const VF_IC={heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 5 6.4 5c2 0 3.6 1.1 4.6 2.6h2C14 6.1 15.600 5 17.600 5 21 5 23.100 8.400 21.600 11.800 19.500 16.400 12 21 12 21z" fill="inherit"/></svg>',
+ mark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.500L6 21z" fill="inherit"/></svg>',
+ share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14 4l8 7.500-8 7.500v-4.500C8 14.500 4.500 16 2 20c.5-6 4-10 12-10.500z" fill="currentColor"/></svg>',
+ info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12.500h5"/></svg>',
+ vol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.500 9a4 4 0 010 6M19 6.500a8 8 0 010 11"/></svg>',
+ mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>'};
+function vfItem(c,i,n){const L=!!(S.vl&&S.vl[c.id]),B=!!(S.vs&&S.vs[c.id]),id=c.id,g=c.ugc,cc=g?(UGC[c.rid]||{}):{},f=g?(S.ugf&&S.ugf[c.rid])||{}:{},own=g&&c.uid===uid,coin=c.pts>0&&c.sec>0&&!own;
+ const lk=g?!!f.lk:L,who=g?c.uid:'admin',fw=!!(g&&S.fl&&S.fl[c.uid]),AV=g?avHTML(c.uid,null,50):'<span class="avs ini vfadm" style="width:50px;height:50px;font-size:15px">ROV</span>',plus=(g&&!own)?`<span class="vffl${fw?' on':''}" id="vffl-${id}" onclick="event.stopPropagation();ugFollow('${id}')">+</span>`:'';
+ return `<section class="vfi" data-id="${id}" data-i="${i}"><div class="vfbg"${c.thumb?` style="background-image:url('${c.thumb}')"`:''}></div><div class="vfmedia"></div><div class="vftap" onclick="vfTap('${id}')"></div><div class="vfplay" id="vfp-${id}">${SV('<path d="M8 5l12 7-12 7z" fill="currentColor"/>')}</div>
+ <div class="vfrail"><div class="vfav" role="button" onclick="ugProfile('${who}')">${AV}${plus}</div>${coin?`<button class="vfcoin" id="vfc-${id}" onclick="vfClaim('${id}')" aria-label="รับคะแนน"><svg class="ring" viewBox="0 0 66 66"><circle class="rb" cx="33" cy="33" r="29"/><circle class="rf" id="vfr-${id}" cx="33" cy="33" r="29" stroke-dasharray="182.2" stroke-dashoffset="182.2"/></svg><span class="disc" id="vfd-${id}">${VF_COIN}</span><em id="vfv-${id}"></em><small id="vft-${id}"></small></button>`:''}
+ <button class="vfb heart${lk?' on':''}" id="vfl-${id}" onclick="vfLike('${id}')" aria-label="ถูกใจ">${VF_IC.heart}<span id="vfln-${id}">${g?abN(cc.l||0):'ถูกใจ'}</span></button>
+ <button class="vfb mark${B?' on':''}" id="vfs-${id}" onclick="vfSave('${id}')" aria-label="บันทึก">${VF_IC.mark}<span>บันทึก</span></button>
+ ${c.body?`<button class="vfb" onclick="vfInfo('${id}')" aria-label="รายละเอียด">${VF_IC.info}<span>รายละเอียด</span></button>`:''}
+ <button class="vfb" onclick="vfShare('${id}')" aria-label="แชร์">${VF_IC.share}<span id="vfsn-${id}">${g?abN(cc.s||0):'แชร์'}</span></button>
+ <button class="vfb" id="vfm-${id}" onclick="vfMute()" aria-label="เสียง">${VF.muted?VF_IC.mute:VF_IC.vol}<span>เสียง</span></button></div>
+ <div class="vfinfo"><div class="vfau" onclick="ugProfile('${who}')"><span>@${esc(g?c.author:'ROV Point Hub')}</span></div><b>${esc(c.title)}</b>${c.mus?`<div class="vfmus">♪ ${esc(c.mt||'เสียงเพลง')}</div>`:''}<div class="m">${g?`<span id="vfvn-${id}">${abN(cc.v||0)}</span> วิว`:''}${coin?`${g?' · ':''}+${fmt(c.pts)} คะแนน · ดู ${mm(c.sec)}`:(g?'':`+${fmt(c.pts)} คะแนน · ดู ${mm(c.sec)}`)}</div>${c.body?`<div class="d">${esc(c.body)}</div>`:''}</div><div class="vfbar"><i id="vfb-${id}"></i></div></section>`}
+function openVF(id,fu){let L=vfList();if(fu)L=L.filter(c=>(c.uid||'admin')===fu);if(!L.length){say('ยังไม่มีวิดีโอ');return}if(!id){const u=L.find(c=>!S.seen[c.id]&&c.pts>0&&c.uid!==uid);id=(u||L[0]).id}
+ let i=L.findIndex(c=>c.id===id);if(i<0)i=0;VF.items=L;VF.vs={};VF.open=true;if(!VF.aud){VF.aud=new Audio();VF.aud.loop=true}try{VF.aud.src=SILENT_WAV;VF.aud.dataset.id='';VF.aud.play().catch(()=>{})}catch(e){}VF.cur=null;VF.vid=null;const dl0=$('#dlg');if(dl0)dl0.innerHTML='';const el=$('#vf');
+ el.innerHTML=`<div class="vfs" id="vfs">${L.map((c,k)=>vfItem(c,k,L.length)).join('')}</div><div class="vftop"><button class="vfx" onclick="closeVF()" aria-label="ปิด">✕</button><span class="vfttl">คลังวิดีโอ</span><span class="vfcnt" id="vfcnt"></span><button class="vfx" onclick="ugOpenCam()" aria-label="ถ่ายคลิป">＋</button></div><div class="vfmsg" id="vfmsg"></div>${VF.hint&&L.length>1?'<div class="vfhint">เลื่อนขึ้นเพื่อดูคลิปถัดไป</div>':''}`;VF.hint=false;
+ el.classList.add('on');document.body.style.overflow='hidden';const sc=$('#vfs');sc.scrollTop=i*sc.clientHeight;
+ L.forEach(c=>vfRing(c));
+ if(VF.io)VF.io.disconnect();VF.io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>=.6)vfSet(e.target)})},{root:sc,threshold:[.6]});
+ el.querySelectorAll('.vfi').forEach(x=>VF.io.observe(x));vfSet(el.querySelectorAll('.vfi')[i])}
+function closeVF(){if(VF.aud)try{VF.aud.pause()}catch(e){}VF.open=false;VF.cur=null;VF.vid=null;if(VF.io){VF.io.disconnect();VF.io=null}const el=$('#vf');el.querySelectorAll('video').forEach(v=>{try{v.pause();v.removeAttribute('src');v.load()}catch(e){}});el.classList.remove('on');el.innerHTML='';document.body.style.overflow='';save();R()}
+function vfSet(el){if(!el||!VF.open)return;const id=el.dataset.id,i=+el.dataset.i;if(VF.cur===id)return;VF.cur=id;VF.vid=null;
+ const all=document.querySelectorAll('#vf .vfi');const cn=$('#vfcnt');if(cn)cn.textContent=(i+1)+'/'+all.length;
+ all.forEach(x=>{const k=+x.dataset.i;if(Math.abs(k-i)<=1)vfMount(x);else vfUnmount(x);if(x!==el){const v=x.querySelector('video');if(v)v.pause();const pp=$('#vfp-'+x.dataset.id);if(pp)pp.classList.remove('on')}});
+ vfPlay(el);const c=vfFind(id);if(c){vfRing(c);vfMusic(c)}}
+function vfMusic(c){const a=VF.aud;if(!a)return;if(!c.mus){a.pause();a.dataset.id='';return}musUrl(c.mus).then(u=>{if(VF.cur!==c.id||!u)return;if(a.dataset.id!==c.mus){a.src=u;a.dataset.id=c.mus}a.currentTime=0;a.muted=VF.muted;if(VF.vid&&!VF.vid.paused)a.play().catch(()=>{})})}
+async function vfMount(el){const id=el.dataset.id,c=vfFind(id);if(!c||el.dataset.m)return;el.dataset.m='1';const u=await vfUrl(c);if(!u||!VF.open||!el.isConnected){el.dataset.m='';return}
+ const v=document.createElement('video');v.src=u;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.preload='auto';v.dataset.mus=c.mus?'1':'';v.muted=VF.muted||!!c.mus;if(c.thumb)v.poster=c.thumb;
+ v.addEventListener('timeupdate',()=>{const b=$('#vfb-'+id);if(b&&v.duration)b.style.width=(v.currentTime/v.duration*100)+'%';if(c.mus&&VF.cur===id&&VF.aud&&v.currentTime<(v._pt||0)-.5)VF.aud.currentTime=0;v._pt=v.currentTime});
+ v.addEventListener('play',()=>{vfRing(c);const pp=$('#vfp-'+id);if(pp)pp.classList.remove('on');if(c.mus&&VF.cur===id&&VF.aud&&VF.aud.dataset.id===c.mus)VF.aud.play().catch(()=>{})});v.addEventListener('pause',()=>{vfRing(c);if(c.mus&&VF.cur===id&&VF.aud)VF.aud.pause()});
+ el.querySelector('.vfmedia').appendChild(v);if(VF.cur===id)vfPlay(el)}
+function vfUnmount(el){const v=el.querySelector('video');if(v){try{v.pause();v.removeAttribute('src');v.load()}catch(e){}v.remove()}el.dataset.m=''}
+function vfPlay(el){const v=el.querySelector('video');if(!v)return;VF.vid=v;v.muted=VF.muted||!!v.dataset.mus;const p=v.play();if(p&&p.catch)p.catch(()=>{v.muted=true;VF.muted=true;vfMuteUI();v.play().catch(()=>{})})}
+function vfTap(id){const v=VF.vid;if(!v||VF.cur!==id)return;const pp=$('#vfp-'+id);if(v.paused){v.play().catch(()=>{});if(pp)pp.classList.remove('on')}else{v.pause();if(pp)pp.classList.add('on')}}
+function vfMuteUI(){document.querySelectorAll('#vf [id^="vfm-"]').forEach(b=>{b.innerHTML=(VF.muted?VF_IC.mute:VF_IC.vol)+'<span>เสียง</span>'})}
+function vfMute(){VF.muted=!VF.muted;if(VF.vid)VF.vid.muted=VF.muted||!!VF.vid.dataset.mus;if(VF.aud)VF.aud.muted=VF.muted;vfMuteUI()}
+function vfMsg(t){const m=$('#vfmsg');if(!m)return;m.textContent=t;m.classList.add('on');clearTimeout(VF.mt);VF.mt=setTimeout(()=>m.classList.remove('on'),1800)}
+function vfRing(c){if(!VF.open||!c)return;const id=c.id,q=Math.min(S.cp[id]||0,c.sec),d=!!S.seen[id],rd=q>=c.sec,pl=!!(VF.vid&&VF.cur===id&&!VF.vid.paused&&!VF.vid.ended);
+ const r=$('#vfr-'+id),b=$('#vfc-'+id),dk=$('#vfd-'+id),v=$('#vfv-'+id),t=$('#vft-'+id);if(!r)return;
+ r.style.strokeDashoffset=(182.2*(1-(d?1:Math.min(1,q/c.sec)))).toFixed(1);b.classList.toggle('ready',rd&&!d);b.classList.toggle('done',d);dk.classList.toggle('spin',pl&&!rd&&!d);
+ v.textContent=d?'✓':'+'+abN(c.pts);t.textContent=d?'รับแล้ว':rd?'กดรับ':'อีก '+mm(c.sec-q)}
+function vfClaim(id){const c=vfFind(id);if(!c||S.seen[id])return;const q=S.cp[id]||0;if(q<c.sec){vfMsg('ดูอีก '+mm(c.sec-q)+' แล้วกดรับได้');return}if(c.ugc){S.seen[id]=true;bpEvt('content');add(c.pts,'คลิปผู้เล่น: '+c.title);R()}else claimC(id);vfRing(c);vfMsg('ได้รับ +'+fmt(c.pts)+' คะแนน')}
+function vfLike(id){if(id.indexOf('u_')===0)return ugLike(id);S.vl=S.vl||{};if(S.vl[id])delete S.vl[id];else S.vl[id]=1;const b=$('#vfl-'+id);if(b)b.classList.toggle('on',!!S.vl[id]);save()}
+function vfSave(id){S.vs=S.vs||{};const on=!S.vs[id];if(on)S.vs[id]=1;else delete S.vs[id];const b=$('#vfs-'+id);if(b)b.classList.toggle('on',on);vfMsg(on?'บันทึกวิดีโอแล้ว':'เอาออกจากที่บันทึกแล้ว');save()}
+function vfInfo(id){const c=vfFind(id);if(c)dlgH('<b>'+esc(c.title)+'</b><div style="margin-top:8px;white-space:pre-wrap">'+esc(c.body||'')+'</div>')}
+async function vfShare(id){if(id.indexOf('u_')===0)ugShareCount(id);const c=vfFind(id);const u=location.href.split('#')[0];try{if(navigator.share){await navigator.share({title:c?c.title:'ROV Point Hub',text:c?c.title:'',url:u});return}}catch(e){return}try{await navigator.clipboard.writeText(u);vfMsg('คัดลอกลิงก์เว็บแล้ว')}catch(e){vfMsg(u)}}
+function vfTick(){if(!VF.open||!VF.cur||!S)return;const c=vfFind(VF.cur);if(!c)return;const v=VF.vid,pl=!!(v&&!v.paused&&!v.ended&&document.visibilityState==='visible');if(!pl)return;
+ if(c.ugc){VF.vs[c.id]=(VF.vs[c.id]||0)+1;if(VF.vs[c.id]===3)ugView(c)}
+ if(!(c.pts>0&&c.sec>0)||c.uid===uid||S.seen[c.id]||(S.cp[c.id]||0)>=c.sec)return;
+ S.cp[c.id]=(S.cp[c.id]||0)+1;vfRing(c);if(S.cp[c.id]>=c.sec){save();vfMsg('ดูครบแล้ว กดเหรียญเพื่อรับคะแนน')}else if(S.cp[c.id]%10===0)save()}
+
+// ---------- player clips (UGC): camera, upload, review, engagement rewards ----------
+let UG=[],UGC={},UGCFG=null,UGQ=[],UGREQ={},UGREQA={},ugRefs=[];
+const UG_DEF={w:{v:1,l:3,s:5,f:8},tiers:[{min:20,pts:30,gold:0,jade:0},{min:100,pts:100,gold:20,jade:0},{min:500,pts:300,gold:100,jade:0},{min:2000,pts:800,gold:400,jade:0},{min:10000,pts:2000,gold:1000,jade:3}],maxMB:4};
+function ugCfg(){const g=UGCFG||{};const w=Object.assign({},UG_DEF.w,g.w||{});let t=g.tiers;if(t&&!Array.isArray(t))t=Object.keys(t).sort((a,b)=>a-b).map(k=>t[k]);if(!t||!t.length)t=UG_DEF.tiers;return{w,tiers:t.map(x=>({min:+x.min||0,pts:+x.pts||0,gold:+x.gold||0,jade:+x.jade||0})).sort((a,b)=>a.min-b.min)}}
+const ugScore=(cc,c)=>(cc.v||0)*c.w.v+(cc.l||0)*c.w.l+(cc.s||0)*c.w.s+(cc.f||0)*c.w.f;
+const ugUnl=(sc,c)=>c.tiers.filter(t=>sc>=t.min).length;
+const ugName=()=>pName(uid);
+function attachUgc(){detachUgc();try{let r=db.ref('ugc').orderByChild('ts').limitToLast(40);
+ r.on('value',sn=>{const v=sn.val()||{};UG=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));ugRefresh()},()=>{});ugRefs.push(r);
+ r=db.ref('ugcc');r.on('value',sn=>{UGC=sn.val()||{};ugCnt();ugRefresh(true)},()=>{});ugRefs.push(r);
+ r=db.ref('settings/ugc');r.on('value',sn=>{UGCFG=sn.val();ugRefresh(true)},()=>{});ugRefs.push(r);
+ r=db.ref('ugcreq/'+uid);r.on('value',sn=>{UGREQ=sn.val()||{};ugCredit()},()=>{});ugRefs.push(r);
+ r=db.ref('music');r.on('value',sn=>{const v=sn.val()||{};MUS=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));ugRefresh(true);const sh=$('#ug .ugsheet');if(sh){sh.remove();ugMusicPick()}},()=>{});ugRefs.push(r);
+ if(isAdmin){r=db.ref('ugcq');r.on('value',sn=>{const v=sn.val()||{};UGQ=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(a.ts||0)-(b.ts||0));ugRefresh()},()=>{});ugRefs.push(r);
+  r=db.ref('ugcreq');r.on('value',sn=>{UGREQA=sn.val()||{};ugRefresh()},()=>{});ugRefs.push(r)}}catch(e){}}
+function detachUgc(){ugRefs.forEach(r=>{try{r.off()}catch(e){}});ugRefs=[]}
+function ugRefresh(soft){if(pg==='admin'&&adminTab==='mus'){const e=$('#mu_l');if(e)e.innerHTML=musListHTML()}if(pg==='admin'&&adminTab==='ugc'){const e=$('#ugadm');if(e&&!(soft&&e.contains(document.activeElement)))e.innerHTML=ugAdminHTML()}if($('#ug')&&$('#ug').dataset.mode==='mine'&&!soft)ugMineLoad()}
+async function ugCredit(){if(!uid||!S)return;for(const rid of Object.keys(UGREQ||{})){const q=UGREQ[rid];if(!q||q.st!=='a'||q.credited)continue;try{const r=await db.ref('ugcreq/'+uid+'/'+rid+'/credited').transaction(c=>c?undefined:true);if(r&&r.committed){const n=+q.jade||0;S.jade=(S.jade||0)+n;S.log=S.log||[];S.log.unshift({t:tstr(),m:'รางวัลคลิป (หยกเขียว)',n,cur:'jade'});S.log=S.log.slice(0,80);save();R();say('ได้รับหยกเขียว +'+n+' จากรางวัลคลิปของคุณ')}}catch(e){}}}
+function ugCnt(){if(!VF.open)return;(VF.items||[]).forEach(c=>{if(!c.ugc)return;const cc=UGC[c.rid]||{},a=$('#vfln-'+c.id),b=$('#vfsn-'+c.id),d=$('#vfvn-'+c.id);if(a)a.textContent=abN(cc.l||0);if(b)b.textContent=abN(cc.s||0);if(d)d.textContent=abN(cc.v||0)})}
+const ugInc=(rid,k,d)=>db.ref('ugcc/'+rid+'/'+k).transaction(n=>{n=(n||0)+d;return n<0?0:n}).catch(()=>{});
+function ugF(rid){S.ugf=S.ugf||{};return S.ugf[rid]||(S.ugf[rid]={})}
+function ugBump(rid,k,d){UGC[rid]=UGC[rid]||{};UGC[rid][k]=Math.max(0,(UGC[rid][k]||0)+d);ugCnt()}
+function ugView(c){if(!c.ugc||c.uid===uid)return;const f=ugF(c.rid);if(f.v)return;f.v=1;ugInc(c.rid,'v',1);ugBump(c.rid,'v',1);save()}
+function ugLike(id){const c=vfFind(id);if(!c||!c.ugc)return;const f=ugF(c.rid);f.lk=!f.lk;ugInc(c.rid,'l',f.lk?1:-1);ugBump(c.rid,'l',f.lk?1:-1);const b=$('#vfl-'+id);if(b)b.classList.toggle('on',!!f.lk);save()}
+function ugShareCount(id){const c=vfFind(id);if(!c||!c.ugc||c.uid===uid)return;const f=ugF(c.rid);if(f.s)return;f.s=1;ugInc(c.rid,'s',1);ugBump(c.rid,'s',1);save()}
+// ----- camera / recorder -----
+const UGM={stream:null,rec:null,chunks:[],facing:'user',dur:15,t0:0,timer:null,blob:null,mime:'',url:''};
+function ugShow(h,mode){const e=$('#ug');e.innerHTML=h;e.dataset.mode=mode||'';e.classList.add('on');document.body.style.overflow='hidden'}
+function ugClose(){ugStopStream();try{if(UGM.maud)UGM.maud.pause();if(UGM.paud)UGM.paud.pause()}catch(e){}UGM.mus=null;clearInterval(UGM.timer);if(UGM.url){try{URL.revokeObjectURL(UGM.url)}catch(e){}UGM.url=''}UGM.blob=null;const e=$('#ug');e.classList.remove('on');e.innerHTML='';e.dataset.mode='';document.body.style.overflow=VF.open?'hidden':'';if(VF.open&&VF.vid)VF.vid.play().catch(()=>{});if(pg==='lib'||pg==='home')R()}
+function ugStopStream(){try{if(UGM.rec&&UGM.rec.state!=='inactive'){UGM.rec.onstop=null;UGM.rec.stop()}}catch(e){}UGM.rec=null;if(UGM.stream){UGM.stream.getTracks().forEach(t=>t.stop());UGM.stream=null}}
+function ugMime(){const c=['video/mp4;codecs=avc1,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];return c.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||''}
+function ugOpenCam(){if(!S||!uid)return;if(VF.vid)VF.vid.pause();ugCamUI();ugCamStart()}
+function ugCamUI(){ugShow(`<div class="ugcam"><video id="ugpv" playsinline muted autoplay></video><div class="vftop"><button class="vfx" onclick="ugClose()" aria-label="ปิด">✕</button><button class="ugpill" onclick="ugMusicPick()">♪ <span id="ugmus">${UGM.mus?esc(UGM.mus.title):'เพิ่มเสียง'}</span></button><button class="vfx" onclick="ugFlip()" aria-label="สลับกล้อง">⟲</button></div><div class="ugtm" id="ugtm"></div><div class="ugerr" id="ugerr"></div>
+ <div class="ugbot"><div class="ugtabs"><button id="ugd15" class="${UGM.dur===15?'on':''}" onclick="ugDur(15)">15 วินาที</button><button id="ugd30" class="${UGM.dur===30?'on':''}" onclick="ugDur(30)">30 วินาที</button></div>
+ <div class="ugctl"><label class="uggal"><span>${SV('<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>')}</span><em>อัปโหลด</em><input type="file" accept="video/*" onchange="ugFile(this)" hidden></label><button class="ugrec" id="ugrec" onclick="ugRec()" aria-label="บันทึก"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="38" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="5"/><circle id="ugring" cx="42" cy="42" r="38" fill="none" stroke="#ff2d55" stroke-width="5" stroke-linecap="round" stroke-dasharray="238.8" stroke-dashoffset="238.8" transform="rotate(-90 42 42)"/></svg><i></i></button><span class="ugsp"></span></div><div class="ugnote">คะแนนของคลิปแอดมินเป็นคนกำหนดให้ภายหลัง</div></div></div>`,'cam')}
+async function ugCamStart(){const er=$('#ugerr');try{if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('nocam');if(!window.MediaRecorder)throw new Error('norec');ugStopStream();
+ let st;try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:UGM.facing,width:{ideal:720},height:{ideal:1280},frameRate:{ideal:24}},audio:true})}catch(e){st=await navigator.mediaDevices.getUserMedia({video:{facingMode:UGM.facing},audio:false})}
+ if(!$('#ugpv')){st.getTracks().forEach(t=>t.stop());return}UGM.stream=st;const v=$('#ugpv');v.srcObject=st;v.style.transform=UGM.facing==='user'?'scaleX(-1)':'none';v.play().catch(()=>{})}
+ catch(e){if(er)er.innerHTML='เปิดกล้องไม่ได้ (ต้องอนุญาตการใช้กล้องและไมโครโฟน หรือเบราว์เซอร์นี้ไม่รองรับการอัด)<br>ใช้ปุ่ม "อัปโหลด" เลือกคลิปจากเครื่องแทนได้'}}
+function ugFlip(){if(UGM.rec&&UGM.rec.state==='recording')return;UGM.facing=UGM.facing==='user'?'environment':'user';ugCamStart()}
+function ugDur(n){if(UGM.rec&&UGM.rec.state==='recording')return;UGM.dur=n;['15','30'].forEach(k=>{const b=$('#ugd'+k);if(b)b.classList.toggle('on',+k===n)})}
+function ugRec(){if(UGM.rec&&UGM.rec.state==='recording'){UGM.rec.stop();return}if(!UGM.stream){ugCamStart();return}
+ const mt=ugMime(),rs=UGM.mus?new MediaStream(UGM.stream.getVideoTracks()):UGM.stream;let rec;try{rec=new MediaRecorder(rs,Object.assign(mt?{mimeType:mt}:{},{videoBitsPerSecond:600000,audioBitsPerSecond:64000}))}catch(e){try{rec=new MediaRecorder(rs)}catch(e2){const er=$('#ugerr');if(er)er.textContent='เบราว์เซอร์นี้อัดวิดีโอไม่ได้ ใช้ปุ่มอัปโหลดแทน';return}}
+ UGM.chunks=[];UGM.mime=rec.mimeType||mt||'video/webm';rec.ondataavailable=e=>{if(e.data&&e.data.size)UGM.chunks.push(e.data)};
+ rec.onstop=()=>{clearInterval(UGM.timer);if(UGM.maud)UGM.maud.pause();const b=new Blob(UGM.chunks,{type:UGM.mime.split(';')[0]});ugStopStream();ugGotBlob(b)};
+ rec.start(500);UGM.rec=rec;if(UGM.mus&&UGM.maud&&UGM.maud.src){UGM.maud.currentTime=0;UGM.maud.play().catch(()=>{})}UGM.t0=Date.now();const bt=$('#ugrec');if(bt)bt.classList.add('on');
+ UGM.timer=setInterval(()=>{const t=(Date.now()-UGM.t0)/1000,tm=$('#ugtm'),rg=$('#ugring');if(tm)tm.textContent='● '+t.toFixed(1)+' / '+UGM.dur+' วินาที';if(rg)rg.style.strokeDashoffset=(238.8*(1-Math.min(1,t/UGM.dur))).toFixed(1);if(t>=UGM.dur&&UGM.rec&&UGM.rec.state==='recording')UGM.rec.stop()},100)}
+function ugFile(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;const er=$('#ugerr');if(!f.type.startsWith('video/')){if(er)er.textContent='เลือกไฟล์วิดีโอเท่านั้น';return}
+ const mx=(UGCFG&&+UGCFG.maxMB)||UG_DEF.maxMB;if(f.size>mx*1048576){if(er)er.textContent='ไฟล์เกิน '+mx+' MB (ไฟล์ของคุณ '+(f.size/1048576).toFixed(1)+' MB) ลองตัดให้สั้นลงก่อน';return}ugStopStream();ugGotBlob(f)}
+function ugGotBlob(b){const mx=(UGCFG&&+UGCFG.maxMB)||UG_DEF.maxMB;if(b.size>mx*1048576){ugCamUI();ugCamStart();const er=$('#ugerr');if(er)er.textContent='คลิปใหญ่เกิน '+mx+' MB ลองถ่ายให้สั้นลง';return}
+ if(!b.size){ugCamUI();ugCamStart();return}UGM.blob=b;if(UGM.url)URL.revokeObjectURL(UGM.url);UGM.url=URL.createObjectURL(b);
+ ugShow(`<div class="ugcam"><video id="ugpr" src="${UGM.url}" playsinline loop controls autoplay></video><div class="vftop"><button class="vfx" onclick="ugRetake()" aria-label="กลับ">‹</button><button class="ugpill" onclick="ugMusicPick()">♪ <span id="ugmus">${UGM.mus?esc(UGM.mus.title):'เพิ่มเสียง'}</span></button><span class="vfcnt">${(b.size/1048576).toFixed(1)} MB</span></div>
+ <div class="ugbot ugform"><input id="ugttl" class="inp" maxlength="80" placeholder="ใส่ชื่อ/คำบรรยายคลิป"><div class="ugnote" style="margin:8px 0">คลิปจะขึ้นฟีดหลังแอดมินตรวจและกำหนดคะแนนให้ ผู้ลงกำหนดคะแนนเองไม่ได้</div><div class="ugrow"><button class="btn" onclick="ugRetake()">ถ่ายใหม่</button><button class="btn gold" id="ugpost" onclick="ugPost()">ลงคลิป</button></div><div class="ugnote" id="ugpst"></div></div></div>`,'prev');ugPrevMute()}
+function ugRetake(){UGM.blob=null;ugCamUI();ugCamStart()}
+function ugThumb(url){return new Promise(res=>{try{const v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';v.src=url;let done=false;const fin=x=>{if(!done){done=true;res(x||'')}};setTimeout(()=>fin(''),9000);v.onerror=()=>fin('');v.onloadeddata=()=>{try{v.currentTime=Math.min(0.5,(v.duration||1)/2)}catch(e){fin('')}};
+ v.onseeked=()=>{try{const k=Math.min(1,220/(v.videoWidth||220)),c=document.createElement('canvas');c.width=Math.round((v.videoWidth||220)*k);c.height=Math.round((v.videoHeight||390)*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);fin(c.toDataURL('image/jpeg',.6))}catch(e){fin('')}}}catch(e){res('')}})}
+async function ugPost(){const st=$('#ugpst'),bt=$('#ugpost'),title=($('#ugttl').value||'').trim().slice(0,80);if(!UGM.blob)return;if(!title){st.textContent='ใส่ชื่อคลิปก่อน';return}
+ bt.disabled=true;st.textContent='กำลังเตรียมไฟล์...';let id='g'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+ try{const data=await readB64(UGM.blob);if(data.length>6000000)throw new Error('big');const th=await ugThumb(UGM.url);st.textContent='กำลังอัปโหลด...';
+  await db.ref('ugcq/'+id).set({uid,name:ugName(),title,thumb:th,st:'p',sz:UGM.blob.size,mus:UGM.mus?UGM.mus.id:'',mt:UGM.mus?UGM.mus.title:'',ts:firebase.database.ServerValue.TIMESTAMP});
+  try{await db.ref('ugcv/'+id).set(data)}catch(e){try{await db.ref('ugcq/'+id).remove()}catch(e2){}throw e}
+  S.myq=[id].concat(S.myq||[]).slice(0,60);save();UGM.blob=null;ugOpenMine('ส่งคลิปแล้ว รอแอดมินตรวจและกำหนดคะแนนให้')}
+ catch(e){st.textContent='ส่งไม่สำเร็จ ('+((e&&e.code)||'ไฟล์ใหญ่หรือเครือข่ายมีปัญหา')+') ลองใหม่';bt.disabled=false}}
+// ----- my clips + rewards -----
+async function ugOpenMine(msg){if(UGM.url){try{URL.revokeObjectURL(UGM.url)}catch(e){}UGM.url=''}ugStopStream();ugShow(`<div class="ugpg"><div class="ugph"><button class="vfx" onclick="ugClose()" aria-label="ปิด">✕</button><b>คลิปของฉัน</b><button class="vfx" onclick="ugOpenCam()" aria-label="ถ่ายคลิป">＋</button></div><div class="ugmsg" id="ugmsg">${msg?esc(msg):''}</div><div id="ugmine" class="ugbody">กำลังโหลด...</div></div>`,'mine');await ugMineLoad()}
+async function ugMineLoad(){const box=$('#ugmine');if(!box)return;let appr=UG.filter(u=>u.uid===uid);try{const sn=await db.ref('ugc').orderByChild('uid').equalTo(uid).once('value'),v=sn.val()||{};const m={};appr.forEach(u=>m[u.id]=u);Object.keys(v).forEach(id=>{if(v[id]&&v[id].uid===uid)m[id]=Object.assign({id},v[id])});appr=Object.values(m)}catch(e){}
+ UGM.mine={};appr.forEach(u=>UGM.mine[u.id]=u);
+ const ids=(S.myq||[]).filter(id=>!appr.some(u=>u.id===id));const pend=[];let lost=[];for(const id of ids){try{const sn=await db.ref('ugcq/'+id).once('value'),v=sn.val();if(v)pend.push(Object.assign({id},v));else lost.push(id)}catch(e){}}
+ if(lost.length){S.myq=(S.myq||[]).filter(i=>lost.indexOf(i)<0);save()}
+ if(!$('#ugmine'))return;const cf=ugCfg();let h='';
+ if(!appr.length&&!pend.length)h='<div class="ugempty">ยังไม่มีคลิป กดเครื่องหมาย + ด้านบนเพื่อถ่ายหรืออัปโหลดคลิปแรก</div>';
+ pend.forEach(q=>{h+=`<div class="ugcard"><div class="ugrow2">${q.thumb?`<img src="${q.thumb}" alt="">`:'<div class="ugnoimg"></div>'}<div style="min-width:0"><b>${esc(q.title||'')}</b><div class="ugs ${q.st==='r'?'bad':'wn'}">${q.st==='r'?'ไม่ผ่านการตรวจ'+(q.note?': '+esc(q.note):''):'รอแอดมินตรวจและกำหนดคะแนน'}</div></div></div>${q.st==='r'?`<button class="btn" onclick="ugDelMine('${q.id}')">ลบ</button>`:''}</div>`});
+ appr.sort((a,b)=>(b.ts||0)-(a.ts||0)).forEach(u=>{const cc=UGC[u.id]||{},sc=ugScore(cc,cf),un=ugUnl(sc,cf),cl=(S.ugr&&S.ugr[u.id])||0,nx=cf.tiers[un],pv=un?cf.tiers[un-1].min:0,pr=nx?Math.min(100,(sc-pv)/(nx.min-pv)*100):100;
+  let cp=0,cg=0,cj=0;for(let i=cl;i<un;i++){cp+=cf.tiers[i].pts;cg+=cf.tiers[i].gold;cj+=cf.tiers[i].jade}
+  const rtxt=[cp?'+'+fmt(cp)+' คะแนน':'',cg?'+'+fmt(cg)+' เหรียญ':'',cj?'+'+cj+' หยก (รอแอดมินอนุมัติ)':''].filter(Boolean).join(' · ');
+  h+=`<div class="ugcard"><div class="ugrow2">${u.thumb?`<img src="${u.thumb}" alt="">`:'<div class="ugnoimg"></div>'}<div style="min-width:0"><b>${esc(u.title||'')}</b><div class="ugs ok">ขึ้นฟีดแล้ว${u.pts>0?' · ผู้ชมได้ +'+fmt(u.pts)+' คะแนน':' · แอดมินยังไม่กำหนดคะแนนผู้ชม'}</div></div></div>
+  <div class="ugstats"><span>👁 ${abN(cc.v||0)}</span><span>❤ ${abN(cc.l||0)}</span><span>↗ ${abN(cc.s||0)}</span><span>👤 ${abN(cc.f||0)}</span></div>
+  <div class="ugs">คะแนนยอดนิยม ${fmt(sc)}${nx?' · อีก '+fmt(nx.min-sc)+' ถึงระดับ '+(un+1):' · ถึงระดับสูงสุดแล้ว'}</div><div class="ugbar"><i style="width:${pr}%"></i></div>
+  <div class="ugs">ระดับที่ปลดล็อก ${un}/${cf.tiers.length}${nx?` · ระดับถัดไป ${[nx.pts?'+'+fmt(nx.pts)+' คะแนน':'',nx.gold?'+'+fmt(nx.gold)+' เหรียญ':'',nx.jade?'+'+nx.jade+' หยก':''].filter(Boolean).join(' ')}`:''}</div>
+  ${un>cl?`<button class="btn gold" style="width:100%;margin-top:8px" onclick="ugReward('${u.id}')">รับรางวัล ${rtxt}</button>`:''}</div>`});
+ h+=`<div class="ugs" style="margin:12px 4px">คะแนนยอดนิยม = วิว×${cf.w.v} + ถูกใจ×${cf.w.l} + แชร์×${cf.w.s} + ติดตามจากคลิปนี้×${cf.w.f} (ไม่นับการกระทำของเจ้าของคลิปเอง) · หยกเขียวต้องรอแอดมินอนุมัติ</div>`;box.innerHTML=h}
+async function ugDelMine(id){if(!(await dlg('ลบคลิปนี้?','ลบ')))return;try{await db.ref('ugcv/'+id).remove();await db.ref('ugcq/'+id).remove()}catch(e){}S.myq=(S.myq||[]).filter(x=>x!==id);save();ugMineLoad()}
+async function ugReward(rid){const cf=ugCfg(),u=UG.find(x=>x.id===rid)||(UGM.mine&&UGM.mine[rid]);if(!u)return;if(u.uid!==uid)return;const cc=UGC[rid]||{},un=ugUnl(ugScore(cc,cf),cf);S.ugr=S.ugr||{};const from=S.ugr[rid]||0;if(un<=from)return;
+ let pts=0,gold=0,jade=0;for(let i=from;i<un;i++){pts+=cf.tiers[i].pts;gold+=cf.tiers[i].gold;jade+=cf.tiers[i].jade}
+ if(jade>0){try{await db.ref('ugcreq/'+uid+'/'+rid+'_'+un).set({jade,clip:u.title||'',tier:un,st:'p',email:(user&&user.email)||'',ts:firebase.database.ServerValue.TIMESTAMP})}catch(e){say('ส่งคำขอหยกไม่สำเร็จ ลองใหม่');return}}
+ S.ugr[rid]=un;if(pts)add(pts,'รางวัลคลิป: '+(u.title||''));if(gold)addGold(gold,'รางวัลคลิป: '+(u.title||''));save();ugMineLoad();
+ say('ได้รับรางวัลแล้ว'+(pts?' +'+fmt(pts)+' คะแนน':'')+(gold?' +'+fmt(gold)+' เหรียญ':'')+(jade?'\nส่งคำขอหยกเขียว +'+jade+' ให้แอดมินแล้ว เมื่ออนุมัติจะเข้าบัญชีให้เอง':''))}
+// ----- admin -----
+function ugAdminHTML(){const cf=ugCfg(),I='class="inp" style="margin-top:6px"';
+ const pend=UGQ.filter(q=>q.st!=='r');
+ const req=[];Object.keys(UGREQA||{}).forEach(u=>Object.keys(UGREQA[u]||{}).forEach(r=>{const q=UGREQA[u][r];if(q&&q.st==='p')req.push(Object.assign({u,r},q))}));
+ let h=`<div class="card" style="margin-top:0"><b class="n">คลิปรอตรวจ (${pend.length})</b><div class="mut" style="margin-top:4px">ตรวจคลิป แล้วกำหนดคะแนนที่ผู้ชมจะได้ (0 = ไม่ให้คะแนนผู้ชม) ก่อนกดอนุมัติ คลิปจะยังไม่ขึ้นฟีด</div>`;
+ h+=pend.length?pend.map(q=>`<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><div class="gap">${q.thumb?`<img src="${q.thumb}" style="width:64px;height:88px;object-fit:cover;border-radius:8px">`:''}<div style="min-width:0"><b class="n">${esc(q.title||'')}</b><div class="mut">โดย ${esc(q.name||q.uid)} · ${(q.sz/1048576||0).toFixed(1)} MB</div><button class="chip" onclick="ugPreview('${q.id}')">ดูคลิป</button></div></div>
+ <div class="row" style="gap:8px"><input id="ugp-${q.id}" type="number" min="0" max="100000" value="0" ${I} placeholder="คะแนนผู้ชม"><input id="ugs-${q.id}" type="number" min="0" max="7200" value="10" ${I} placeholder="วินาทีที่ต้องดู"></div>
+ <select id="ugm-${q.id}" ${I}><option value="">ไม่ใช้เสียงเพลง</option>${MUS.map(m=>`<option value="${m.id}"${q.mus===m.id?' selected':''}>♪ ${esc(m.title||'')}</option>`).join('')}</select><input id="ugn-${q.id}" ${I} maxlength="80" placeholder="เหตุผล (กรณีปฏิเสธ)"><div class="row" style="gap:8px;margin-top:8px"><button class="btn gold" style="flex:1" onclick="ugApprove('${q.id}')">อนุมัติ</button><button class="btn" style="flex:1" onclick="ugReject('${q.id}')">ปฏิเสธ</button></div></div>`).join(''):'<div class="mut" style="margin-top:8px">ไม่มีคลิปรอตรวจ</div>';
+ h+=`</div><div class="card"><b class="n">คำขอหยกเขียวจากรางวัลคลิป (${req.length})</b><div class="mut" style="margin-top:4px">หยกเป็นสกุลที่ผู้เล่นซื้อด้วยเงินจริง จึงให้แอดมินยืนยันทุกครั้งก่อนเข้าบัญชี</div>`;
+ h+=req.length?req.map(q=>`<div class="row" style="margin-top:10px;gap:8px"><div style="min-width:0"><b class="n">+${q.jade} หยก · ระดับ ${q.tier}</b><div class="mut">${esc(q.email||q.u)} · ${esc(q.clip||'')}</div></div><div class="gap"><button class="chip ok" onclick="ugReq('${q.u}','${q.r}',1)">อนุมัติ</button><button class="chip" onclick="ugReq('${q.u}','${q.r}',0)">ปฏิเสธ</button></div></div>`).join(''):'<div class="mut" style="margin-top:8px">ไม่มีคำขอ</div>';
+ h+=`</div><div class="card"><b class="n">คลิปที่ขึ้นฟีดแล้ว (${UG.length})</b>`;
+ h+=UG.length?UG.map(u=>{const cc=UGC[u.id]||{};return `<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><div class="gap">${u.thumb?`<img src="${u.thumb}" style="width:48px;height:66px;object-fit:cover;border-radius:8px">`:''}<div style="min-width:0"><b class="n">${esc(u.title||'')}</b><div class="mut">โดย ${esc(u.name||u.uid)} · 👁${cc.v||0} ❤${cc.l||0} ↗${cc.s||0} 👤${cc.f||0}</div></div></div>
+ <div class="row" style="gap:8px"><input id="uge-${u.id}" type="number" min="0" value="${u.pts||0}" ${I}><input id="ugf-${u.id}" type="number" min="0" value="${u.sec||0}" ${I}></div><div class="row" style="gap:8px;margin-top:8px"><button class="btn" style="flex:1" onclick="ugEdit('${u.id}')">บันทึกคะแนน/เวลา</button><button class="btn" style="flex:1" onclick="ugRemove('${u.id}')">ลบคลิป</button></div></div>`}).join(''):'<div class="mut" style="margin-top:8px">ยังไม่มีคลิป</div>';
+ const T=cf.tiers;h+=`</div><div class="card"><b class="n">รางวัลตามยอดนิยม</b><div class="mut" style="margin-top:4px">คะแนนยอดนิยม = วิว×a + ถูกใจ×b + แชร์×c + ติดตามจากคลิป×d แล้วเทียบกับระดับด้านล่าง ผู้ลงคลิปรับรางวัลของแต่ละระดับได้ครั้งเดียวต่อคลิป</div>
+ <div class="row" style="gap:6px;margin-top:8px"><input id="ugw_v" type="number" min="0" value="${cf.w.v}" ${I} placeholder="วิว"><input id="ugw_l" type="number" min="0" value="${cf.w.l}" ${I} placeholder="ถูกใจ"><input id="ugw_s" type="number" min="0" value="${cf.w.s}" ${I} placeholder="แชร์"><input id="ugw_f" type="number" min="0" value="${cf.w.f}" ${I} placeholder="ติดตาม"></div>
+ <div class="mut" style="margin-top:10px">ระดับ (ขั้นต่ำ · คะแนน · เหรียญ · หยก)</div>${[0,1,2,3,4].map(i=>{const t=T[i]||{min:'',pts:0,gold:0,jade:0};return `<div class="row" style="gap:6px"><input id="ugt${i}_m" type="number" min="0" value="${t.min}" ${I} placeholder="ขั้นต่ำ"><input id="ugt${i}_p" type="number" min="0" value="${t.pts}" ${I}><input id="ugt${i}_g" type="number" min="0" value="${t.gold}" ${I}><input id="ugt${i}_j" type="number" min="0" max="50" value="${t.jade}" ${I}></div>`}).join('')}
+ <div class="mut" style="margin-top:10px">ขนาดไฟล์คลิปสูงสุด (MB, 1-6)</div><input id="ugmax" type="number" min="1" max="6" value="${(UGCFG&&UGCFG.maxMB)||UG_DEF.maxMB}" ${I}>
+ <button class="btn gold" style="width:100%;margin-top:12px" onclick="ugSaveCfg()">บันทึกการตั้งค่า</button><div class="mut" id="ugcst" style="margin-top:6px"></div></div>`;return h}
+const vAdminUgc=()=>`<div id="ugadm">${ugAdminHTML()}</div>`;
+async function ugPreview(id){try{const sn=await db.ref('ugcv/'+id).once('value'),u=sn.val();if(!u){say('ไม่พบไฟล์คลิป');return}dlgH('<video src="'+u+'" controls autoplay playsinline style="width:100%;max-height:70vh;border-radius:10px;background:#000"></video>')}catch(e){say('โหลดคลิปไม่สำเร็จ')}}
+async function ugApprove(id){const q=UGQ.find(x=>x.id===id);if(!q)return;const pts=Math.max(0,Math.min(100000,Math.round(+$('#ugp-'+id).value)||0)),sec=Math.max(0,Math.min(7200,Math.round(+$('#ugs-'+id).value)||0));if(pts>0&&sec<5){say('ถ้าให้คะแนนผู้ชม ต้องกำหนดเวลาดูอย่างน้อย 5 วินาที');return}
+ try{const mid=($('#ugm-'+id)||{}).value||'',mo=MUS.find(x=>x.id===mid);await db.ref('ugc/'+id).set({uid:q.uid,name:q.name||'',title:q.title||'',thumb:q.thumb||'',pts,sec,mus:mid,mt:mo?mo.title||'':'',ts:firebase.database.ServerValue.TIMESTAMP});await db.ref('ugcq/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+async function ugReject(id){const note=($('#ugn-'+id).value||'').trim().slice(0,80);if(!(await dlg('ปฏิเสธคลิปนี้?','ปฏิเสธ')))return;try{await db.ref('ugcq/'+id).update({st:'r',note});await db.ref('ugcv/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+async function ugEdit(id){const pts=Math.max(0,Math.min(100000,Math.round(+$('#uge-'+id).value)||0)),sec=Math.max(0,Math.min(7200,Math.round(+$('#ugf-'+id).value)||0));if(pts>0&&sec<5){say('ถ้าให้คะแนนผู้ชม ต้องกำหนดเวลาดูอย่างน้อย 5 วินาที');return}try{await db.ref('ugc/'+id).update({pts,sec});say('บันทึกแล้ว')}catch(e){say('ผิดพลาด')}}
+async function ugRemove(id){if(!(await dlg('ลบคลิปนี้ถาวร (รวมไฟล์และยอดทั้งหมด)?','ลบ')))return;try{await db.ref('ugc/'+id).remove();await db.ref('ugcv/'+id).remove();await db.ref('ugcc/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+async function ugReq(u,r,ok){try{if(ok)await db.ref('ugcreq/'+u+'/'+r).update({st:'a'});else await db.ref('ugcreq/'+u+'/'+r).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+async function ugSaveCfg(){const g=i=>Math.max(0,+$('#'+i).value||0),st=$('#ugcst');const w={v:g('ugw_v'),l:g('ugw_l'),s:g('ugw_s'),f:g('ugw_f')};const tiers=[];for(let i=0;i<5;i++){const m=g('ugt'+i+'_m');if(!m)continue;tiers.push({min:m,pts:Math.round(g('ugt'+i+'_p')),gold:Math.round(g('ugt'+i+'_g')),jade:Math.min(50,Math.round(g('ugt'+i+'_j')))})}
+ if(!tiers.length){st.textContent='ต้องมีอย่างน้อย 1 ระดับ';return}tiers.sort((a,b)=>a.min-b.min);const mx=Math.max(1,Math.min(6,+$('#ugmax').value||4));
+ try{await db.ref('settings/ugc').set({w,tiers,maxMB:mx});st.textContent='✅ บันทึกแล้ว '+tstr()}catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}}
+
+
+// ---------- creator profile + music library ----------
+let MUS=[],MP={};
+const SILENT_WAV='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+function musUrl(id){if(!id)return Promise.resolve('');if(!MP[id])MP[id]=db.ref('musicv/'+id).once('value').then(sn=>sn.val()||'').catch(()=>{delete MP[id];return ''});return MP[id]}
+function ugFollowUid(a){if(!a||a==='admin'||a===uid)return false;S.fl=S.fl||{};const on=!S.fl[a];if(on)S.fl[a]=1;else delete S.fl[a];
+ const cn=(path,d)=>db.ref(path).transaction(n=>{n=(n||0)+d;return n<0?0:n}).catch(()=>{});cn('ugfc/'+a,on?1:-1);cn('ugfg/'+uid,on?1:-1);save();return on}
+function ugFollow(id){const c=vfFind(id);if(!c||!c.ugc||c.uid===uid)return;const on=ugFollowUid(c.uid);const f=ugF(c.rid);if(on&&!f.f){f.f=1;ugInc(c.rid,'f',1);ugBump(c.rid,'f',1);save()}
+ document.querySelectorAll('#vf .vffl').forEach(b=>{const x=vfFind(b.id.slice(5));if(x&&x.uid===c.uid)b.classList.toggle('on',on)})}
+async function ugProfile(who){if(!who)return;if(VF.vid)VF.vid.pause();const isA=who==='admin',me=who===uid;
+ const name=isA?'ROV Point Hub':pName(who),handle='@'+(isA?'rovpointhub':'id'+String(who).slice(-6).toLowerCase()),bio=isA?'คลิปทางการจากทีมงาน ROV Point Hub ดูครบเพื่อรับคะแนน':((profs[who]&&profs[who].bio)||'');
+ ugShow(`<div class="ugpg ugprof"><div class="ugph"><button class="vfx" onclick="ugClose()" aria-label="กลับ">‹</button><span></span><span class="vfcnt"></span></div><div class="upm"><div><h1>${esc(name)}</h1><div class="uph">${esc(handle)}</div></div><div class="upav">${isA?'<span class="avs ini vfadm" style="width:92px;height:92px;font-size:26px">ROV</span>':avHTML(who,null,92)}</div></div>
+ <div class="upst"><div><b id="upfg">–</b><span>กำลังติดตาม</span></div><div><b id="upfc">–</b><span>ผู้ติดตาม</span></div><div><b id="uplk">–</b><span>ถูกใจ</span></div></div>
+ <div class="upbtn" id="upbtn"></div>${bio?`<div class="upbio">${esc(bio)}</div>`:''}<div class="upgrid" id="upgrid"><div class="ugempty">กำลังโหลด...</div></div></div>`,'prof');
+ const setB=()=>{const b=$('#upbtn');if(!b)return;const on=!!(S.fl&&S.fl[who]);b.innerHTML=isA?'':me?`<button class="btn gold" style="flex:1" onclick="ugOpenMine()">คลิปของฉัน</button>`:`<button class="upfl${on?' on':''}" onclick="ugProfFollow('${who}')">${on?'กำลังติดตาม':'ติดตาม'}</button><button class="btn" style="flex:1" onclick="ugMsgTo('${who}')">ข้อความ</button>`};setB();ugProf.who=who;ugProf.setB=setB;
+ let items=vfList().filter(c=>(c.uid||'admin')===who);
+ if(!isA){try{const sn=await db.ref('ugc').orderByChild('uid').equalTo(who).once('value'),v=sn.val()||{};const m={};items.forEach(c=>m[c.rid]=c);Object.keys(v).forEach(k=>{if(v[k]&&v[k].uid===who&&!m[k])m[k]=ugAsItem(Object.assign({id:k},v[k]))});items=Object.values(m)}catch(e){}}
+ items.sort((a,b)=>(b.ts||0)-(a.ts||0));if(!$('#upgrid')||ugProf.who!==who)return;
+ let lk=0;items.forEach(c=>{if(c.ugc)lk+=(UGC[c.rid]||{}).l||0});$('#uplk').textContent=isA?'–':abN(lk);
+ $('#upgrid').innerHTML=items.length?items.map(c=>{const cc=c.ugc?(UGC[c.rid]||{}):{};return `<div class="upc" onclick="ugProfOpen('${c.id}','${who}')">${c.thumb?`<img src="${c.thumb}" alt="" loading="lazy">`:'<i></i>'}<span>▶ ${c.ugc?abN(cc.v||0):(c.pts?'+'+abN(c.pts):'')}</span></div>`}).join(''):'<div class="ugempty">ยังไม่มีคลิป</div>';
+ if(!isA){try{const[a,b]=await Promise.all([db.ref('ugfg/'+who).once('value'),db.ref('ugfc/'+who).once('value')]);if($('#upfg')&&ugProf.who===who){$('#upfg').textContent=me?abN(Object.keys(S.fl||{}).length):abN(a.val()||0);$('#upfc').textContent=abN(b.val()||0)}}catch(e){}}else{$('#upfg').textContent='–';$('#upfc').textContent='–'}}
+const ugProf={who:null,setB:null};
+function ugProfOpen(id,who){const e=$('#ug');e.classList.remove('on');e.innerHTML='';e.dataset.mode='';openVF(id,who)}
+function ugProfFollow(a){ugFollowUid(a);if(ugProf.setB)ugProf.setB()}
+function ugMsgTo(a){const e=$('#ug');e.classList.remove('on');e.innerHTML='';e.dataset.mode='';if(VF.open)closeVF();document.body.style.overflow='';openUser(a)}
+// ----- music picker (player) -----
+function ugMusicPick(){const e=$('#ug');if(e.querySelector('.ugsheet'))return;const sh=document.createElement('div');sh.className='ugsheet';
+ sh.innerHTML=`<div class="ugshc"><div class="ugshh"><b>เลือกเสียงเพลง</b><button class="vfx" onclick="ugMusClose()" aria-label="ปิด">✕</button></div><div class="ugshl">${UGM.mus?'<div class="ugmr" onclick="ugMusSet(\'\')"><div><b>ไม่ใช้เสียงเพลง</b></div><span class="chip">เลือก</span></div>':''}${MUS.length?MUS.map(m=>`<div class="ugmr"><div style="min-width:0"><b>${esc(m.title||'')}</b><div class="ugs">${esc(m.artist||'')}</div></div><div class="gap"><button class="chip" onclick="ugMusPrev('${m.id}')">▶ ฟัง</button><button class="chip ok" onclick="ugMusSet('${m.id}')">${UGM.mus&&UGM.mus.id===m.id?'✓ ใช้อยู่':'เลือก'}</button></div></div>`).join(''):'<div class="ugempty">ยังไม่มีเสียงเพลง แอดมินจะเพิ่มให้เร็วๆ นี้</div>'}</div></div>`;e.appendChild(sh)}
+function ugMusClose(){if(UGM.paud){UGM.paud.pause()}const sh=$('#ug .ugsheet');if(sh)sh.remove()}
+async function ugMusPrev(id){const u=await musUrl(id);if(!u)return;UGM.paud=UGM.paud||new Audio();UGM.paud.src=u;UGM.paud.currentTime=0;UGM.paud.play().catch(()=>{})}
+function ugMusSet(id){const m=MUS.find(x=>x.id===id);ugMusClose();if(!m){UGM.mus=null;if(UGM.maud)UGM.maud.pause();ugMusUI();ugPrevMute();return}UGM.mus={id:m.id,title:m.title||''};
+ UGM.maud=UGM.maud||new Audio();UGM.maud.loop=true;musUrl(id).then(u=>{if(u&&UGM.mus&&UGM.mus.id===id){UGM.maud.src=u;UGM.maud.load()}});ugMusUI();ugPrevMute()}
+function ugMusUI(){const t=$('#ugmus');if(t)t.textContent=UGM.mus?UGM.mus.title:'เพิ่มเสียง'}
+function ugPrevMute(){const pv=$('#ugpr');if(!pv)return;pv.muted=!!UGM.mus;pv.onplay=()=>{if(UGM.mus&&UGM.maud&&UGM.maud.src){UGM.maud.currentTime=0;UGM.maud.play().catch(()=>{})}};pv.onpause=()=>{if(UGM.maud)UGM.maud.pause()};pv.ontimeupdate=()=>{if(UGM.mus&&UGM.maud&&pv.currentTime<(pv._pt||0)-.5)UGM.maud.currentTime=0;pv._pt=pv.currentTime};if(UGM.mus&&!pv.paused)pv.onplay()}
+// ----- admin: music library -----
+function vAdminMus(){const I='class="inp" style="margin-top:6px"';return `<div class="card" style="margin-top:0"><b class="n">เพิ่มเสียงเพลง</b><div class="mut" style="margin-top:4px">ผู้เล่นเลือกเสียงเพลงจากรายการนี้ตอนถ่ายหรืออัปโหลดคลิป ไฟล์เสียงไม่เกิน 3 MB (mp3, m4a, wav) ควรใช้เพลงที่คุณมีสิทธิ์ใช้งาน</div>
+ <input id="mu_t" ${I} maxlength="60" placeholder="ชื่อเพลง"><input id="mu_a" ${I} maxlength="60" placeholder="ศิลปิน (ไม่บังคับ)"><input id="mu_f" type="file" accept="audio/*" ${I}>
+ <button class="btn gold" id="mu_b" style="width:100%;margin-top:10px" onclick="musAdd()">อัปโหลดเพลง</button><div class="mut" id="mu_s" style="margin-top:6px"></div></div>
+ <div class="card"><b class="n">เพลงทั้งหมด (${MUS.length})</b><div id="mu_l">${musListHTML()}</div></div>`}
+const musListHTML=()=>MUS.length?MUS.map(m=>`<div class="row" style="margin-top:10px;gap:8px"><div style="min-width:0"><b class="n">${esc(m.title||'')}</b><div class="mut">${esc(m.artist||'')} · ${((m.sz||0)/1048576).toFixed(1)} MB</div></div><div class="gap"><button class="chip" onclick="ugMusPrev('${m.id}')">▶ ฟัง</button><button class="chip" onclick="musDel('${m.id}')">ลบ</button></div></div>`).join(''):'<div class="mut" style="margin-top:8px">ยังไม่มีเพลง</div>'
+async function musAdd(){const st=$('#mu_s'),bt=$('#mu_b'),t=($('#mu_t').value||'').trim(),a=($('#mu_a').value||'').trim(),f=$('#mu_f').files[0];if(!t){st.textContent='กรอกชื่อเพลง';return}if(!f){st.textContent='เลือกไฟล์เสียง';return}if(!f.type.startsWith('audio/')){st.textContent='ต้องเป็นไฟล์เสียงเท่านั้น';return}if(f.size>3*1048576){st.textContent='ไฟล์เกิน 3 MB';return}
+ bt.disabled=true;st.textContent='กำลังอัปโหลด...';try{const d=await readB64(f);const id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);await db.ref('musicv/'+id).set(d);await db.ref('music/'+id).set({title:t,artist:a,sz:f.size,ts:firebase.database.ServerValue.TIMESTAMP});st.textContent='✅ เพิ่มเพลงแล้ว';$('#mu_t').value='';$('#mu_a').value='';$('#mu_f').value=''}catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+async function musDel(id){if(!(await dlg('ลบเพลงนี้? (คลิปที่ใช้เพลงนี้จะกลายเป็นไม่มีเสียง)','ลบ')))return;try{await db.ref('music/'+id).remove();await db.ref('musicv/'+id).remove();delete MP[id]}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
 
 // ---------- boot ----------
 let attachedUid=null;
@@ -1848,7 +2188,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachBpLevels();attachGC();attachSys();if(isAdmin){attachContacts();attachCodes();attachTopups()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachBpLevels();attachGC();attachSys();attachUgc();if(isAdmin){attachContacts();attachCodes();attachTopups()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
