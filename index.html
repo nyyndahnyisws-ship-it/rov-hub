@@ -2086,7 +2086,7 @@ function chLockMsg(n){say('ชุด "'+n+'" ยังล็อกอยู่ �
 function vChar(){setTimeout(()=>chInit(false),30);
  const ch=CHARS[0];
  return `<div class="card" style="margin-top:0;padding:10px"><div id="chbox" style="position:relative;width:100%;max-width:440px;margin:0 auto;aspect-ratio:2/3;border-radius:16px;overflow:hidden;background:radial-gradient(ellipse at 50% 85%,#4b1d6b 0%,#1a0b2b 55%,#0b0615 100%);touch-action:none"><canvas id="chfx" style="position:absolute;inset:0;width:100%;height:100%"></canvas><canvas id="chgl" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none"></canvas><div id="chmsg" style="position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;color:#e9d8ff;text-align:center;padding:20px;font-size:14px">กำลังตรวจสอบไฟล์...</div></div>
- <div class="mut" style="margin-top:8px;text-align:center">ลากนิ้วหมุนทุกทิศ · หยิก 2 นิ้วซูม · แตะ 2 ครั้งรีเซ็ต</div></div>
+ <div class="mut" style="margin-top:8px;text-align:center">ลากนิ้วหมุนทุกทิศ · หยิก 2 นิ้วซูม · แตะ 2 ครั้งรีเซ็ต</div><div class="mut" style="margin-top:4px;text-align:center">ชายกระโปรง แขนเสื้อ ปีก และลำตัวขยับพลิ้วตามลม (ท่าทางเฉพาะ เช่น โบกมือ เดิน ต้องใส่โครงกระดูกให้โมเดลก่อน)</div></div>
  <div class="card"><b class="n">ชุดตัวละคร</b><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px">${CHOUT.map(o=>o.free?`<div class="menu" style="border-color:var(--gold);border-width:2px;text-align:left"><b>${o.name}</b><div class="mut">ใช้อยู่</div></div>`:`<button class="menu" style="text-align:left;opacity:.55" onclick="chLockMsg('${o.name}')"><b>${o.name}</b><div class="mut">ล็อก</div></button>`).join('')}</div></div>
  <div class="card"><b class="n">ทรัพยากรตัวละคร 3 มิติ</b><div class="mut" style="margin-top:4px">ตัวละครแต่ละตัวเป็นไฟล์แยก ดาวน์โหลดเก็บไว้ในเครื่องครั้งเดียว แล้วเปิดดูได้ทันที (แนะนำให้ใช้ Wi-Fi)</div>
  <div class="row" style="margin-top:10px;align-items:center;gap:10px"><div style="flex:1;min-width:0"><b>${ch.name}</b><div class="mut">${ch.mb} MB · โมเดลต้นฉบับเต็มความละเอียด</div><div class="mut" id="chst">กำลังตรวจสอบ...</div></div><button class="btn" id="chdel" style="display:none;flex:none" onclick="chDel()">ลบไฟล์</button></div></div>
@@ -2114,7 +2114,7 @@ async function chInit(user){
  const D=CH.d,pr=D.pr,A={P:D.ac(pr.attributes.POSITION),N:D.ac(pr.attributes.NORMAL),U:D.ac(pr.attributes.TEXCOORD_0),I:D.ac(pr.indices)};
  const mk=(t,src)=>{const x=gl.createShader(t);gl.shaderSource(x,src);gl.compileShader(x);return x};
  const p=gl.createProgram();
- gl.attachShader(p,mk(gl.VERTEX_SHADER,'attribute vec3 P;attribute vec3 N;attribute vec2 U;uniform mat4 M;uniform vec3 S;uniform vec3 T;uniform vec4 X;varying vec3 n;varying vec2 u;void main(){vec3 w=P*S+T;n=N;u=U*X.xy+X.zw;gl_Position=M*vec4(w,1.);}'));
+ gl.attachShader(p,mk(gl.VERTEX_SHADER,'attribute vec3 P;attribute vec3 N;attribute vec2 U;uniform mat4 M;uniform vec3 S;uniform vec3 T;uniform vec4 X;uniform float Tm;uniform vec3 Q;varying vec3 n;varying vec2 u;void main(){vec3 w=P*S+T;float sd=w.x<0.?-1.:1.;float ax0=abs(w.x);float thr=.15+.12*smoothstep(.3,-.4,w.y);float aw=smoothstep(thr,thr+.07,ax0)*smoothstep(-.52,-.36,w.y)*smoothstep(.14,.20,w.z);float ang=aw*(sd>0.?Q.y:Q.z)*sd;vec2 pv=vec2(sd*.17,.45);vec2 rr=w.xy-pv;float ca=cos(ang),sa=sin(ang);w.xy=pv+vec2(ca*rr.x-sa*rr.y,sa*rr.x+ca*rr.y);float hw=smoothstep(.74,.80,w.y);vec2 hr=w.xz-vec2(0.,.28);float hc=cos(Q.x*hw),hsn=sin(Q.x*hw);w.xz=vec2(0.,.28)+vec2(hc*hr.x+hsn*hr.y,-hsn*hr.x+hc*hr.y);n=N;float hn=clamp((w.y+.95)/1.9,0.,1.);float ax=abs(w.x);w.x+=sin(Tm*.8)*.010*hn*hn;w.z+=sin(Tm*.55+1.)*.006*hn;float hd=smoothstep(.84,.93,hn);w.x+=sin(Tm*.7)*.008*hd;w.z+=sin(Tm*.9)*.006*hd;float sk=(1.-smoothstep(.12,.52,hn))*smoothstep(.04,.30,ax);w.x+=sin(Tm*1.4+w.y*5.+w.z*3.)*.035*sk;w.z+=cos(Tm*1.1+w.y*4.+w.x*4.)*.03*sk;float sl=smoothstep(.18,.45,ax)*smoothstep(.28,.6,hn)*(1.-smoothstep(.8,.9,hn));w.z+=sin(Tm*1.2+ax*6.+w.y*2.)*.03*sl;w.y+=sin(Tm*1.+ax*5.)*.012*sl;w.x+=sign(w.x)*sin(Tm*1.2)*.01*sl;float wg=smoothstep(.3,.55,ax)*smoothstep(.55,.75,hn);w.y+=sin(Tm*2.2+ax*8.)*.02*wg;w.z+=sin(Tm*1.8+ax*6.)*.02*wg;float ch=smoothstep(.58,.66,hn)*(1.-smoothstep(.72,.8,hn));w+=N*sin(Tm*1.7)*.004*ch;u=U*X.xy+X.zw;gl_Position=M*vec4(w,1.);}'));
  gl.attachShader(p,mk(gl.FRAGMENT_SHADER,'precision mediump float;uniform sampler2D Tx;uniform mat3 R;uniform float G;varying vec3 n;varying vec2 u;void main(){vec3 N=normalize(R*n);float df=max(dot(N,normalize(vec3(.3,.55,-.8))),0.);float rim=pow(1.-abs(N.z),3.);vec3 c=texture2D(Tx,u).rgb*(.62+.48*df)+rim*vec3(.16,.08,.30)*(.7+.3*G);gl_FragColor=vec4(c,1.);}'));
  gl.linkProgram(p);gl.useProgram(p);
  const up=(nm,x,sz,ty,nr)=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Uint8Array(D.buf,x.bo,x.bl),gl.STATIC_DRAW);const l=gl.getAttribLocation(p,nm);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,sz,ty,nr,x.stride,x.off-x.bo)};
@@ -2131,7 +2131,7 @@ async function chInit(user){
  gl.uniform3f(gl.getUniformLocation(p,'S'),sc,sc,sc);gl.uniform3f(gl.getUniformLocation(p,'T'),D.m[12]-ctr[0],D.m[13]-ctr[1],D.m[14]-ctr[2]);
  const ts=D.tt.scale,to=D.tt.offset;gl.uniform4f(gl.getUniformLocation(p,'X'),ts[0],ts[1],to[0],to[1]);
  gl.enable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.clearColor(0,0,0,0);gl.viewport(0,0,W,H);
- const uM=gl.getUniformLocation(p,'M'),uR=gl.getUniformLocation(p,'R'),uG=gl.getUniformLocation(p,'G');
+ const uM=gl.getUniformLocation(p,'M'),uR=gl.getUniformLocation(p,'R'),uG=gl.getUniformLocation(p,'G'),uTm=gl.getUniformLocation(p,'Tm'),uQ=gl.getUniformLocation(p,'Q');
  d.ext=ext;d.ctr=ctr;
  const ctx=fx.getContext('2d');
  const NP=cfg.fps<=20?10:cfg.fps<=30?18:28;const pts=[];for(let i=0;i<NP;i++)pts.push({a:Math.random()*6.28,r:.25+Math.random()*.35,y:Math.random(),s:.05+Math.random()*.12,z:.6+Math.random()*1.4,h:Math.random()<.5?275:42});
@@ -2159,7 +2159,7 @@ async function chInit(user){
   const r=[cs,sn*ps,-sn*pc, 0,pc,ps, sn,-cs*ps,cs*pc];
   gl.uniformMatrix4fv(uM,false,new Float32Array([r[0]*sx,r[1]*sy,r[2]*sz,0, r[3]*sx,r[4]*sy,r[5]*sz,0, r[6]*sx,r[7]*sy,r[8]*sz,0, 0,-d.ctr[1]*sy*pc*0-.02-(z-1)*.25+Math.sin(tt*1.7)*.004,0,1]));
   gl.uniformMatrix3fv(uR,false,new Float32Array(r));
-  gl.uniform1f(uG,.5+.5*Math.sin(tt*2));
+  gl.uniform1f(uG,.5+.5*Math.sin(tt*2));gl.uniform1f(uTm,tt%628);{let q=[.22*Math.sin(tt*.5),.05+.04*Math.sin(tt*.9),.05*Math.sin(tt*.8+1)];const k=tt%12;if(k>7&&k<11){const e=Math.sin(Math.PI*(k-7)/4);q[1]=.05+1.15*e+.1*Math.sin(tt*9)*e}if(CH.dbg)q=CH.dbg;gl.uniform3f(uQ,q[0],q[1],q[2])}
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.drawElements(gl.TRIANGLES,d.ni,gl.UNSIGNED_INT,0);
   // aura 2D
   ctx.clearRect(0,0,W,H);const cx=W/2,cy=H*.5;
