@@ -2061,10 +2061,12 @@ async function chLoad(onp){
  let buf=null;
  try{const c=await caches.open('rov3d'),m=await c.match('char1.glb');if(m)buf=await m.arrayBuffer()}catch(e){}
  if(!buf){
-  const r=await fetch('char1.glb',{cache:'no-cache'});if(!r.ok)throw new Error('ไม่พบไฟล์ char1.glb — อัปโหลดไฟล์ตัวละครขึ้น GitHub ให้ชื่อตรงกัน');
-  const tot=+r.headers.get('content-length')||27546092;
-  if(r.body&&r.body.getReader){const rd=r.body.getReader();let parts=[],got=0;for(;;){const x=await rd.read();if(x.done)break;parts.push(x.value);got+=x.value.length;onp(Math.min(1,got/tot))}const u=new Uint8Array(got);let o=0;for(const q of parts){u.set(q,o);o+=q.length}buf=u.buffer}
-  else buf=await r.arrayBuffer();
+  const TOT=27546092;let got=0;
+  const grab=async u=>{const r=await fetch(u,{cache:'no-cache'});if(!r.ok)return null;const rd=r.body&&r.body.getReader?r.body.getReader():null;if(!rd){const ab=new Uint8Array(await r.arrayBuffer());got+=ab.length;onp(Math.min(1,got/TOT));return ab}
+   const parts=[];let n=0;for(;;){const x=await rd.read();if(x.done)break;parts.push(x.value);n+=x.value.length;onp(Math.min(1,(got+n)/TOT))}got+=n;const u8=new Uint8Array(n);let o=0;for(const q of parts){u8.set(q,o);o+=q.length}return u8};
+  let whole=await grab('char1.glb');
+  if(!whole){const p1=await grab('char1a.bin'),p2=p1&&await grab('char1b.bin');if(!p1||!p2)throw new Error('ไม่พบไฟล์ตัวละคร (char1a.bin และ char1b.bin) บน GitHub — อัปโหลดให้ครบทั้ง 2 ไฟล์ ชื่อตรงกัน');whole=new Uint8Array(p1.length+p2.length);whole.set(p1,0);whole.set(p2,p1.length)}
+  buf=whole.buffer;
   try{const c=await caches.open('rov3d');await c.put('char1.glb',new Response(buf.slice(0),{headers:{'content-type':'model/gltf-binary'}}))}catch(e){}
  }
  const dv=new DataView(buf);if(dv.getUint32(0,true)!==0x46546C67)throw new Error('ไฟล์ไม่ใช่ .glb');
