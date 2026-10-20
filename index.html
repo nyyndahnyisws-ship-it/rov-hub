@@ -919,11 +919,11 @@ function vShopGold(){const g=S.gold||0;
  <button class="btn ${ok?'gold':''}" ${ok?'':'disabled'} onclick="buyItem('${it.id}')">${ok?'ซื้อ':'เหรียญไม่พอ'}</button></div></div>`}).join('');
  return h}
 function lbContentsHTML(b){const rt=LBR[b.id]||LB_RATE_DEF[b.id],salt=lbSaltPct(b.id);
- const row=(img,nm,pct,em)=>`<div class="row" style="align-items:center;gap:8px;margin-top:6px">${img?`<img src="${img}" alt="" style="width:26px;height:26px;object-fit:contain;border-radius:6px;flex:none">`:`<span style="width:26px;text-align:center;flex:none">${em}</span>`}<div style="min-width:0;flex:1"><span class="n" style="font-size:13px">${esc(nm)}</span></div><span class="mut" style="font-size:12px;flex:none">${pct.toFixed(2)}%</span></div>`;
+ const row=(iconHTML,nm,pct)=>`<div class="row" style="align-items:center;gap:8px;margin-top:6px"><span style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex:none">${iconHTML}</span><div style="min-width:0;flex:1"><span class="n" style="font-size:13px">${esc(nm)}</span></div><span class="mut" style="font-size:12px;flex:none">${pct.toFixed(2)}%</span></div>`;
  return `<div class="mut" style="margin-top:12px;font-weight:600">🎁 เนื้อหาในกล่อง</div>
- ${row(b.img,b.top,rt.top)}
- ${row(null,'แต้ม 2 แต้ม',rt.pts,'🔸')}
- ${row(null,'เกลือ 1 ชิ้น',salt,'🧂')}`}
+ ${row(`<img src="${b.img}" alt="" style="width:26px;height:26px;object-fit:contain;border-radius:6px">`,b.top,rt.top)}
+ ${row(hwIcon('pts',22),'แต้ม 2 แต้ม',rt.pts)}
+ ${row(hwIcon('salt',22),'เกลือ 1 ชิ้น',salt)}`}
 function vShopLB(){const j=S.jade||0;
  let h=`<div class="card" style="margin-top:0"><div class="row"><div><div class="mut">หยกเขียวของคุณ</div><div class="big" id="jadebal2">💎 ${fmt(j)}</div></div></div><div class="mut" style="margin-top:4px">กล่องสุ่มสกิน ใช้หยกเขียวเท่านั้น · กล่องละ ${LB_COST} หยกเขียว · ไม่มีการันตี (ไม่มีระบบพิตี้)</div></div>`;
  h+=LBOX.map(b=>{const n=lbQty[b.id]||1,cost=n*LB_COST,ok=j>=cost;
@@ -938,8 +938,8 @@ function lbQtySet(id,v){v=Math.max(1,Math.min(100,Math.round(+v)||1));lbQty[id]=
 function lbOdds(id){const b=LBOX.find(x=>x.id===id);if(!b)return;const e=$('#dlg');
  e.innerHTML=`<div class="ov" style="align-items:center;padding:16px" onclick="if(event.target===this)$('#dlg').innerHTML=''"><div class="gb" style="border-radius:22px;max-width:400px;max-height:86vh;padding:18px;overflow:auto"><b class="n" style="font-size:18px">อัตราการสุ่ม</b><div class="mut" style="margin:2px 0 12px">${esc(b.name)}</div>
  <div class="row" style="align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px"><img src="${b.img}" alt="" style="width:44px;height:44px;object-fit:contain;border-radius:8px"><div style="min-width:0;flex:1"><b class="n">${esc(b.top)}</b><div class="mut">${rtChip(4)}</div></div><b class="n">${(LBR[id]||LB_RATE_DEF[id]).top.toFixed(2)}%</b></div>
- <div class="row" style="align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;margin-top:8px"><span class="em" style="font-size:28px;width:44px;text-align:center">🔸</span><div style="min-width:0;flex:1"><b class="n">แต้ม 2 แต้ม</b></div><b class="n">${(LBR[id]||LB_RATE_DEF[id]).pts.toFixed(2)}%</b></div>
- <div class="row" style="align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;margin-top:8px"><span class="em" style="font-size:28px;width:44px;text-align:center">🧂</span><div style="min-width:0;flex:1"><b class="n">เกลือ 1 ชิ้น</b></div><b class="n">${lbSaltPct(id).toFixed(2)}%</b></div>
+ <div class="row" style="align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;margin-top:8px"><span style="width:44px;display:flex;align-items:center;justify-content:center">${hwIcon('pts',28)}</span><div style="min-width:0;flex:1"><b class="n">แต้ม 2 แต้ม</b></div><b class="n">${(LBR[id]||LB_RATE_DEF[id]).pts.toFixed(2)}%</b></div>
+ <div class="row" style="align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;margin-top:8px"><span style="width:44px;display:flex;align-items:center;justify-content:center">${hwIcon('salt',28)}</span><div style="min-width:0;flex:1"><b class="n">เกลือ 1 ชิ้น</b></div><b class="n">${lbSaltPct(id).toFixed(2)}%</b></div>
  <div class="mut" style="margin-top:12px">กล่องสุ่มนี้ไม่มีการันตี ไม่มีระบบพิตี้ · ของที่ได้ไม่สามารถแลกคืนได้</div>
  <button class="btn" style="width:100%;margin-top:14px" onclick="$('#dlg').innerHTML=''">ปิด</button></div></div>`}
 async function lbBuy(id){if(isBanned())return;const b=LBOX.find(x=>x.id===id);if(!b)return;const n=Math.max(1,Math.min(100,lbQty[id]||1)),cost=n*LB_COST;
@@ -951,12 +951,17 @@ async function lbBuy(id){if(isBanned())return;const b=LBOX.find(x=>x.id===id);if
   if(r<rt.top){if(!b.own()){b.grant();topN++}else{S.pts=(S.pts||0)+2;ptsN++}}
   else if(r<rt.top+rt.pts){S.pts=(S.pts||0)+2;ptsN++}
   else{S.lbSalt=(S.lbSalt||0)+1;saltN++}}
- S.log.unshift({t:tstr(),m:'สุ่ม '+b.name+' x'+n,n:-cost,cur:'jade'});S.log=S.log.slice(0,80);save();lbShow(b,topN,ptsN,saltN)}
+ S.log.unshift({t:tstr(),m:'สุ่ม '+b.name+' x'+n,n:-cost,cur:'jade'});S.log=S.log.slice(0,80);
+ S.ts=Date.now();if(pushTimer){clearTimeout(pushTimer);pushTimer=null}
+ const btn=$('#dlg .btn.pri');if(btn)btn.disabled=true;
+ try{await pushUser(true)}catch(e){}
+ if(saveOk===false){await dlg('บันทึกผลสุ่มไม่สำเร็จ — เช็กอินเทอร์เน็ตแล้วลองใหม่ อย่าเพิ่งปิดแอป','เข้าใจแล้ว',null);return}
+ lbShow(b,topN,ptsN,saltN)}
 function lbShow(b,topN,ptsN,saltN){const e=$('#dlg');
  const rows=[];
  if(topN)rows.push(`<div class="row" style="align-items:center;gap:10px;margin-top:10px"><img src="${b.img}" alt="" style="width:44px;height:44px;object-fit:contain;border-radius:8px"><div><b class="n">${esc(b.top)}</b><div class="mut">${rtChip(4)} x${topN}</div></div></div>`);
- if(ptsN)rows.push(`<div class="row" style="align-items:center;gap:10px;margin-top:10px"><span class="em" style="font-size:28px;width:44px;text-align:center">🔸</span><div><b class="n">แต้ม ${ptsN*2} แต้ม</b><div class="mut">ได้รับ ${ptsN} ครั้ง</div></div></div>`);
- if(saltN)rows.push(`<div class="row" style="align-items:center;gap:10px;margin-top:10px"><span class="em" style="font-size:28px;width:44px;text-align:center">🧂</span><div><b class="n">เกลือ ${saltN} ชิ้น</b><div class="mut">ได้รับ ${saltN} ครั้ง</div></div></div>`);
+ if(ptsN)rows.push(`<div class="row" style="align-items:center;gap:10px;margin-top:10px"><span style="width:44px;display:flex;align-items:center;justify-content:center">${hwIcon('pts',28)}</span><div><b class="n">แต้ม ${ptsN*2} แต้ม</b><div class="mut">ได้รับ ${ptsN} ครั้ง</div></div></div>`);
+ if(saltN)rows.push(`<div class="row" style="align-items:center;gap:10px;margin-top:10px"><span style="width:44px;display:flex;align-items:center;justify-content:center">${hwIcon('salt',28)}</span><div><b class="n">เกลือ ${saltN} ชิ้น</b><div class="mut">ได้รับ ${saltN} ครั้ง</div></div></div>`);
  e.innerHTML=`<div class="ov" style="align-items:center;padding:16px" onclick="if(event.target===this){$('#dlg').innerHTML='';R()}"><div class="gb" style="border-radius:22px;max-width:400px;max-height:86vh;padding:18px;overflow:auto"><b class="n" style="font-size:18px">ผลการสุ่ม</b><div class="mut" style="margin-top:2px">${esc(b.name)}</div>${rows.join('')}<button class="btn pri" style="width:100%;margin-top:16px" onclick="$('#dlg').innerHTML='';R()">ตกลง</button></div></div>`}
 function lbEquip(kind,on){S.prof=Object.assign({},S.prof||{});if(kind==='frame')S.prof.frame=on?'dragon':'';else S.prof.badge=on?'dragon':'';save();R()}
 function lbBagCard(){if(!S.ownLbFrame&&!S.ownLbBadge&&!(S.lbSalt>0))return '';
@@ -964,7 +969,7 @@ function lbBagCard(){if(!S.ownLbFrame&&!S.ownLbBadge&&!(S.lbSalt>0))return '';
  let h='<div class="card"><b class="n">🐉 คลังไอเทมกล่องสุ่ม</b>';
  if(S.ownLbFrame)h+=`<div class="row" style="align-items:center;gap:10px;margin-top:10px"><img src="${LB_FRAME}" alt="" style="width:44px;height:44px;object-fit:contain;border-radius:8px"><div style="min-width:0;flex:1"><b class="n">กรอบโปรไฟล์ มังกรพยัคฆ์เซียน</b><div class="mut">${rtChip(4)}</div></div><button class="btn ${frEq?'pri':''}" onclick="lbEquip('frame',${frEq?'false':'true'})">${frEq?'ถอด':'สวมใส่'}</button></div>`;
  if(S.ownLbBadge)h+=`<div class="row" style="align-items:center;gap:10px;margin-top:10px"><img src="${LB_BADGE}" alt="" style="width:64px;height:28px;object-fit:contain;border-radius:6px"><div style="min-width:0;flex:1"><b class="n">ป้ายรายชื่อ มังกรพยัคฆ์เซียน</b><div class="mut">${rtChip(4)}</div></div><button class="btn ${bdEq?'pri':''}" onclick="lbEquip('badge',${bdEq?'false':'true'})">${bdEq?'ถอด':'สวมใส่'}</button></div>`;
- if(S.lbSalt>0)h+=`<div class="row" style="align-items:center;gap:10px;margin-top:10px"><span class="em" style="font-size:28px;width:44px;text-align:center">🧂</span><div style="min-width:0;flex:1"><b class="n">เกลือ</b><div class="mut">ของสะสมจากกล่องสุ่ม</div></div><b class="n">${fmt(S.lbSalt)} ชิ้น</b></div>`;
+ if(S.lbSalt>0)h+=`<div class="row" style="align-items:center;gap:10px;margin-top:10px"><span style="width:44px;display:flex;align-items:center;justify-content:center">${hwIcon('salt',28)}</span><div style="min-width:0;flex:1"><b class="n">เกลือ</b><div class="mut">ของสะสมจากกล่องสุ่ม</div></div><b class="n">${fmt(S.lbSalt)} ชิ้น</b></div>`;
  return h+'</div>'}
 async function buyItem(id){const it=shop.find(x=>x.id===id);if(!it)return;if((S.gold||0)<(it.price||0))return;
  if(!(await dlg('ใช้ 🪙 '+fmt(it.price||0)+' ซื้อ "'+it.name+'"\nไอเทมสะสม ไม่มีผลพิเศษในเกม ?')))return;if((S.gold||0)<(it.price||0))return;
