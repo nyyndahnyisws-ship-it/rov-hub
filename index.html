@@ -645,6 +645,26 @@ html.gfx-c0 header::before,html.gfx-c0 header::after,html.gfx-c0 header h1,html.
 .npframe .mut{color:#cfe0f5!important;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .npframe .chip.ok{background:rgba(255,255,255,.22);color:#f3f6ff}
 @keyframes npPan{from{background-position:0 0}to{background-position:-150px 0}}
+
+:root[data-theme="birthday"]{--bg:#0b0a08;--card:#18140d;--ink:#f6e9c8;--mut:#c6b184;--pri:#d4af37;--line:#3d3014;--ok:#241f0c;--okt:#e8c468;--wn:#241f0c;--wnt:#e8c468;--gr:#1f1a10;--gold:#f0c550}
+:root[data-theme="birthday"] body{background:
+ radial-gradient(1.5px 1.5px at 8% 15%,#ffe9a8 70%,transparent),
+ radial-gradient(1px 1px at 22% 65%,#ffd97a 70%,transparent),
+ radial-gradient(1.5px 1.5px at 40% 30%,#fff2c4 70%,transparent),
+ radial-gradient(1px 1px at 58% 80%,#ffe9a8 70%,transparent),
+ radial-gradient(1.5px 1.5px at 75% 20%,#ffd97a 70%,transparent),
+ radial-gradient(1px 1px at 88% 60%,#fff2c4 70%,transparent),
+ radial-gradient(1.5px 1.5px at 95% 90%,#ffe9a8 70%,transparent),
+ var(--bg)}
+:root[data-theme="birthday"] header{background:linear-gradient(135deg,#1c1608,#2e2309);box-shadow:0 0 26px rgba(212,175,55,.35)}
+:root[data-theme="birthday"] .card{box-shadow:0 0 0 1px rgba(212,175,55,.16) inset}
+:root[data-theme="birthday"] .btn.pri,:root[data-theme="birthday"] .tab.on{background:linear-gradient(135deg,#f3d27a,#b8872f);color:#1a1405;border-color:#d4af37;box-shadow:0 0 14px rgba(212,175,55,.45)}
+:root[data-theme="birthday"] nav{background:#140f07;border-top-color:#3d3014}
+:root[data-theme="birthday"] .avs{box-shadow:0 0 0 2px #d4af37,0 0 14px rgba(212,175,55,.6)}
+.bdayband{position:relative;overflow:hidden;text-align:center;border-color:#3d3014!important;background:linear-gradient(135deg,#1c1608,#241c0a)}
+.bdayband::before{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(240,197,80,.18) 48%,transparent 66%);transform:translateX(-120%);animation:bdayShine 3.8s ease-in-out infinite}
+@keyframes bdayShine{0%,55%{transform:translateX(-120%)}100%{transform:translateX(220%)}}
+html.gfx-c0 .bdayband::before,html.gfx-c1 .bdayband::before{animation:none!important}
 </style></head><body>
 <header><div class="ico">🎮</div><div style="flex:1;min-width:0"><h1 id="h1">ROV Point Hub</h1><p id="hp"></p></div>
 <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex:none" id="hact"></div></header>
@@ -682,9 +702,40 @@ const hwRn=k=>COSK[k]!=null?RT[COSK[k]][0]:HW_RN[HW_RAR[k]];
 const hwCol=k=>COSK[k]!=null?RT[COSK[k]][1]:HW_COL[HW_RAR[k]];
 const THEMES=[{id:'default',rt:0,name:'ธีมปกติ',desc:'โทนเขียวเรียบง่าย ใช้ได้ทุกคน',sw:'linear-gradient(135deg,#0d5c63,#e8f1f0)'},{id:'fantasy',rt:3,name:'ตำนานเทพกู้จักรวาล',desc:'แฟนตาซีสีน้ำเงิน แบนเนอร์มังกร โลโก้ X ปลดล็อกจากเวอร์พาสเลเวล 70',get sw(){return "url('"+IMG.bn+"') center/cover"}},{id:'halloween',rt:4,name:'ฮาโลวีน ปราสาทรัตติกาล',desc:'ธีม UI ฮาโลวีนทั้งเว็บ ปราสาทกลางคืน กรอบทองส้ม ได้จากตู้กาชาตู้ที่ 2',sw:"url('"+HW3.cov+"') center/cover #150a26"}];
 function themeOk(id){return id==='default'||!!(typeof isAdmin!=='undefined'&&isAdmin)||(id==='fantasy'&&!!(S&&S.themeUnlocked))||(id==='halloween'&&!!(S&&S.hw&&S.hw.ui))}
+const BDAY_MD={m:10,d:22};
+function bdayActive(){const now=new Date(),day=864e5;
+ const mk=y=>new Date(y,BDAY_MD.m-1,BDAY_MD.d).getTime();
+ const y=now.getFullYear();
+ for(const yy of [y-1,y,y+1]){const diff=(now.getTime()-mk(yy))/day;if(diff>=-3&&diff<=3)return true}
+ return false}
+let bdayWishes=[],bdayWishesRefOff=null;
+function attachBdayWishes(){try{bdayWishesRefOff=db.ref('cmts/bdaywish');bdayWishesRefOff.on('value',snap=>{const v=snap.val()||{};
+ bdayWishes=Object.keys(v).map(k=>Object.assign({id:k},v[k])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+ if(pg==='home'||pg==='more')R();
+ bdayWishRender()},()=>{})}catch(e){}}
+function bdayWishRender(){const el=document.querySelector('#dlg .bdaywish-list');if(!el)return;const cnt=$('#bdaywishcnt');if(cnt)cnt.textContent=bdayWishes.length;
+ el.innerHTML=bdayWishes.length?bdayWishes.map(w=>`<div class="row" style="align-items:flex-start;gap:8px;margin-top:10px;padding-bottom:10px;border-bottom:1px solid var(--line)"><div style="min-width:0;flex:1"><b class="n" style="font-size:13px">${esc(w.n||'ผู้เล่น')}</b><div style="white-space:pre-wrap;margin-top:2px">${esc(w.t||'')}</div></div>${(w.u===uid||isAdmin)?`<button class="chip" onclick="bdayWishDel('${w.id}')">ลบ</button>`:''}</div>`).join(''):'<div class="mut" style="margin-top:10px;text-align:center">ยังไม่มีใครเขียนคำอวยพร เป็นคนแรกเลย!</div>'}
+function bdayWishOpen(){const e=$('#dlg');
+ e.innerHTML=`<div class="ov" style="align-items:center;padding:16px" onclick="if(event.target===this)$('#dlg').innerHTML=''"><div class="gb" style="border-radius:22px;max-width:420px;max-height:86vh;padding:18px;overflow:auto">
+ <b class="n" style="font-size:18px">🎂 เขียนคำอวยพรวันเกิดให้แอดมิน</b>
+ <textarea id="bdaywishtxt" class="inp" rows="3" maxlength="120" placeholder="เขียนคำอวยพร... (ไม่เกิน 120 ตัวอักษร)" style="margin-top:10px;resize:vertical;width:100%"></textarea>
+ <button class="btn pri" id="bdaywishbtn" style="width:100%;margin-top:8px" onclick="bdayWishSend()">ส่งคำอวยพร</button>
+ <div class="mut" style="margin-top:16px;font-weight:600">คำอวยพรทั้งหมด (<span id="bdaywishcnt">${bdayWishes.length}</span>)</div>
+ <div class="bdaywish-list"></div>
+ <button class="btn" style="width:100%;margin-top:14px" onclick="$('#dlg').innerHTML=''">ปิด</button>
+ </div></div>`;
+ bdayWishRender()}
+async function bdayWishSend(){if(isBanned())return;const ta=$('#bdaywishtxt'),t=(ta.value||'').trim();if(!t)return;
+ if(t.length>120){say('ข้อความยาวเกินไป (ไม่เกิน 120 ตัวอักษร)');return}
+ const btn=$('#bdaywishbtn');if(btn)btn.disabled=true;
+ try{const ref=db.ref('cmts/bdaywish').push();await ref.set({u:uid,n:pName(uid,{}),t,ts:Date.now()});ta.value=''}
+ catch(e){say('ส่งไม่สำเร็จ ลองใหม่อีกครั้ง')}finally{if(btn)btn.disabled=false}}
+async function bdayWishDel(id){if(!(await dlg('ลบคำอวยพรนี้?','ลบ')))return;try{await db.ref('cmts/bdaywish/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
+function bdayBanner(){if(!bdayActive())return'';
+ return `<div class="card bdayband" style="margin-top:0"><div style="position:relative;z-index:1"><div style="font-size:30px">🎉🥂🎂</div><b class="n" style="font-size:17px;color:#f6e9c8">สุขสันต์วันเกิดแอดมิน!</b><div class="mut" style="color:#c6b184;margin-top:4px">ธีมทองพิเศษฉลองวันเกิด — จำกัดเวลาเท่านั้น</div><button class="btn pri" style="margin-top:10px" onclick="bdayWishOpen()">✍️ เขียนคำอวยพร${bdayWishes.length?' ('+bdayWishes.length+')':''}</button></div></div>`}
 const hwUi=()=>!!(S&&S.theme==='halloween'&&themeOk('halloween'));
 function setTheme(id){if(!themeOk(id))return;S.theme=id;save();R()}
-function applyTheme(){try{const d=document.documentElement;if(S&&themeOk('fantasy')&&S.theme==='fantasy'){d.setAttribute('data-theme','fantasy');d.removeAttribute('data-skin');d.style.setProperty('--imgbn','url('+IMG.bn+')')}else if(hwUi()){d.setAttribute('data-theme','fantasy');d.setAttribute('data-skin','halloween');d.style.setProperty('--imgbn','url('+HWUA.hdr+')');d.style.setProperty('--hwscene','url("'+HWSCENE+'")');if(!window.__h3){window.__h3=1;for(const k in HW3)d.style.setProperty('--h-'+k.toLowerCase().replace('ic_','i-'),'url("'+HW3[k]+'")')}}else{d.removeAttribute('data-theme');d.removeAttribute('data-skin')}}catch(e){}}
+function applyTheme(){try{const d=document.documentElement;if(bdayActive()){d.setAttribute('data-theme','birthday');d.removeAttribute('data-skin')}else if(S&&themeOk('fantasy')&&S.theme==='fantasy'){d.setAttribute('data-theme','fantasy');d.removeAttribute('data-skin');d.style.setProperty('--imgbn','url('+IMG.bn+')')}else if(hwUi()){d.setAttribute('data-theme','fantasy');d.setAttribute('data-skin','halloween');d.style.setProperty('--imgbn','url('+HWUA.hdr+')');d.style.setProperty('--hwscene','url("'+HWSCENE+'")');if(!window.__h3){window.__h3=1;for(const k in HW3)d.style.setProperty('--h-'+k.toLowerCase().replace('ic_','i-'),'url("'+HW3[k]+'")')}}else{d.removeAttribute('data-theme');d.removeAttribute('data-skin')}}catch(e){}}
 
 let fbApp,auth,db,ready=false;
 let user=null,uid=null,isAdmin=false,authMode='in';
@@ -1648,7 +1699,7 @@ let SYS={},sysRefOff=null,sysDraft=null;
 function attachSys(){try{sysRefOff=db.ref('settings/system');sysRefOff.on('value',snap=>{SYS=snap.val()||{};if(pg==='login')return;if(pg==='admin'){if(adminTab==='sys'){const e=$('#sysst');if(e)e.textContent='ซิงก์ล่าสุด '+tstr()}}else R()},()=>{})}catch(e){}}
 const sysMaint=()=>!!(SYS&&SYS.maint)&&!isAdmin;
 const sysMult=()=>{const m=SYS&&SYS.mult;return m&&m.on&&(+m.x>1)&&(!m.until||m.until>Date.now())?Math.min(10,+m.x):1};
-function sysNoticeH(){const n=SYS&&SYS.notice;let h='';if(SYS&&SYS.maint&&isAdmin)h+='<div class="card" style="margin-top:0;border-color:#ef4444"><b class="n">โหมดปิดปรับปรุงเปิดอยู่</b><div class="mut">ผู้เล่นทั่วไปเข้าไม่ได้ แอดมินใช้งานได้ตามปกติ</div></div>';if(sysMult()>1)h+='<div class="card" style="margin-top:0;border-color:#f5b82e"><b class="n">กิจกรรม: คะแนนที่ได้รับ x'+sysMult()+'</b>'+(SYS.mult.until?'<div class="mut">ถึง '+new Date(SYS.mult.until).toLocaleString('th-TH')+'</div>':'')+'</div>';if(n&&n.on&&n.text)h+='<div class="card" style="margin-top:0;border-color:'+({info:'#38bdf8',warn:'#f5b82e',bad:'#ef4444'}[n.kind]||'#38bdf8')+'"><div style="white-space:pre-wrap">'+esc(n.text)+'</div></div>';return h}
+function sysNoticeH(){const n=SYS&&SYS.notice;let h=bdayBanner();if(SYS&&SYS.maint&&isAdmin)h+='<div class="card" style="margin-top:0;border-color:#ef4444"><b class="n">โหมดปิดปรับปรุงเปิดอยู่</b><div class="mut">ผู้เล่นทั่วไปเข้าไม่ได้ แอดมินใช้งานได้ตามปกติ</div></div>';if(sysMult()>1)h+='<div class="card" style="margin-top:0;border-color:#f5b82e"><b class="n">กิจกรรม: คะแนนที่ได้รับ x'+sysMult()+'</b>'+(SYS.mult.until?'<div class="mut">ถึง '+new Date(SYS.mult.until).toLocaleString('th-TH')+'</div>':'')+'</div>';if(n&&n.on&&n.text)h+='<div class="card" style="margin-top:0;border-color:'+({info:'#38bdf8',warn:'#f5b82e',bad:'#ef4444'}[n.kind]||'#38bdf8')+'"><div style="white-space:pre-wrap">'+esc(n.text)+'</div></div>';return h}
 function vMaint(){return '<div class="card" style="margin-top:20px;text-align:center"><div style="font-size:42px">🛠️</div><b class="n">ปิดปรับปรุงชั่วคราว</b><div class="mut" style="margin-top:8px;white-space:pre-wrap">'+esc((SYS&&SYS.maintMsg)||'กำลังปรับปรุงระบบ กรุณากลับมาใหม่ภายหลัง')+'</div></div>'}
 function vAdminSys(){const d=sysDraft||(sysDraft=JSON.parse(JSON.stringify(SYS||{})));d.notice=d.notice||{};d.mult=d.mult||{};
  const I='class="inp"';const hrs=d.mult.until?Math.max(0,Math.round((d.mult.until-Date.now())/36e5)):'';
@@ -2890,7 +2941,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachBpLevels();attachGC();attachLBR();attachDECOR();attachSys();attachUgc();if(isAdmin){attachContacts();attachCodes();attachTopups()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachBpLevels();attachGC();attachLBR();attachDECOR();attachBdayWishes();attachSys();attachUgc();if(isAdmin){attachContacts();attachCodes();attachTopups()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
