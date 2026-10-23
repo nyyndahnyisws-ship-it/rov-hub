@@ -646,6 +646,10 @@ html.gfx-c0 header::before,html.gfx-c0 header::after,html.gfx-c0 header h1,html.
 .npframe .chip.ok{background:rgba(255,255,255,.22);color:#f3f6ff}
 @keyframes npPan{from{background-position:0 0}to{background-position:-150px 0}}
 
+:root[data-theme="fantasy"][data-skin="birthday"]{--pri:#d4af37;--gold:#f0c550;--line:#4a3a16}
+:root[data-theme="fantasy"][data-skin="birthday"] header{background:linear-gradient(135deg,#1c1608,#2e2309)!important;box-shadow:0 0 26px rgba(212,175,55,.4)}
+:root[data-theme="fantasy"][data-skin="birthday"] .btn.pri,:root[data-theme="fantasy"][data-skin="birthday"] .tab.on{background:linear-gradient(135deg,#f3d27a,#b8872f)!important;color:#1a1405!important;border-color:#d4af37!important}
+:root[data-theme="fantasy"][data-skin="birthday"] .avs{box-shadow:0 0 0 2px #d4af37,0 0 14px rgba(212,175,55,.6)}
 :root[data-theme="birthday"]{--bg:#0b0a08;--card:#18140d;--ink:#f6e9c8;--mut:#c6b184;--pri:#d4af37;--line:#3d3014;--ok:#241f0c;--okt:#e8c468;--wn:#241f0c;--wnt:#e8c468;--gr:#1f1a10;--gold:#f0c550}
 :root[data-theme="birthday"] body{background:
  radial-gradient(1.5px 1.5px at 8% 15%,#ffe9a8 70%,transparent),
@@ -735,7 +739,7 @@ function bdayBanner(){if(!bdayActive())return'';
  return `<div class="card bdayband" style="margin-top:0"><div style="position:relative;z-index:1"><div style="font-size:30px">🎉🥂🎂</div><b class="n" style="font-size:17px;color:#f6e9c8">สุขสันต์วันเกิดแอดมิน!</b><div class="mut" style="color:#c6b184;margin-top:4px">ธีมทองพิเศษฉลองวันเกิด — จำกัดเวลาเท่านั้น</div><button class="btn pri" style="margin-top:10px" onclick="bdayWishOpen()">✍️ เขียนคำอวยพร${bdayWishes.length?' ('+bdayWishes.length+')':''}</button></div></div>`}
 const hwUi=()=>!!(S&&S.theme==='halloween'&&themeOk('halloween'));
 function setTheme(id){if(!themeOk(id))return;S.theme=id;save();R()}
-function applyTheme(){try{const d=document.documentElement;if(bdayActive()){d.setAttribute('data-theme','birthday');d.removeAttribute('data-skin')}else if(S&&themeOk('fantasy')&&S.theme==='fantasy'){d.setAttribute('data-theme','fantasy');d.removeAttribute('data-skin');d.style.setProperty('--imgbn','url('+IMG.bn+')')}else if(hwUi()){d.setAttribute('data-theme','fantasy');d.setAttribute('data-skin','halloween');d.style.setProperty('--imgbn','url('+HWUA.hdr+')');d.style.setProperty('--hwscene','url("'+HWSCENE+'")');if(!window.__h3){window.__h3=1;for(const k in HW3)d.style.setProperty('--h-'+k.toLowerCase().replace('ic_','i-'),'url("'+HW3[k]+'")')}}else{d.removeAttribute('data-theme');d.removeAttribute('data-skin')}}catch(e){}}
+function applyTheme(){try{const d=document.documentElement;if(S&&themeOk('fantasy')&&S.theme==='fantasy'){d.setAttribute('data-theme','fantasy');if(bdayActive())d.setAttribute('data-skin','birthday');else d.removeAttribute('data-skin');d.style.setProperty('--imgbn','url('+IMG.bn+')')}else if(hwUi()){d.setAttribute('data-theme','fantasy');d.setAttribute('data-skin','halloween');d.style.setProperty('--imgbn','url('+HWUA.hdr+')');d.style.setProperty('--hwscene','url("'+HWSCENE+'")');if(!window.__h3){window.__h3=1;for(const k in HW3)d.style.setProperty('--h-'+k.toLowerCase().replace('ic_','i-'),'url("'+HW3[k]+'")')}}else if(bdayActive()){d.setAttribute('data-theme','birthday');d.removeAttribute('data-skin')}else{d.removeAttribute('data-theme');d.removeAttribute('data-skin')}}catch(e){}}
 
 let fbApp,auth,db,ready=false;
 let user=null,uid=null,isAdmin=false,authMode='in';
