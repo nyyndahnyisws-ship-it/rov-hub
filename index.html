@@ -2055,7 +2055,7 @@ function vAdminDecor(){const d=decorDraft||DECORP;
 // ---------- jump event (โดดดึ๋ง รับรางวัลฟรี) ----------
 const JUMP_TILES=24;
 const JUMP_START_DEF=Date.now(),JUMP_END_DEF=JUMP_START_DEF+14*864e5;
-const JUMPCFG_DEF={passCost:50,discCost:80,rndTixPct:10,treasureRarePct:0.0001,coinNormalMin:5,coinNormalMax:10,coinRandomMin:10,coinRandomMax:20,coinTreasureMin:30,coinTreasureMax:60};
+const JUMPCFG_DEF={passCost:50,discCost:80,rndTixPct:10,treasureRarePct:0.0001,coinPlainMin:1,coinPlainMax:3,coinNormalMin:8,coinNormalMax:15,coinRandomMin:15,coinRandomMax:25,coinTreasureMin:40,coinTreasureMax:80};
 let JUMPCFG=Object.assign({start:JUMP_START_DEF,end:JUMP_END_DEF},JUMPCFG_DEF),jumpCfgDraft=null,jumpAnim=false;
 function jumpMerge(v){const o=Object.assign({start:JUMP_START_DEF,end:JUMP_END_DEF},JUMPCFG_DEF);
  if(v&&typeof v==='object'){if(typeof v.start==='number')o.start=v.start;if(typeof v.end==='number')o.end=v.end;
@@ -2081,9 +2081,36 @@ function jumpInvite(){const t='มาเล่นกิจกรรม "โด�
  try{navigator.clipboard.writeText(t);say('คัดลอกข้อความชวนเพื่อนแล้ว')}catch(e){say(t)}}
 function jumpMsClaim(k){jumpRoll();if(S.jump.ms[k]||!jumpMsDone(k))return;S.jump.ms[k]=1;S.jump.tix=(S.jump.tix||0)+1;save();R();say('ได้รับตั๋วกระโดด +1 🎵')}
 function jumpMsAll(){jumpRoll();if(S.jump.ms.all||!JUMP_MS.every(m=>S.jump.ms[m[0]]))return;S.jump.ms.all=1;S.jump.tix=(S.jump.tix||0)+1;save();R();say('โบนัสทำครบทุกข้อ! ได้รับตั๋วกระโดด +1 🎵')}
-function jumpTile(t){return((t-1)%JUMP_TILES)+1}
-function jumpBoxType(t){if(t<1)return'start';const p=jumpTile(t);if(p%5===0)return'treasure';if(p%3===0)return'random';return'normal'}
-function jumpBoxIcon(ty){return ty==='treasure'?'🎁':ty==='random'?'❓':ty==='start'?'🚩':'📦'}
+let JUMPINVREQ={};
+function jumpInvCredit(){if(!S||!uid)return;jumpRoll();S.jump.invc=S.jump.invc||{};let any=false;
+ Object.keys(JUMPINVREQ).forEach(k=>{if(S.jump.invc[k])return;if(Object.keys(S.jump.invc).length>=50)return;S.jump.invc[k]=1;const n=jumpRnd(1,38);S.jump.tix=(S.jump.tix||0)+n;any=true;
+  notifyC({title:'เพื่อนใช้โค้ดกิจกรรมของคุณ',txt:'ได้รับตั๋วกระโดด +'+n,act:'hideToast()'})});
+ if(any){save();if(pg==='jump')R()}}
+async function jumpInviteFriend(id){const c=S.invc0||await invMyCode();if(!c)return;ntfSend(id,'j',null,c);say('ส่งคำเชิญไปหาเพื่อนแล้ว')}
+async function jumpShareCode(){const c=S.invc0||await invMyCode();if(!c)return;
+ const t='มาเล่นกิจกรรม "โดดดึ๋ง รับรางวัลฟรี" กับฉันที! ใส่โค้ด '+c+' รับตั๋วกระโดดฟรีสุ่ม 1-38 ใบ ที่ ROV Point Hub '+location.href.split('#')[0];
+ try{if(navigator.share){await navigator.share({text:t});return}}catch(e){return}
+ try{await navigator.clipboard.writeText(t);say('คัดลอกข้อความเชิญแล้ว')}catch(e){say(t)}}
+async function jumpCodeRedeem(){if(!jumpActive())return;jumpRoll();const el=$('#jcin'),c=((el&&el.value)||'').trim().toUpperCase();
+ if(S.jump.codeDay===day()){say('วันนี้กรอกโค้ดช่วยเพื่อนไปแล้ว พรุ่งนี้มาใหม่ได้นะ');return}
+ if(!/^[A-Z0-9]{4,8}$/.test(c)){say('รหัสไม่ถูกต้อง');return}
+ try{const sn=await db.ref('invites/'+c).once('value'),who=sn.val();
+  if(!who){say('ไม่พบโค้ดนี้');return}
+  if(who===uid){say('ใช้โค้ดของตัวเองไม่ได้');return}
+  await db.ref('jumpinv/'+who+'/'+uid).set({ts:firebase.database.ServerValue.TIMESTAMP,n:pName(uid)});
+  const n=jumpRnd(1,38);S.jump.tix=(S.jump.tix||0)+n;S.jump.codeDay=day();save();if(el)el.value='';R();
+  say('กรอกโค้ดสำเร็จ! ได้รับตั๋วกระโดด +'+n)}
+ catch(e){say('ไม่สำเร็จ ('+((e&&e.code)||'ลองใหม่')+')')}}
+function jumpInviteHTML(){const fr=Object.keys(myFriends||{});
+ setTimeout(()=>{invMyCode().then(c=>{const e=$('#jcode');if(e)e.textContent=c||'----'})},0);
+ const redeemedToday=S.jump.codeDay===day();
+ return `<div class="card"><b class="n">🤝 เชิญเพื่อนกลับมาเล่น</b><div class="mut" style="margin:4px 0 8px">ให้เพื่อนกรอกโค้ดของคุณ เพื่อนได้ตั๋วกระโดดสุ่ม 1-38 ใบทันที คุณก็ได้รับด้วยเช่นกัน</div>
+ <div class="row" style="gap:8px"><div class="dyc" id="jcode">......</div><button class="btn" onclick="navigator.clipboard.writeText(($('#jcode')||{}).textContent||'').then(()=>say('คัดลอกแล้ว')).catch(()=>{})">คัดลอก</button><button class="btn pri" onclick="jumpShareCode()">เชิญเพื่อน</button></div>
+ ${fr.length?`<div class="mut" style="margin-top:12px">เชิญเพื่อนในลิสต์ของคุณ</div>`+fr.map(id=>{const r=leaderboard.find(x=>x.uid===id)||{};return `<div class="row" style="padding:8px 0"><div class="gap" style="min-width:0">${avHTML(id,r,34)}<b class="n">${esc(pName(id,r))}</b></div><button class="btn" onclick="jumpInviteFriend('${id}')">เชิญ</button></div>`}).join(''):''}
+ <div class="mut" style="margin-top:14px">กรอกโค้ดของเพื่อน รับตั๋วกระโดดฟรีสุ่ม 1-38 ใบ (วันละ 1 ครั้ง)</div>
+ <div class="row" style="gap:8px;margin-top:6px"><input class="dyi" id="jcin" maxlength="8" placeholder="กรอกโค้ดเพื่อน" ${redeemedToday?'disabled':''}><button class="btn pri" onclick="jumpCodeRedeem()" ${redeemedToday?'disabled':''}>${redeemedToday?'รับแล้ววันนี้':'ยืนยัน'}</button></div></div>`}
+function jumpBoxType(t){if(t<1)return'start';if(t%50===0)return'treasure';if(t%30===0)return'random';if(t%20===0)return'normal';return'plain'}
+function jumpBoxIcon(ty){return ty==='treasure'?'🎁':ty==='random'?'❓':ty==='normal'?'📦':ty==='start'?'🚩':'🪙'}
 function jumpBoxLabel(ty){return ty==='treasure'?'กล่องสมบัติ':ty==='random'?'กล่องสุ่ม':'กล่องธรรมดา'}
 const jumpRnd=(mn,mx)=>Math.floor(Math.random()*(Math.max(mn,mx)-Math.min(mn,mx)+1))+Math.min(mn,mx);
 function jumpTixRoll(){const tiers=[[1,5,60],[6,15,25],[16,40,10],[41,70,4],[71,100,1]];
@@ -2099,7 +2126,8 @@ let jumpHolding=false,jumpHoldTimer=null,jumpHoldIv=null,jumpHoldStartTix=0,jump
 function jumpDo(){if(isBanned()||!jumpActive())return;jumpRoll();if((S.jump.tix||0)<1){jumpHoldStop();return}
  S.jump.tix--;S.jump.tile=(S.jump.tile||0)+1;jumpAnim=true;R();
  const ty=jumpBoxType(S.jump.tile);let title='',txt='';
- if(ty==='normal'){const n=jumpRnd(JUMPCFG.coinNormalMin,JUMPCFG.coinNormalMax);S.jumpCoin=(S.jumpCoin||0)+n;title='📦 กล่องธรรมดา';txt='ได้รับเหรียญกิจกรรม +'+n}
+ if(ty==='plain'){const n=jumpRnd(JUMPCFG.coinPlainMin,JUMPCFG.coinPlainMax);S.jumpCoin=(S.jumpCoin||0)+n;title='🪙 เก็บเหรียญ';txt='ได้รับเหรียญกิจกรรม +'+n}
+ else if(ty==='normal'){const n=jumpRnd(JUMPCFG.coinNormalMin,JUMPCFG.coinNormalMax);S.jumpCoin=(S.jumpCoin||0)+n;title='📦 กล่องธรรมดา';txt='ได้รับเหรียญกิจกรรม +'+n}
  else if(ty==='random'){if(Math.random()*100<JUMPCFG.rndTixPct){const tx=jumpTixRoll();S.jump.tix=(S.jump.tix||0)+tx;title='❓ กล่องสุ่ม';txt='ได้รับ 🎵 ตั๋วกระโดด +'+tx}
   else{const n=jumpRnd(JUMPCFG.coinRandomMin,JUMPCFG.coinRandomMax);S.jumpCoin=(S.jumpCoin||0)+n;title='❓ กล่องสุ่ม';txt='ได้รับเหรียญกิจกรรม +'+n}}
  else{if(Math.random()*100<JUMPCFG.treasureRarePct){const label=jumpRareGrant();title='🎉🎁 กล่องสมบัติ สุดยอด!';txt='ได้รับ '+label+' !!'}
@@ -2112,13 +2140,12 @@ function jumpHoldStart(){if(jumpHolding||isBanned()||!jumpActive())return;jumpRo
  jumpHoldTimer=setTimeout(()=>{if(!jumpHolding)return;
   jumpHoldIv=setInterval(()=>{if(!jumpHolding||(S.jump.tix||0)<1){jumpHoldStop();return}jumpHoldN++;jumpDo()},320)
  },320)}
-function jumpHoldStop(){jumpHolding=false;if(jumpHoldTimer){clearTimeout(jumpHoldTimer);jumpHoldTimer=null}if(jumpHoldIv){clearInterval(jumpHoldIv);jumpHoldIv=null}if(pg==='jump')R()}
-try{window.addEventListener('pointerup',jumpHoldStop);window.addEventListener('pointercancel',jumpHoldStop)}catch(e){}
+function jumpHoldStop(){if(jumpHoldTimer){clearTimeout(jumpHoldTimer);jumpHoldTimer=null}if(jumpHoldIv){clearInterval(jumpHoldIv);jumpHoldIv=null}if(!jumpHolding)return;jumpHolding=false;if(pg==='jump')R()}
 function jumpBoardHTML(){const cur=S.jump.tile||0,n=7;let h='<div class="jpboard">';
  for(let i=0;i<n;i++){const t=cur+i,here=i===0,ty=jumpBoxType(t);
-  h+=`<div class="jptile">${here?`<div class="jpchar${jumpAnim?' jphop':''}">🏃</div>`:''}<div class="jpbox${here?' jphere':''}">${jumpBoxIcon(ty)}</div><div class="jpn">${t<1?'เริ่ม':jumpTile(t)}</div></div>`}
+  h+=`<div class="jptile">${here?`<div class="jpchar${jumpAnim?' jphop':''}">🏃</div>`:''}<div class="jpbox${here?' jphere':''}">${jumpBoxIcon(ty)}</div><div class="jpn">${t<1?'เริ่ม':t}</div></div>`}
  h+='</div>';return h}
-function jumpRules(){say('📦 กล่องธรรมดา\nได้เหรียญกิจกรรมเสมอ\n\n❓ กล่องสุ่ม\nส่วนใหญ่ได้เหรียญกิจกรรม มีโอกาส '+JUMPCFG.rndTixPct+'% ได้ตั๋วกระโดดเพิ่ม (สุ่มจำนวน 1-100 ใบ)\n\n🎁 กล่องสมบัติ\nส่วนใหญ่ได้เหรียญกิจกรรมก้อนใหญ่ มีโอกาสน้อยมาก ('+JUMPCFG.treasureRarePct+'%) ได้ของหายากสุด: กรอบ/พื้นหลัง/ธีม UI ฮาโลวีน หรือกรอบ-ป้ายมังกรพยัคฆ์เซียน')}
+function jumpRules(){say('🪙 ช่องปกติ\nเดินผ่านเก็บเหรียญกิจกรรมเล็กน้อยทุกช่อง\n\n📦 กล่องธรรมดา (ทุก 20 ช่อง)\nได้เหรียญกิจกรรมก้อนใหญ่กว่าปกติ\n\n❓ กล่องสุ่ม (ทุก 30 ช่อง)\nส่วนใหญ่ได้เหรียญกิจกรรม มีโอกาส '+JUMPCFG.rndTixPct+'% ได้ตั๋วกระโดดเพิ่ม (สุ่มจำนวน 1-100 ใบ)\n\n🎁 กล่องสมบัติ (ทุก 50 ช่อง)\nส่วนใหญ่ได้เหรียญกิจกรรมก้อนใหญ่สุด มีโอกาสน้อยมาก ('+JUMPCFG.treasureRarePct+'%) ได้ของหายากสุด: กรอบ/พื้นหลัง/ธีม UI ฮาโลวีน หรือกรอบ-ป้ายมังกรพยัคฆ์เซียน\n\nเดินไปเรื่อยๆไม่มีที่สิ้นสุด กล่องจะวนตามรอบนี้ตลอดกิจกรรม')}
 function jumpMsRow(k,l){const done=S.jump.ms[k],ok=!done&&jumpMsDone(k);
  return `<div class="dym"><div><b class="n">${l}</b></div><button class="btn ${ok?'gold':''}" ${ok?'':'disabled'} onclick="${k==='share'?'jumpShareReady()':`jumpMsClaim('${k}')`}">${done?'รับแล้ว':ok?'รับ':'ยังไม่ครบ'}</button></div>`}
 async function jumpExPass(){const c=JUMPCFG.passCost;if((S.jumpCoin||0)<c){say('เหรียญกิจกรรมไม่พอ (ต้องการ '+c+')');return}
@@ -2139,7 +2166,8 @@ function vJump(){jumpRoll();
  <div class="card"><b class="n">กระเป๋าของฉัน</b><div class="row" style="margin-top:6px"><span class="chip ok">🎫 บัตรปลดล็อกเวอร์พาส ${h.pass||0}</span><span class="chip ok">💎 คูปองส่วนลด 15% ${S.jadeDisc||0}</span></div></div>
  <div class="card"><b class="n">ภารกิจรับตั๋วกระโดด</b><div class="mut" style="margin-bottom:4px">ทำได้สูงสุด ${1+JUMP_MS.length+1} ตั๋ว/วัน · รีเซ็ตทุกเที่ยงคืน</div>
  ${JUMP_MS.map(m=>jumpMsRow(m[0],m[1])).join('')}
- <div class="dym"><div><b class="n">โบนัสทำครบทุกข้อ</b></div><button class="btn ${allok&&!gotAll?'gold':''}" ${allok&&!gotAll?'':'disabled'} onclick="jumpMsAll()">${gotAll?'รับแล้ว':allok?'รับ':'ยังไม่ครบ'}</button></div></div>`}
+ <div class="dym"><div><b class="n">โบนัสทำครบทุกข้อ</b></div><button class="btn ${allok&&!gotAll?'gold':''}" ${allok&&!gotAll?'':'disabled'} onclick="jumpMsAll()">${gotAll?'รับแล้ว':allok?'รับ':'ยังไม่ครบ'}</button></div></div>
+ ${jumpInviteHTML()}`}
 function jumpCard(){if(!jumpActive())return'';return `<div class="card" style="margin-top:0;cursor:pointer" onclick="go('jump')"><div class="row"><div class="gap"><span class="em">🪂</span><div><b class="n">โดดดึ๋ง รับรางวัลฟรี</b><div class="mut">ตั๋ววันนี้ ${(S.jump&&S.jump.tix)||0} ใบ · เหรียญกิจกรรม ${(S&&S.jumpCoin)||0} · แตะเพื่อเล่น</div></div></div><span class="chip wn">ใหม่</span></div></div>`}
 function vAdminJump(){const d=jumpCfgDraft||JUMPCFG;
  return `<div class="card" style="margin-top:0"><b class="n">🪂 ตั้งค่ากิจกรรมโดดดึ๋ง (เรียลไทม์)</b><div class="mut" style="margin-top:4px">แก้ค่าแล้วกด "บันทึก" มีผลกับผู้เล่นทุกคนทันที · <span id="jumpst"></span></div>
@@ -2150,6 +2178,8 @@ function vAdminJump(){const d=jumpCfgDraft||JUMPCFG;
  <label class="gcl"><span>ราคาแลกคูปองส่วนลด 15% (เหรียญกิจกรรม)</span><input class="inp" type="number" min="0" step="1" value="${d.discCost}" oninput="jumpCfgSetNum('discCost',this.value)"></label>
  <label class="gcl"><span>โอกาสกล่องสุ่มได้ตั๋วกระโดด (%)</span><input class="inp" type="number" min="0" max="100" step="0.1" value="${d.rndTixPct}" oninput="jumpCfgSetNum('rndTixPct',this.value)"></label>
  <label class="gcl"><span>โอกาสกล่องสมบัติได้ของหายาก (%)</span><input class="inp" type="number" min="0" max="100" step="0.0001" value="${d.treasureRarePct}" oninput="jumpCfgSetNum('treasureRarePct',this.value)"></label>
+ <label class="gcl"><span>เหรียญกิจกรรม ช่องปกติ (ต่ำสุด)</span><input class="inp" type="number" min="0" step="1" value="${d.coinPlainMin}" oninput="jumpCfgSetNum('coinPlainMin',this.value)"></label>
+ <label class="gcl"><span>เหรียญกิจกรรม ช่องปกติ (สูงสุด)</span><input class="inp" type="number" min="0" step="1" value="${d.coinPlainMax}" oninput="jumpCfgSetNum('coinPlainMax',this.value)"></label>
  <label class="gcl"><span>เหรียญกิจกรรม กล่องธรรมดา (ต่ำสุด)</span><input class="inp" type="number" min="0" step="1" value="${d.coinNormalMin}" oninput="jumpCfgSetNum('coinNormalMin',this.value)"></label>
  <label class="gcl"><span>เหรียญกิจกรรม กล่องธรรมดา (สูงสุด)</span><input class="inp" type="number" min="0" step="1" value="${d.coinNormalMax}" oninput="jumpCfgSetNum('coinNormalMax',this.value)"></label>
  <label class="gcl"><span>เหรียญกิจกรรม กล่องสุ่ม (ต่ำสุด)</span><input class="inp" type="number" min="0" step="1" value="${d.coinRandomMin}" oninput="jumpCfgSetNum('coinRandomMin',this.value)"></label>
@@ -2831,12 +2861,13 @@ function invCredit(){if(!S||!uid)return;S.invc=S.invc||{};let n=0;Object.keys(IN
 let NTF=[];
 function ntfSend(to,k,rid,t){if(!to||to===uid||to==='admin')return;try{db.ref('notif/'+to).push({k,from:uid,fn:vName(uid),rid:rid||'',t:(t||'').slice(0,60),ts:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{})}catch(e){}}
 function ntfUnread(){const r=(S&&S.nread)||0;return NTF.filter(x=>(x.ts||0)>r).length}
-function ntfTxt(n){const w=esc(n.fn||'ผู้เล่น');return n.k==='c'?w+' คอมเมนต์คลิป "'+esc(n.t)+'"':n.k==='l'?w+' ถูกใจคลิป "'+esc(n.t)+'"':n.k==='f'?w+' เริ่มติดตามคุณ':n.k==='a'?'คลิป "'+esc(n.t)+'" ผ่านการตรวจแล้ว':n.k==='i'?w+' ใช้รหัสเชิญของคุณ (ได้ +150 คะแนน)':'การแจ้งเตือน'}
+function ntfTxt(n){const w=esc(n.fn||'ผู้เล่น');return n.k==='c'?w+' คอมเมนต์คลิป "'+esc(n.t)+'"':n.k==='l'?w+' ถูกใจคลิป "'+esc(n.t)+'"':n.k==='f'?w+' เริ่มติดตามคุณ':n.k==='a'?'คลิป "'+esc(n.t)+'" ผ่านการตรวจแล้ว':n.k==='i'?w+' ใช้รหัสเชิญของคุณ (ได้ +150 คะแนน)':n.k==='j'?w+' ชวนคุณเล่นกิจกรรมโดดดึ๋ง! ใช้โค้ด '+esc(n.t)+' รับตั๋วกระโดดฟรี':'การแจ้งเตือน'}
 function ntfAgo(t){if(!t)return'';const d=Date.now()-t,m=Math.floor(d/6e4);return m<1?'เมื่อกี้':m<60?m+' นาทีก่อน':m<1440?Math.floor(m/60)+' ชั่วโมงก่อน':Math.floor(m/1440)+' วันก่อน'}
 function ntfHTML(){const r=(S&&S.nread)||0;if(!NTF.length)return '';return `<div class="ibh">การแจ้งเตือน (${NTF.length})</div>`+NTF.slice(0,25).map(n=>`<div class="ibt${(n.ts||0)>r?' nw':''}" onclick="${n.from&&n.k!=='a'?`ugProfile('${n.from}')`:''}">${n.from?vAv(n.from,38,n.fn):''}<div class="ibtx">${ntfTxt(n)}<small>${ntfAgo(n.ts)}</small></div></div>`).join('')}
 function ntfSeen(){if(!S)return;const m=NTF.reduce((a,x)=>Math.max(a,x.ts||0),0);if(m>(S.nread||0)){S.nread=m;save()}vfNavBadge()}
 function attachP1(){try{attachRw()}catch(e){}try{let q=db.ref('vprof');q.on('value',sn=>{VP=sn.val()||{};vpRefreshDom()},()=>{});ugRefs.push(q);q=db.ref('vmidx/'+uid);q.on('value',sn=>{VMI=sn.val()||{};vfNavBadge();const u=$('#ug');if(u&&u.classList.contains('on')&&u.dataset.mode==='inbox')ugInbox()},()=>{});ugRefs.push(q)}catch(e){}let r=db.ref('notif/'+uid).limitToLast(40);r.on('value',sn=>{const v=sn.val()||{};NTF=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));vfNavBadge();if(($('#ug')||{}).dataset&&$('#ug').dataset.mode==='inbox'&&$('#ug').classList.contains('on'))ugInbox()},()=>{});ugRefs.push(r);
- r=db.ref('invreq/'+uid);r.on('value',sn=>{INVREQ=sn.val()||{};invCredit()},()=>{});ugRefs.push(r)}
+ r=db.ref('invreq/'+uid);r.on('value',sn=>{INVREQ=sn.val()||{};invCredit()},()=>{});ugRefs.push(r);
+ r=db.ref('jumpinv/'+uid);r.on('value',sn=>{JUMPINVREQ=sn.val()||{};jumpInvCredit()},()=>{});ugRefs.push(r)}
 // ---- comments ----
 let CM={rid:null,list:[],ref:null,owner:''};
 function cmOpen(id){const c=vfFind(id);if(!c||!c.ugc)return;cmClose();CM.rid=c.rid;CM.owner=c.uid;CM.title=c.title;let e=$('#cmts');if(!e){e=document.createElement('div');e.id='cmts';document.body.appendChild(e)}
