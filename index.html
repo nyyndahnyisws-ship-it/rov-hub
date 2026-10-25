@@ -804,9 +804,9 @@ function vLogin(){loginShownAt=Date.now();return `<div class="card" style="margi
 // ---------- realtime user doc ----------
 function attachUser(){userRefOff=db.ref('users/'+uid);
  userRefOff.on('value',snap=>{const v=snap.val();
-  if(!v){S=fresh();pushUser(true);roll();try{invCredit()}catch(e){}try{jumpInvCredit()}catch(e){}pg==='admin'?head():R();return}
+  if(!v){S=fresh();pushUser(true);roll();pg==='admin'?head():R();return}
   if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return} // echo of our own write — local state already correct, skip re-render so nothing on screen (e.g. a form you're typing in) gets wiped
-  const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();try{invCredit()}catch(e){}try{jumpInvCredit()}catch(e){}pg==='admin'?head():R() // on the admin page a background update only refreshes the header (points/nav), never the form itself
+  const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();pg==='admin'?head():R() // on the admin page a background update only refreshes the header (points/nav), never the form itself
  },e=>{markSave(false)})}
 function detachAll(){try{detachUgc()}catch(e){}if(cmLegacy){cmLegacy.off();cmLegacy=null}if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();if(leaderboardRefOff)leaderboardRefOff.off();if(codesRefOff)codesRefOff.off();if(shopRefOff)shopRefOff.off();if(topupsRefOff)topupsRefOff.off();if(myTopupsRefOff)myTopupsRefOff.off();if(qrRefOff)qrRefOff.off();if(bpLevelsRefOff)bpLevelsRefOff.off();if(gcRefOff)gcRefOff.off();if(jumpCfgRefOff)jumpCfgRefOff.off();jumpCfgRefOff=null;gcRefOff=null;userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;leaderboardRefOff=null;codesRefOff=null;shopRefOff=null;topupsRefOff=null;myTopupsRefOff=null;qrRefOff=null;bpLevelsRefOff=null;detachSocial();S=null;content=[];announce=[];contacts=[];leaderboard=[];codes=[];shop=[];topups=[];myTopups=[];bpLevels={};run=null;goldRun=null}
 function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
@@ -1537,7 +1537,7 @@ function markAnnRead(){if(!S)return;const m=Math.max(S.annRead||0,...announce.ma
 function annItemHTML(a){return `<div class="annit">${a.img?`<img src="${a.img}" alt="" style="width:100%;border-radius:12px;display:block;margin-bottom:8px">`:''}<b>${esc(a.title||'')}</b>${a.body?`<div style="margin-top:4px;white-space:pre-wrap">${esc(a.body)}</div>`:''}<div class="mut" style="font-size:11px;margin-top:4px">${a.ts?new Date(a.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div>${a.to&&V[a.to]?`<button class="btn pri" style="width:100%;margin-top:8px" onclick="annGo('${a.to}')">ไปดูเลย</button>`:''}</div>`}
 function annGo(to){$('#dlg').innerHTML='';annOpen=false;markAnnRead();go(to)}
 async function openAnnCenter(){if(annOpen)return;annOpen=true;const list=announce.slice(0,20);await dlgH('<b style="font-size:17px">ประกาศ</b>'+(list.length?list.map(annItemHTML).join(''):'<div class="mut">ยังไม่มีประกาศ</div>'),'ปิด',null);annOpen=false;markAnnRead()}
-const WHATSNEW_VER='jump4';
+const WHATSNEW_VER='jump6';
 const WHATSNEW_ITEMS=[
  ['🪂 เปิดกิจกรรมใหม่ "โดดดึ๋ง รับรางวัลฟรี"','เดินกระโดดเก็บกล่องไปเรื่อยๆ ไม่มีที่สิ้นสุด มีกล่องธรรมดา/กล่องสุ่ม/กล่องสมบัติ ตามรูปแบบกิจกรรมของจริงในเกม'],
  ['🪙 ระบบเหรียญกิจกรรม + ตั๋วกระโดด','ทุกช่องได้เหรียญกิจกรรมเก็บสะสม เอาไปแลกบัตรเวอร์พาสหรือคูปองส่วนลดเติมหยกเขียว 15% ได้ที่ร้านแลกในหน้ากิจกรรม'],
@@ -1546,12 +1546,18 @@ const WHATSNEW_ITEMS=[
  ['🤝 เชิญเพื่อนกลับมาเล่น','มีหน้าต่างเชิญเพื่อนแบบในเกมจริง แท็บ "เชิญเพื่อน" และ "ภารกิจรายวัน" เพื่อนที่ถูกเชิญจะได้รับข้อความเชิญเข้าแชทหลักโดยตรง'],
  ['🔑 กรอกโค้ดรับตั๋วกระโดด','กรอกโค้ดกิจกรรมของเพื่อน (ขึ้นต้นด้วย J เสมอ) รับตั๋วกระโดดสุ่ม 1-38 ใบทันที โค้ดนี้แยกออกจากโค้ดเชิญเพื่อนหลักของเกมโดยสมบูรณ์แล้ว ไม่ปนกันอีกต่อไป'],
  ['🛡️ กันเข้าหลายบัญชีเครื่องเดียว','เครื่องเดียวกันเข้าได้สูงสุด 2 บัญชี บัญชีที่ 3 ขึ้นไปจะถูกระงับสิทธิ์กิจกรรมโดดดึ๋งถาวร (บัญชีอื่นของเว็บยังใช้งานได้ปกติ)'],
- ['🔒 เพิ่มความปลอดภัยหน้าล็อกอิน/สมัคร','กันบอทด้วยระบบตรวจจับการกรอกผิดปกติ บังคับตั้งรหัสผ่านที่แข็งแรงขึ้นตอนสมัครสมาชิก และหน่วงเวลาอัตโนมัติเมื่อล็อกอินผิดซ้ำหลายครั้ง']
+ ['🔒 เพิ่มความปลอดภัยหน้าล็อกอิน/สมัคร','กันบอทด้วยระบบตรวจจับการกรอกผิดปกติ บังคับตั้งรหัสผ่านที่แข็งแรงขึ้นตอนสมัครสมาชิก และหน่วงเวลาอัตโนมัติเมื่อล็อกอินผิดซ้ำหลายครั้ง'],
+ ['🔑 แยกโค้ดกิจกรรมโดดดึ๋งออกจากโค้ดเชิญเพื่อนหลัก','โค้ดกิจกรรมจะขึ้นต้นด้วย J เสมอ ไม่ปนกับโค้ดเชิญเพื่อนปกติของเกมอีกต่อไป (แก้บั๊กกรอกโค้ดแล้วไม่ได้ตั๋ว)'],
+ ['🎉 หน้าต่าง "มีอะไรใหม่"','เด้งแจ้งอัตโนมัติเมื่อมีอัปเดตใหม่ กดดูซ้ำได้จากเมนูเพิ่มเติม'],
+ ['🔔 การแจ้งเตือนนอกเว็บ','เปิดได้จากหน้าตั้งค่า เมื่อเปิดเว็บทิ้งไว้เบื้องหลัง (สลับแอป/ล็อกหน้าจอ) จะมีแจ้งเตือนเด้งขึ้นมาตอนมีข้อความแชทใหม่ คำเชิญ หรือประกาศจากแอดมิน'],
+ ['🐛 แก้บั๊กตั๋วกระโดดได้เกินจริง','ป้องกันการให้เครดิตเพื่อนซ้ำเมื่อระบบซิงก์ชนกัน ตอนนี้แต่ละคนจะได้รับเครดิตแค่ครั้งเดียวแน่นอน'],
+ ['👆 ปรับปุ่มกระโดดใหม่','เอาโหมดกดค้างออก เปลี่ยนเป็น "กระโดดครั้งเดียว" และ "กระโดดทั้งหมด" ทุกครั้งที่กระโดดจะมีหน้าต่างแสดงรางวัลให้เห็นชัดเจน']
 ];
 function whatsNewHTML(){return '<div style="text-align:center;margin-bottom:10px"><b class="n" style="font-size:19px">🎉 มีอะไรใหม่</b><div class="mut" style="margin-top:2px">สรุปสิ่งที่เพิ่ม/ปรับปรุงล่าสุด</div></div>'+WHATSNEW_ITEMS.map(it=>'<div style="margin-bottom:12px"><b class="n" style="display:block">'+it[0]+'</b><div class="mut" style="margin-top:2px">'+it[1]+'</div></div>').join('')}
 async function openWhatsNew(){await dlgH(whatsNewHTML(),'ปิด')}
 async function checkWhatsNew(){if(!S||!uid||isBanned()||pg==='login'||$('#dlg').innerHTML)return;if(S.wnSeen===WHATSNEW_VER)return;S.wnSeen=WHATSNEW_VER;save();await dlgH(whatsNewHTML(),'เข้าใจแล้ว')}
 async function checkAnnPopup(){if(annOpen||!S||!uid||isBanned()||pg==='login'||(isAdmin&&pg==='admin'))return;const u=annUnread();if(!u.length)return;annOpen=true;
+ osNotify('📢 ประกาศใหม่'+(u.length>1?' ('+u.length+' รายการ)':''),(u[0]&&(u[0].title||u[0].body))||'มีประกาศใหม่จากแอดมิน');
  await dlgH('<div class="mut" style="margin-bottom:6px;font-weight:700">ประกาศใหม่'+(u.length>1?' '+u.length+' รายการ':'')+'</div>'+u.slice(0,5).map(annItemHTML).join(''),'รับทราบ',null);annOpen=false;markAnnRead()}
 function bellHTML(){const n=annUnread().length,b=n?`<span class="bdg">${n>9?'9+':n}</span>`:'';return FX()?`<button class="fp" onclick="openAnnCenter()">${fi2('bell')}<b>ประกาศ</b>${b||fi2('chev')}</button>`:`<button class="sw" style="margin:0" onclick="openAnnCenter()">🔔 ประกาศ${b}</button>`}
 let bnPause=0;
@@ -1964,7 +1970,7 @@ function vipSettings(){const pc=passCount(),adm=typeof isAdmin!=='undefined'&&is
  return `<div class="card" style="margin-top:0"><b class="n">ยศเวอร์พาส (VIP)</b><div class="mut" style="margin-top:4px">แสดงยศของคุณข้างชื่อในอันดับ · สะสมการซื้อเวอร์พาสพรีเมียมแล้ว <b>${adm?'ทุกพาส (แอดมิน)':pc+' พาส'}</b> · กดซ้ำที่ยศที่ใช้อยู่เพื่อซ่อน</div>${grid('v')}</div>
  <div class="card"><b class="n">ป้ายชื่อซีซั่นเวอร์พาส</b><div class="mut" style="margin-top:4px">ใช้เงื่อนไขการปลดล็อกเดียวกับยศ VIP แสดงใต้ชื่อในอันดับ</div>${grid('p')}</div>`}
 function vSettings(){const ts=myTitles();
- return gfxCard()+vipSettings()+`<div class="card" style="margin-top:0"><b class="n">ยศและป้ายชื่อ</b><div class="mut" style="margin-top:4px">ไอเทมที่ได้จากเวอร์พาส (เช่น ไอเทมตำนานประจำซีซั่น) ใช้เป็นยศแสดงข้างชื่อในหน้าอันดับได้ ผู้เล่นที่มียศจะมีป้ายชื่อเรืองแสงในอันดับ</div>${ts.length?ts.map((t,i)=>`<div class="row" style="margin-top:10px"><span class="ttl">${esc(t)}</span>${rtChip(3)}${S.title===t?'<button class="btn" onclick="setTitle(-1)">ถอดยศ</button>':'<button class="btn pri" onclick="setTitle('+i+')">สวมใส่</button>'}</div>`).join(''):'<div class="mut" style="margin-top:8px">ยังไม่มียศ — รับไอเทมจากรางวัลเวอร์พาสเพื่อปลดล็อก</div>'}</div>`
+ return notifSettingsHTML()+gfxCard()+vipSettings()+`<div class="card" style="margin-top:0"><b class="n">ยศและป้ายชื่อ</b><div class="mut" style="margin-top:4px">ไอเทมที่ได้จากเวอร์พาส (เช่น ไอเทมตำนานประจำซีซั่น) ใช้เป็นยศแสดงข้างชื่อในหน้าอันดับได้ ผู้เล่นที่มียศจะมีป้ายชื่อเรืองแสงในอันดับ</div>${ts.length?ts.map((t,i)=>`<div class="row" style="margin-top:10px"><span class="ttl">${esc(t)}</span>${rtChip(3)}${S.title===t?'<button class="btn" onclick="setTitle(-1)">ถอดยศ</button>':'<button class="btn pri" onclick="setTitle('+i+')">สวมใส่</button>'}</div>`).join(''):'<div class="mut" style="margin-top:8px">ยังไม่มียศ — รับไอเทมจากรางวัลเวอร์พาสเพื่อปลดล็อก</div>'}</div>`
  +`<div class="card" style="margin-top:0"><b class="n">คลังธีม UI</b><div class="mut" style="margin-top:4px">ธีมที่ปลดล็อกแล้วเลือกใช้ได้ทันที ${isAdmin?'(แอดมินปลดล็อกทุกธีมอัตโนมัติ)':'ปลดล็อกธีมใหม่ได้จากรางวัลเวอร์พาส'}</div></div>`
  +THEMES.map(t=>{const ok=themeOk(t.id),on=(S.theme||'default')===t.id||(t.id==='default'&&!S.theme);
   return `<div class="card"><div class="row" style="align-items:flex-start;gap:12px"><div style="width:84px;height:64px;border-radius:12px;border:2px solid ${RT[t.rt][1]};box-shadow:0 0 10px ${RT[t.rt][1]}66;flex:none;background:${t.sw}"></div><div style="flex:1;min-width:0"><b class="n">${t.name}</b><div style="margin-top:5px">${rtChip(t.rt)}</div><div class="mut" style="margin-top:4px">${t.desc}</div></div></div>
@@ -1980,7 +1986,19 @@ function chatPend(){return Object.keys(chatReqIn).filter(k=>(chatReqIn[k]||{}).s
 function chatBadge(){const n=chatUnread()+chatPend();return n?`<span class="bdg">${n>9?'9+':n}</span>`:''}
 function fabUpdate(){let f=document.getElementById('cfab');if(!f){f=document.createElement('button');f.id='cfab';f.onclick=()=>go('chats');document.body.appendChild(f)}
  const show=!!(S&&uid&&pg!=='login'&&pg!=='chat'&&pg!=='chats'&&pg!=='rank'&&pg!=='missions'&&pg!=='user'&&pg!=='bp'&&pg!=='gacha'&&!isBanned());f.style.display=show?'grid':'none';if(show)f.innerHTML=chI()+chatBadge()}
-function notifyC(o){if(isBanned())return;let t=document.getElementById('ctoast');if(!t){t=document.createElement('div');t.id='ctoast';document.body.appendChild(t)}
+function canOSNotify(){return !!(S&&S.notifOn&&typeof Notification!=='undefined'&&Notification.permission==='granted')}
+function osNotify(title,body){if(!canOSNotify())return;if(!(document.hidden||!document.hasFocus()))return;try{new Notification(title||'ROV Point Hub',{body:body||'',tag:'rovph',renotify:true})}catch(e){}}
+async function toggleOSNotif(){
+ if(typeof Notification==='undefined'){say('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการแจ้งเตือนนอกเว็บ');return}
+ if(S.notifOn){S.notifOn=false;save();R();say('ปิดการแจ้งเตือนนอกเว็บแล้ว');return}
+ let p=Notification.permission;
+ if(p==='default')p=await Notification.requestPermission();
+ if(p!=='granted'){say('ไม่ได้รับอนุญาตแจ้งเตือน กรุณาเปิดสิทธิ์แจ้งเตือนของเว็บนี้ในตั้งค่าเบราว์เซอร์/มือถือ แล้วลองเปิดอีกครั้ง');return}
+ S.notifOn=true;save();R();say('เปิดการแจ้งเตือนนอกเว็บแล้ว ✅\n\nเงื่อนไข: ต้องเปิดเว็บนี้ทิ้งไว้ (สลับไปแอปอื่น/ล็อกหน้าจอได้ แต่ห้ามปิดแท็บ/ปิดแอปจริงๆ) ถึงจะมีการแจ้งเตือนเด้งขึ้นมา — แนะนำให้กดติดตั้งเป็นแอปที่หน้าจอหลักไว้ด้วยจะสะดวกสุด')}
+function notifSettingsHTML(){const on=!!S.notifOn,granted=typeof Notification!=='undefined'&&Notification.permission==='granted';
+ return `<div class="card" style="margin-top:0"><b class="n">🔔 การแจ้งเตือนนอกเว็บ</b><div class="mut" style="margin-top:4px">เปิดไว้แล้วเปิดเว็บทิ้งไว้เบื้องหลัง (สลับแอป/ล็อกหน้าจอได้) จะมีการแจ้งเตือนเด้งขึ้นมาเวลามีข้อความแชทใหม่ คำเชิญ หรือประกาศจากแอดมิน — ต้องติดตั้งเว็บนี้เป็นแอปที่หน้าจอหลักก่อนถึงจะได้ผลดีที่สุด</div>
+ <div class="row" style="margin-top:10px"><span class="chip ${on&&granted?'ok':'wn'}">${on&&granted?'เปิดอยู่':granted&&!on?'ปิดอยู่':'ยังไม่อนุญาต'}</span><button class="btn pri" style="margin-left:auto" onclick="toggleOSNotif()">${on?'ปิดการแจ้งเตือน':'เปิดการแจ้งเตือน'}</button></div></div>`}
+function notifyC(o){if(isBanned())return;osNotify(o.title,o.txt);let t=document.getElementById('ctoast');if(!t){t=document.createElement('div');t.id='ctoast';document.body.appendChild(t)}
  t.innerHTML=`<div class="ctin" onclick="${o.act}">${o.av||''}<div style="min-width:0;flex:1"><b class="n">${esc(o.title)}</b><div class="mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(o.txt)}</div></div></div>`;t.className='on';clearTimeout(toastTm);toastTm=setTimeout(()=>{t.className=''},5500)}
 function hideToast(){const t=document.getElementById('ctoast');if(t)t.className=''}
 function chatRefresh(){fabUpdate();if(pg==='chats'||pg==='user')R();else if(pg==='more')R();else head()}
@@ -2115,10 +2133,16 @@ function jumpInvite(){const t='มาเล่นกิจกรรม "โด�
 function jumpMsClaim(k){jumpRoll();if(S.jump.ms[k]||!jumpMsDone(k))return;S.jump.ms[k]=1;S.jump.tix=(S.jump.tix||0)+1;save();R();say('ได้รับตั๋วกระโดด +1 🎵')}
 function jumpMsAll(){jumpRoll();if(S.jump.ms.all||!JUMP_MS.every(m=>S.jump.ms[m[0]]))return;S.jump.ms.all=1;S.jump.tix=(S.jump.tix||0)+1;save();R();say('โบนัสทำครบทุกข้อ! ได้รับตั๋วกระโดด +1 🎵')}
 let JUMPINVREQ={};
-function jumpInvCredit(){if(!S||!uid)return;jumpRoll();S.jump.invc=S.jump.invc||{};let any=false;
- Object.keys(JUMPINVREQ).forEach(k=>{if(S.jump.invc[k])return;if(Object.keys(S.jump.invc).length>=50)return;S.jump.invc[k]=1;const n=jumpRnd(1,38);S.jump.tix=(S.jump.tix||0)+n;any=true;
-  notifyC({title:'เพื่อนใช้โค้ดกิจกรรมของคุณ',txt:'ได้รับตั๋วกระโดด +'+n,act:'hideToast()'})});
- if(any){save();if(pg==='jump')R()}}
+async function jumpInvCreditOne(k){try{
+  const r=await db.ref('users/'+uid+'/jump/invc/'+k).transaction(v=>v?undefined:1);
+  if(!r.committed)return; // already claimed (by us earlier, or a concurrent/duplicate trigger) - never grant twice
+  const n=jumpRnd(1,38);
+  await db.ref('users/'+uid+'/jump/tix').transaction(v=>(v||0)+n);
+  if(S&&uid){S.jump=S.jump||{};S.jump.invc=S.jump.invc||{};S.jump.invc[k]=1;S.jump.tix=(S.jump.tix||0)+n;if(pg==='jump')R()}
+  notifyC({title:'เพื่อนใช้โค้ดกิจกรรมของคุณ',txt:'ได้รับตั๋วกระโดด +'+n,act:'hideToast()'})
+ }catch(e){}}
+function jumpInvCredit(){if(!S||!uid)return;jumpRoll();S.jump.invc=S.jump.invc||{};
+ Object.keys(JUMPINVREQ).forEach(k=>{if(S.jump.invc[k])return;if(Object.keys(S.jump.invc).length>=50)return;jumpInvCreditOne(k)})}
 async function jumpInviteFriend(id){const c=S.jcode0||await jumpMyCode();if(!c)return;
  try{
   if(!chatOk[id]){await db.ref('chatok/'+uid+'/'+id).set(true);await db.ref('chatok/'+id+'/'+uid).set(true);chatOk[id]=true}
@@ -2188,25 +2212,35 @@ function jumpRareGrant(){const pool=[
  ['กรอบโปรไฟล์ มังกรพยัคฆ์เซียน',()=>{S.ownLbFrame=true}],
  ['ป้ายรายชื่อ มังกรพยัคฆ์เซียน',()=>{S.ownLbBadge=true}]];
  const pick=pool[Math.floor(Math.random()*pool.length)];pick[1]();return pick[0]}
-let jumpHolding=false,jumpHoldTimer=null,jumpHoldIv=null,jumpHoldStartTix=0,jumpHoldN=0;
-function jumpDo(){if(isBanned()||!jumpActive())return;jumpRoll();if((S.jump.tix||0)<1){jumpHoldStop();return}
- S.jump.tix--;S.jump.tile=(S.jump.tile||0)+1;jumpAnim=true;R();
- const ty=jumpBoxType(S.jump.tile);let title='',txt='';
- if(ty==='plain'){const n=jumpRnd(JUMPCFG.coinPlainMin,JUMPCFG.coinPlainMax);S.jumpCoin=(S.jumpCoin||0)+n;title='🪙 เก็บเหรียญ';txt='ได้รับเหรียญกิจกรรม +'+n}
- else if(ty==='normal'){const n=jumpRnd(JUMPCFG.coinNormalMin,JUMPCFG.coinNormalMax);S.jumpCoin=(S.jumpCoin||0)+n;title='📦 กล่องธรรมดา';txt='ได้รับเหรียญกิจกรรม +'+n}
- else if(ty==='random'){if(Math.random()*100<JUMPCFG.rndTixPct){const tx=jumpTixRoll();S.jump.tix=(S.jump.tix||0)+tx;title='❓ กล่องสุ่ม';txt='ได้รับ 🎵 ตั๋วกระโดด +'+tx}
-  else{const n=jumpRnd(JUMPCFG.coinRandomMin,JUMPCFG.coinRandomMax);S.jumpCoin=(S.jumpCoin||0)+n;title='❓ กล่องสุ่ม';txt='ได้รับเหรียญกิจกรรม +'+n}}
- else{if(Math.random()*100<JUMPCFG.treasureRarePct){const label=jumpRareGrant();title='🎉🎁 กล่องสมบัติ สุดยอด!';txt='ได้รับ '+label+' !!'}
-  else{const n=jumpRnd(JUMPCFG.coinTreasureMin,JUMPCFG.coinTreasureMax);S.jumpCoin=(S.jumpCoin||0)+n;title='🎁 กล่องสมบัติ';txt='ได้รับเหรียญกิจกรรม +'+n}}
+function jumpStep(){if(isBanned()||!jumpActive())return null;jumpRoll();if((S.jump.tix||0)<1)return null;
+ S.jump.tix--;S.jump.tile=(S.jump.tile||0)+1;
+ const ty=jumpBoxType(S.jump.tile);let title='',txt='',coin=0,tixGain=0,rare=null;
+ if(ty==='plain'){coin=jumpRnd(JUMPCFG.coinPlainMin,JUMPCFG.coinPlainMax);S.jumpCoin=(S.jumpCoin||0)+coin;title='🪙 เก็บเหรียญ';txt='ได้รับเหรียญกิจกรรม +'+coin}
+ else if(ty==='normal'){coin=jumpRnd(JUMPCFG.coinNormalMin,JUMPCFG.coinNormalMax);S.jumpCoin=(S.jumpCoin||0)+coin;title='📦 กล่องธรรมดา';txt='ได้รับเหรียญกิจกรรม +'+coin}
+ else if(ty==='random'){if(Math.random()*100<JUMPCFG.rndTixPct){tixGain=jumpTixRoll();S.jump.tix=(S.jump.tix||0)+tixGain;title='❓ กล่องสุ่ม';txt='ได้รับ 🎵 ตั๋วกระโดด +'+tixGain}
+  else{coin=jumpRnd(JUMPCFG.coinRandomMin,JUMPCFG.coinRandomMax);S.jumpCoin=(S.jumpCoin||0)+coin;title='❓ กล่องสุ่ม';txt='ได้รับเหรียญกิจกรรม +'+coin}}
+ else{if(Math.random()*100<JUMPCFG.treasureRarePct){rare=jumpRareGrant();title='🎉🎁 กล่องสมบัติ สุดยอด!';txt='ได้รับ '+rare+' !!'}
+  else{coin=jumpRnd(JUMPCFG.coinTreasureMin,JUMPCFG.coinTreasureMax);S.jumpCoin=(S.jumpCoin||0)+coin;title='🎁 กล่องสมบัติ';txt='ได้รับเหรียญกิจกรรม +'+coin}}
  S.log.unshift({t:tstr(),m:title+' '+txt,n:0});S.log=S.log.slice(0,80);
- save();setTimeout(()=>{jumpAnim=false;R()},200);
- notifyC({title,txt,act:'hideToast()'})}
-function jumpHoldStart(){if(jumpHolding||isBanned()||!jumpActive())return;jumpRoll();if((S.jump.tix||0)<1)return;
- jumpHolding=true;jumpHoldStartTix=S.jump.tix||0;jumpHoldN=0;jumpHoldN++;jumpDo();
- jumpHoldTimer=setTimeout(()=>{if(!jumpHolding)return;
-  jumpHoldIv=setInterval(()=>{if(!jumpHolding||(S.jump.tix||0)<1){jumpHoldStop();return}jumpHoldN++;jumpDo()},320)
- },320)}
-function jumpHoldStop(){if(jumpHoldTimer){clearTimeout(jumpHoldTimer);jumpHoldTimer=null}if(jumpHoldIv){clearInterval(jumpHoldIv);jumpHoldIv=null}if(!jumpHolding)return;jumpHolding=false;if(pg==='jump')R()}
+ return {ty,title,txt,coin,tixGain,rare}}
+async function jumpOnce(){if(isBanned()||!jumpActive())return;jumpRoll();if((S.jump.tix||0)<1)return;
+ const r=jumpStep();if(!r)return;
+ jumpAnim=true;save();R();setTimeout(()=>{jumpAnim=false;if(pg==='jump')R()},220);
+ await dlgH(`<div style="text-align:center"><div style="font-size:42px">${jumpBoxIcon(r.ty)}</div><b class="n" style="display:block;margin-top:8px;font-size:19px">${esc(r.title)}</b><div class="mut" style="margin-top:6px">${esc(r.txt)}</div></div>`,'ตกลง')}
+function jumpAllSummaryHTML(results){let coinSum=0,tixSum=0,rares=[];
+ results.forEach(r=>{coinSum+=r.coin||0;tixSum+=r.tixGain||0;if(r.rare)rares.push(r.rare)});
+ let h=`<div style="text-align:center"><div style="font-size:42px">🎉</div><b class="n" style="display:block;margin-top:6px;font-size:19px">สรุปผลกระโดด ${results.length} ครั้ง</b></div>`;
+ h+=`<div style="margin-top:14px;display:grid;gap:8px"><div class="row" style="justify-content:space-between"><span class="mut">🪙 เหรียญกิจกรรมที่ได้รวม</span><b class="n">+${fmt(coinSum)}</b></div>`;
+ if(tixSum)h+=`<div class="row" style="justify-content:space-between"><span class="mut">🎵 ตั๋วกระโดดที่ได้เพิ่ม</span><b class="n">+${tixSum}</b></div>`;
+ h+='</div>';
+ if(rares.length)h+=`<div style="margin-top:12px;text-align:center"><b class="n">🎁 ของหายากที่ได้รับ!</b>`+rares.map(x=>`<div class="mut" style="margin-top:3px">${esc(x)}</div>`).join('')+`</div>`;
+ return h}
+async function jumpAllAction(){if(isBanned()||!jumpActive())return;jumpRoll();if((S.jump.tix||0)<1)return;
+ const results=[];let guard=0;
+ while((S.jump.tix||0)>0&&guard<5000){const r=jumpStep();if(!r)break;results.push(r);guard++}
+ jumpAnim=true;save();R();setTimeout(()=>{jumpAnim=false;if(pg==='jump')R()},220);
+ if(!results.length)return;
+ await dlgH(jumpAllSummaryHTML(results),'ตกลง')}
 function jumpBoardHTML(){const cur=S.jump.tile||0,n=7;let h='<div class="jpboard">';
  for(let i=0;i<n;i++){const t=cur+i,here=i===0,ty=jumpBoxType(t);
   h+=`<div class="jptile">${here?`<div class="jpchar${jumpAnim?' jphop':''}">🏃</div>`:''}<div class="jpbox${here?' jphere':''}">${jumpBoxIcon(ty)}</div><div class="jpn">${t<1?'เริ่ม':t}</div></div>`}
@@ -2226,8 +2260,7 @@ function vJump(){jumpRoll();
  const allok=JUMP_MS.every(m=>S.jump.ms[m[0]]),gotAll=S.jump.ms.all,h=hwS();
  return `<div class="card" style="margin-top:0"><div class="row"><div><b class="n">🪂 โดดดึ๋ง รับรางวัลฟรี</b><div class="mut">${new Date(JUMPCFG.start).toLocaleDateString('th-TH')} - ${new Date(JUMPCFG.end).toLocaleDateString('th-TH')}</div></div><div style="text-align:right"><span class="chip wn">🎵 ตั๋ว ${S.jump.tix||0}</span><div class="mut" style="margin-top:4px"><button class="chip" onclick="jumpRules()">❔ กฎ/รูปแบบกล่อง</button></div></div></div>
  ${jumpBoardHTML()}
- <div style="text-align:center;margin-top:10px"><button class="btn gold" style="width:100%;touch-action:none" ${(S.jump.tix||0)<1?'disabled':''} onpointerdown="jumpHoldStart()" onpointerup="jumpHoldStop()" onpointerleave="jumpHoldStop()" onpointercancel="jumpHoldStop()">${(S.jump.tix||0)<1?'ตั๋วหมดวันนี้ ทำภารกิจเพื่อรับเพิ่ม':'กระโดด! (ใช้ตั๋ว 1 ใบ · กดค้างกระโดดรัว)'}</button>
- ${jumpHolding?`<div class="mut" style="margin-top:6px">กำลังกระโดดต่อเนื่อง... ${jumpHoldN}/${jumpHoldStartTix}</div>`:''}</div></div>
+ <div style="margin-top:10px">${(S.jump.tix||0)<1?`<button class="btn" style="width:100%" disabled>ตั๋วหมดวันนี้ ทำภารกิจเพื่อรับเพิ่ม</button>`:`<div class="row" style="gap:8px"><button class="btn gold" style="flex:1" onclick="jumpOnce()">กระโดดครั้งเดียว (ใช้ตั๋ว 1 ใบ)</button><button class="btn gold" style="flex:1" onclick="jumpAllAction()">กระโดดทั้งหมด (${S.jump.tix||0} ใบ)</button></div>`}</div></div>
  <div class="card"><div class="row"><div><div class="mut">เหรียญกิจกรรมของคุณ</div><div class="big">🪙 ${fmt(S.jumpCoin||0)}</div></div></div>
  <div class="row" style="margin-top:10px;gap:8px"><button class="btn" style="flex:1" onclick="jumpExPass()">🎫 แลกบัตรเวอร์พาส (${JUMPCFG.passCost})</button><button class="btn" style="flex:1" onclick="jumpExDisc()">💎 แลกส่วนลด 15% (${JUMPCFG.discCost})</button></div></div>
  <div class="card"><b class="n">กระเป๋าของฉัน</b><div class="row" style="margin-top:6px"><span class="chip ok">🎫 บัตรปลดล็อกเวอร์พาส ${h.pass||0}</span><span class="chip ok">💎 คูปองส่วนลด 15% ${S.jadeDisc||0}</span></div></div>
@@ -2921,7 +2954,14 @@ async function invUse(){const el=$('#invin');const c=((el&&el.value)||'').trim()
   await db.ref('invused/'+uid).set(who);await db.ref('invreq/'+who+'/'+uid).set({ts:firebase.database.ServerValue.TIMESTAMP,n:pName(uid)});
   S.inv=c;add(100,'รหัสเชิญเพื่อน');ntfSend(who,'i',null,'');say('ใช้รหัสสำเร็จ +100 คะแนน');R()}catch(e){say('ไม่สำเร็จ ('+((e&&e.code)||'ลองใหม่')+')')}}
 let INVREQ={};
-function invCredit(){if(!S||!uid)return;S.invc=S.invc||{};let n=0;Object.keys(INVREQ).forEach(k=>{if(S.invc[k])return;if(Object.keys(S.invc).length>=20)return;S.invc[k]=1;n++;add(150,'เพื่อนใช้รหัสเชิญของคุณ')});if(n){save();if(pg==='daily')R()}}
+async function invCreditOne(k){try{
+  const r=await db.ref('users/'+uid+'/invcClaimed/'+k).transaction(v=>v?undefined:1);
+  if(!r.committed)return; // already claimed - never grant the same friend's credit twice
+  if(S&&uid){S.invc=S.invc||{};S.invc[k]=1}
+  add(150,'เพื่อนใช้รหัสเชิญของคุณ');
+  if(pg==='daily')R()
+ }catch(e){}}
+function invCredit(){if(!S||!uid)return;S.invc=S.invc||{};Object.keys(INVREQ).forEach(k=>{if(S.invc[k])return;if(Object.keys(S.invc).length>=20)return;invCreditOne(k)})}
 // ---- notifications ----
 let NTF=[];
 function ntfSend(to,k,rid,t){if(!to||to===uid||to==='admin')return;try{db.ref('notif/'+to).push({k,from:uid,fn:vName(uid),rid:rid||'',t:(t||'').slice(0,60),ts:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{})}catch(e){}}
