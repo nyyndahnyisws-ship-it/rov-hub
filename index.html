@@ -679,6 +679,33 @@ html.gfx-c0 .bdayband::before,html.gfx-c1 .bdayband::before{animation:none!impor
 @keyframes jpHop{0%{transform:translateY(0)}40%{transform:translateY(-16px)}100%{transform:translateY(0)}}
 .jpn{font-size:11px;color:rgba(255,255,255,.85);margin-top:2px}
 html.gfx-c0 .jphop,html.gfx-c1 .jphop{animation:none!important}
+
+.arenaPg{position:relative;margin:-2px -2px 0;padding:14px 2px 2px;border-radius:24px;background:
+ radial-gradient(circle at 20% 0%,rgba(138,92,246,.25),transparent 55%),
+ radial-gradient(circle at 85% 10%,rgba(245,201,79,.18),transparent 50%),
+ linear-gradient(180deg,#0a0e1f 0%,#0d1226 55%,#120a22 100%);
+ box-shadow:inset 0 0 40px rgba(0,0,0,.5);}
+.arenaPg .card{background:rgba(16,20,40,.78);border:1px solid rgba(232,182,76,.28);color:#f0e9d8}
+.arenaPg .mut{color:#b6aed8}
+.arenaPg .n,.arenaPg b{color:#f6ecc9}
+.arenaPg .chip{background:rgba(139,107,255,.18);color:#e6dcff;border:1px solid rgba(139,107,255,.35)}
+.arenaPg .chip.ok{background:rgba(46,204,113,.18);color:#8ef2b0;border-color:rgba(46,204,113,.4)}
+.arenaPg .chip.wn{background:rgba(232,93,93,.18);color:#ffb3b3;border-color:rgba(232,93,93,.4)}
+.arenaPg .btn{background:rgba(16,20,40,.85);color:#f0e9d8;border:1px solid rgba(232,182,76,.35)}
+.arenaPg .btn.gold{background:linear-gradient(135deg,#f6c452,#c2711a);border-color:#ffe49a;color:#2a1700;box-shadow:0 0 16px rgba(245,201,79,.45)}
+.arenaPg .tab{color:#b6aed8}.arenaPg .tab.on{background:rgba(245,201,79,.22);color:#f6ecc9}
+.arTitle{text-align:center;padding:10px 0 2px;position:relative}
+.arTitleIn{font-size:22px;font-weight:800;letter-spacing:1px;color:#f5c94f;text-shadow:0 0 14px rgba(245,201,79,.7),0 0 2px #fff;
+ border-top:1px solid rgba(232,182,76,.4);border-bottom:1px solid rgba(232,182,76,.4);padding:8px 0;position:relative}
+.arGlow{position:relative;animation:arPulse 3.2s ease-in-out infinite;border-radius:20px}
+@keyframes arPulse{0%,100%{box-shadow:0 0 10px rgba(139,107,255,.15),inset 0 0 18px rgba(0,0,0,.3)}50%{box-shadow:0 0 22px rgba(245,201,79,.28),inset 0 0 18px rgba(0,0,0,.3)}}
+.arMode{transition:transform .12s}.arMode:active{transform:scale(.97)}
+.arh{border:1px solid rgba(232,182,76,.22);width:calc(33.33% - 5px);box-sizing:border-box}
+.arh.on{border-color:#f5c94f;box-shadow:0 0 14px rgba(245,201,79,.5);background:rgba(245,201,79,.1)}
+.arBar{height:7px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:3px}
+.arBar div{height:100%;border-radius:99px}
+.arMember{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:6px 8px;margin-top:6px}
+@media(max-width:360px){.arTitleIn{font-size:18px}.arh{width:calc(50% - 4px)}}
 </style></head><body>
 <header><div class="ico">🎮</div><div style="flex:1;min-width:0"><h1 id="h1">ROV Point Hub</h1><p id="hp"></p></div>
 <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex:none" id="hact"></div></header>
@@ -1126,6 +1153,104 @@ const PACKS=[
 let tuPick=-1,tuUseDisc=false;
 function readB64Slip(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
 const stChip=st=>st==='approved'?'<span class="chip ok">✅ อนุมัติแล้ว</span>':st==='rejected'?'<span class="chip wn">❌ ไม่ผ่าน</span>':'<span class="chip">⏳ รอตรวจสอบ</span>';
+// ---------- แพ็กยศพิเศษ (เติมเงินจริง 699/1699 — แจ้งโอน+แอดมินอนุมัติ เหมือนระบบเติมหยกเขียว) ----------
+const PK_PACKS=[
+ {tier:699,baht:699,label:'เทพผู้พิทักษ์จักรวาล',desc:'ปลดล็อกยศพิเศษ "เทพผู้พิทักษ์จักรวาล" + วิดีโอพื้นหลังโปรไฟล์ + สมาชิก VIP 1 เดือน'},
+ {tier:1699,baht:1699,label:'ปฐมเทพสูงสุด (SVIP)',desc:'ได้รับทุกอย่างในแพ็ก 699 (ยศ/วิดีโอพื้นหลัง/VIP 1 เดือน) และปลดล็อกสถานะ SVIP "ปฐมเทพสูงสุด" ถาวร'}];
+let pkPick=-1;
+let premiumReq=[],premiumReqRefOff=null,myPremiumReq=[],myPremiumReqRefOff=null;
+function attachPremiumReqAll(){premiumReqRefOff=db.ref('premiumReq');
+ premiumReqRefOff.on('value',snap=>{const v=snap.val()||{};const list=[];
+  Object.keys(v).forEach(u=>Object.keys(v[u]).forEach(id=>list.push(Object.assign({uid:u,id},v[u][id]))));
+  premiumReq=list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(pg==='admin'&&adminTab==='topup'){const e=$('#pklist');if(e)e.innerHTML=premiumAdminList()}},()=>{})}
+function attachMyPremiumReq(){myPremiumReqRefOff=db.ref('premiumReq/'+uid);
+ myPremiumReqRefOff.on('value',snap=>{const v=snap.val()||{};myPremiumReq=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  creditPremiumApproved();
+  if(pg==='topup')R()},()=>{})}
+async function creditPremiumApproved(){if(!S||!uid)return;
+ for(const t of myPremiumReq.slice()){if(t.status!=='approved'||t.credited)continue;
+  try{const r=await db.ref('premiumReq/'+uid+'/'+t.id+'/credited').transaction(c=>c?undefined:true);
+   if(r&&r.committed){
+    S.pkVideoBanner=true;S.pkTitle699=true;
+    const now=Date.now();S.pkVipUntil=Math.max(S.pkVipUntil||0,now)+30*86400000;
+    if(t.tier===1699)S.pkSvip=true;
+    S.log=S.log||[];S.log.unshift({t:tstr(),m:(t.tier===1699?'ปลดล็อกแพ็ก SVIP ปฐมเทพสูงสุด (1699 บาท)':'ปลดล็อกแพ็กยศพิเศษ เทพผู้พิทักษ์จักรวาล (699 บาท)'),n:0,cur:'premium'});S.log=S.log.slice(0,80);
+    save();R();
+    say(t.tier===1699?'🌟 ยินดีด้วย! คุณได้รับสถานะ SVIP "ปฐมเทพสูงสุด" ถาวร พร้อมยศ วิดีโอพื้นหลังโปรไฟล์ และสมาชิก VIP 1 เดือนแล้ว':'🌟 ยินดีด้วย! คุณได้รับยศ "เทพผู้พิทักษ์จักรวาล" วิดีโอพื้นหลังโปรไฟล์ และสมาชิก VIP 1 เดือนแล้ว')}
+  }catch(e){}}}
+async function submitPremiumReq(){if(pkPick<0)return;const st=$('#pkst'),bt=$('#pkbtn'),f=$('#pkslip').files[0],p=PK_PACKS[pkPick];
+ if(!f){st.textContent='แนบสลิปก่อน';return}if(f.size>2*1048576){st.textContent='ไฟล์สลิปเกิน 2MB';return}
+ bt.disabled=true;st.textContent='กำลังส่ง...';try{const slip=await readB64Slip(f);
+  const id='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  await db.ref('premiumReq/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',tier:p.tier,baht:p.baht,slip,status:'pending',ts:firebase.database.ServerValue.TIMESTAMP});
+  st.textContent='✅ ส่งแล้ว รอแอดมินตรวจสอบ';pkPick=-1;$('#pkslip').value='';R()}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+function premiumPkHTML(){
+ let h='<div class="mut" style="margin:18px 4px 6px">⚔️ แพ็กยศพิเศษ (เติมเงินจริง)</div>';
+ h+=`<div class="card" style="margin-top:0"><div class="mut">ปลดล็อกยศพิเศษเฉพาะในเกม + วิดีโอพื้นหลังโปรไฟล์ + สมาชิก VIP ด้วยการโอนเงินจริงแล้วแนบสลิปให้แอดมินตรวจสอบ (ไม่ใช่การตัดบัตรอัตโนมัติ)</div>
+ ${S.pkSvip?'<div class="chip ok" style="margin-top:8px">💠 คุณเป็น SVIP "ปฐมเทพสูงสุด" แล้ว (ถาวร)</div>':S.pkTitle699?`<div class="chip ok" style="margin-top:8px">🛡️ คุณมียศ "เทพผู้พิทักษ์จักรวาล" แล้ว</div><div class="mut" style="margin-top:4px">VIP ใช้งานถึง ${S.pkVipUntil?new Date(S.pkVipUntil).toLocaleDateString('th-TH',{dateStyle:'medium'}):'-'}</div>`:''}
+ <div class="grid" style="margin-top:10px">${PK_PACKS.map((p,i)=>{if(p.tier===699&&S.pkSvip)return'';const on=pkPick===i;
+  return `<button class="menu" style="text-align:center;align-items:center;border-color:${on?'var(--gold)':'var(--line)'};border-width:${on?'2px':'1px'}" onclick="pkPick=${i};R()"><span class="em">${p.tier===1699?'💠':'🛡️'}</span><b>${esc(p.label)}</b><span class="mut">${fmt(p.baht)} บาท</span></button>`}).join('')}</div></div>`;
+ if(pkPick>=0){const p=PK_PACKS[pkPick];
+  h+=`<div class="card"><b class="n">สแกนจ่ายเงิน</b><div class="mut" style="margin-top:4px">${esc(p.desc)}</div>
+  <div class="mut" style="margin-top:8px">โอน <b>${fmt(p.baht)} บาท</b> ตามคิวอาร์โค้ดด้านล่าง แล้วแนบสลิปส่งให้แอดมินตรวจสอบ</div>
+  ${qrImage?`<img src="${qrImage}" style="width:100%;max-width:280px;display:block;margin:12px auto;border-radius:14px">`:'<div class="mut" style="margin-top:10px">แอดมินยังไม่ได้แนบคิวอาร์โค้ด — รอแอดมินอัปโหลดก่อน</div>'}
+  <label class="mut" style="display:block;margin-top:10px">แนบสลิปการโอนเงิน</label><input id="pkslip" type="file" accept="image/png,image/jpeg,image/webp" class="inp">
+  <div class="mut" id="pkst" style="margin-top:8px"></div>
+  <button class="btn gold" id="pkbtn" style="width:100%;margin-top:6px" onclick="submitPremiumReq()">ส่งสลิปให้ตรวจสอบ</button></div>`}
+ h+='<div class="mut" style="margin:14px 4px 8px">ประวัติคำขอยศพิเศษของฉัน</div>'+(myPremiumReq.length?myPremiumReq.map(t=>`<div class="card"><div class="row"><b class="n">${t.tier===1699?'💠 SVIP':'🛡️ ยศพิเศษ'} · ${fmt(t.baht)} บาท</b>${stChip(t.status)}</div><div class="mut" style="margin-top:4px">${t.ts?new Date(t.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div>${t.status==='rejected'&&t.note?`<div class="mut" style="margin-top:4px;color:#d32f2f">เหตุผล: ${esc(t.note)}</div>`:''}</div>`).join(''):'<div class="card"><div class="mut">ยังไม่มีประวัติ</div></div>');
+ return h}
+const premiumAdminList=()=>{const pend=premiumReq.filter(t=>t.status==='pending'),done=premiumReq.filter(t=>t.status!=='pending');
+ const row=t=>`<div class="card"><div class="row"><b class="n">${t.tier===1699?'💠 SVIP 1699':'🛡️ ยศพิเศษ 699'} บาท</b>${stChip(t.status)}</div>
+ <div class="mut" style="margin-top:4px">${esc(t.email||'')} · ${t.ts?new Date(t.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div>
+ ${t.slip?`<img src="${t.slip}" style="max-width:180px;border-radius:10px;margin-top:8px" onclick="viewSlipPk('${t.uid}','${t.id}')">`:''}
+ ${t.status==='pending'?`<div class="row" style="margin-top:10px;gap:8px"><button class="btn gold" onclick="approvePremium('${t.uid}','${t.id}')">✅ อนุมัติ</button><button class="btn" style="color:#d32f2f" onclick="rejectPremium('${t.uid}','${t.id}')">❌ ปฏิเสธ</button></div>`
+ :t.note?`<div class="mut" style="margin-top:6px">หมายเหตุ: ${esc(t.note)}</div>`:''}</div>`;
+ return (pend.length?'<div class="mut" style="margin:4px 4px 0">⏳ รอตรวจสอบ ('+pend.length+')</div>'+pend.map(row).join(''):'<div class="card"><div class="mut">ไม่มีรายการรอตรวจสอบ</div></div>')
+ +(done.length?'<div class="mut" style="margin:14px 4px 0">ประวัติที่ตรวจแล้ว</div>'+done.slice(0,20).map(row).join(''):'')}
+function viewSlipPk(uid2,id){const t=premiumReq.find(x=>x.uid===uid2&&x.id===id);if(t&&t.slip)dlgH('<img src="'+t.slip+'" style="width:100%;border-radius:10px">')}
+async function approvePremium(uid2,id){const t=premiumReq.find(x=>x.uid===uid2&&x.id===id);if(!t)return;
+ if(!(await dlg('ยืนยันอนุมัติให้ '+(t.email||uid2)+' รับ'+(t.tier===1699?' แพ็ก SVIP 1699 บาท':' แพ็กยศพิเศษ 699 บาท')+' ?','อนุมัติ')))return;
+ try{await db.ref('premiumReq/'+uid2+'/'+id+'/status').set('approved');await db.ref('premiumReq/'+uid2+'/'+id+'/reviewedAt').set(firebase.database.ServerValue.TIMESTAMP);say('อนุมัติแล้ว ✅')}
+ catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+async function rejectPremium(uid2,id){const t=premiumReq.find(x=>x.uid===uid2&&x.id===id);if(!t)return;
+ if(!(await dlg('ปฏิเสธคำขอนี้?','ปฏิเสธ')))return;
+ try{await db.ref('premiumReq/'+uid2+'/'+id+'/status').set('rejected');
+  await db.ref('premiumReq/'+uid2+'/'+id+'/note').set('หลักฐานไม่ชัดเจน กรุณาติดต่อแอดมิน');
+  await db.ref('premiumReq/'+uid2+'/'+id+'/reviewedAt').set(firebase.database.ServerValue.TIMESTAMP)}
+ catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+// ---------- วิดีโอพื้นหลังโปรไฟล์ (เก็บในเครื่องผ่าน IndexedDB เท่านั้น ไม่อัปโหลดขึ้นระบบ — ผู้เล่นอื่นจะไม่เห็น) ----------
+function idbOpenMedia(){return new Promise((res,rej)=>{try{const r=indexedDB.open('rovpointhub_media',1);
+ r.onupgradeneeded=()=>{r.result.createObjectStore('media')};
+ r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function idbSaveBgVideo(blob){try{const db2=await idbOpenMedia();return await new Promise((res,rej)=>{const tx=db2.transaction('media','readwrite');tx.objectStore('media').put(blob,'bgVideo_'+uid);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error)})}catch(e){return false}}
+async function idbLoadBgVideo(){try{const db2=await idbOpenMedia();return await new Promise(res=>{const tx=db2.transaction('media','readonly');const rq=tx.objectStore('media').get('bgVideo_'+uid);rq.onsuccess=()=>res(rq.result||null);rq.onerror=()=>res(null)})}catch(e){return null}}
+async function idbDeleteBgVideo(){try{const db2=await idbOpenMedia();return await new Promise(res=>{const tx=db2.transaction('media','readwrite');tx.objectStore('media').delete('bgVideo_'+uid);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false)})}catch(e){return false}}
+let bgVideoObjUrl=null;
+async function pickBgVideo(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('video/')){const e=$('#pfst');if(e)e.textContent='เลือกไฟล์วิดีโอ';return}
+ if(f.size>60*1048576){const e=$('#pfst');if(e)e.textContent='ไฟล์วิดีโอใหญ่เกิน 60MB กรุณาเลือกไฟล์ที่เล็กกว่านี้';return}
+ const st=$('#pfst');if(st)st.textContent='กำลังบันทึกวิดีโอ...';
+ const ok=await idbSaveBgVideo(f);
+ if(ok){S.prof=S.prof||{};S.prof.bgVideoOn=true;save();if(st)st.textContent='✅ ตั้งวิดีโอพื้นหลังแล้ว (เห็นเฉพาะเครื่องนี้เท่านั้น)';bgVideoPreviewRefresh()}
+ else if(st)st.textContent='บันทึกวิดีโอไม่สำเร็จ ลองไฟล์ที่เล็กลงหรือเบราว์เซอร์อื่น'}
+async function clearBgVideo(){await idbDeleteBgVideo();S.prof=S.prof||{};S.prof.bgVideoOn=false;save();bgVideoPreviewRefresh();const e=$('#pfst');if(e)e.textContent='ลบวิดีโอพื้นหลังแล้ว'}
+async function bgVideoPreviewRefresh(){const e=$('#pfbgvprev');if(!e)return;
+ const blob=await idbLoadBgVideo();
+ if(bgVideoObjUrl){try{URL.revokeObjectURL(bgVideoObjUrl)}catch(err){}bgVideoObjUrl=null}
+ if(blob){bgVideoObjUrl=URL.createObjectURL(blob);e.innerHTML=`<video src="${bgVideoObjUrl}" muted loop autoplay playsinline style="width:100%;height:90px;object-fit:cover;border-radius:14px;margin-top:6px"></video>`}
+ else e.innerHTML='<div class="mut" style="margin-top:6px">ยังไม่ได้ตั้งวิดีโอ</div>'}
+async function attachProfileVideo(){
+ if(!(S&&(S.pkVideoBanner||isAdmin)))return;
+ const wrap=$('#pcoverWrap');if(!wrap||!(S.prof&&S.prof.bgVideoOn))return;
+ const blob=await idbLoadBgVideo();if(!blob)return;
+ if(bgVideoObjUrl){try{URL.revokeObjectURL(bgVideoObjUrl)}catch(e){}}
+ bgVideoObjUrl=URL.createObjectURL(blob);
+ wrap.innerHTML=`<video id="pcovervid" src="${bgVideoObjUrl}" loop playsinline style="width:100%;height:100%;object-fit:cover"></video><button id="pcovervidunmute" class="chip" style="position:absolute;right:10px;bottom:10px;display:none" onclick="pcoverUnmute()">🔇 แตะเพื่อเปิดเสียง</button>`;
+ const v=document.getElementById('pcovervid');
+ try{await v.play()}catch(e){
+  try{v.muted=true;await v.play();const b=document.getElementById('pcovervidunmute');if(b)b.style.display='block'}catch(e2){}}}
+function pcoverUnmute(){const v=document.getElementById('pcovervid');if(!v)return;v.muted=false;v.play().catch(()=>{});const b=document.getElementById('pcovervidunmute');if(b)b.style.display='none'}
 function vTopup(){const j=S.jade||0;
  let h=`<div class="card" style="margin-top:0"><div class="row"><div><div class="mut">หยกเขียวของคุณ</div><div class="big" id="jadebal">💎 ${fmt(j)}</div></div></div><div class="mut" style="margin-top:4px">ใช้ปลดล็อกเวอร์พาสพรีเมียม · เติมด้วยเงินจริงผ่านการโอนและแนบสลิป แอดมินตรวจสอบก่อนเครดิตให้</div></div>`;
  h+='<div class="card"><b class="n">เลือกแพ็กเกจ</b><div class="mut" style="margin-top:2px">แตะเลือก 1 แพ็กเกจ</div><div class="grid">'+PACKS.map((p,i)=>{const total=p.jade+p.bonus,on=tuPick===i;
@@ -1139,6 +1264,7 @@ function vTopup(){const j=S.jade||0;
   <div class="mut" id="tust" style="margin-top:8px"></div>
   <button class="btn gold" id="tubtn" style="width:100%;margin-top:6px" onclick="submitTopup()">ส่งสลิปให้ตรวจสอบ</button></div>`}
  h+='<div class="mut" style="margin:18px 4px 8px">ประวัติการเติมของฉัน</div>'+(myTopups.length?myTopups.map(t=>`<div class="card"><div class="row"><b class="n">💎 ${fmt(t.jade+t.bonus)} หยก · ${fmt(t.baht)} บาท</b>${stChip(t.status)}</div><div class="mut" style="margin-top:4px">${t.ts?new Date(t.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div>${t.status==='rejected'&&t.note?`<div class="mut" style="margin-top:4px;color:#d32f2f">เหตุผล: ${esc(t.note)}</div>`:''}</div>`).join(''):'<div class="card"><div class="mut">ยังไม่มีประวัติการเติม</div></div>');
+ h+=premiumPkHTML();
  return h}
 async function submitTopup(){if(tuPick<0)return;const st=$('#tust'),bt=$('#tubtn'),f=$('#tuslip').files[0],p=PACKS[tuPick];
  if(!f){st.textContent='แนบสลิปก่อน';return}if(f.size>2*1048576){st.textContent='ไฟล์สลิปเกิน 2MB';return}
@@ -1154,7 +1280,8 @@ function qrPreview(){return qrImage?`<img src="${qrImage}" style="width:160px;bo
 function vAdminTopup(){return `<div class="card" style="margin-top:0"><b class="n">คิวอาร์โค้ดรับเงิน</b><div class="mut" style="margin-top:4px">ใช้คิวอาร์เดียวสำหรับทุกแพ็กเกจ ผู้เล่นพิมพ์ยอดโอนเองตามแพ็กเกจที่เลือก</div>
  <div id="qrprev">${qrPreview()}</div><input id="qrfile" type="file" accept="image/png,image/jpeg,image/webp" class="inp" style="margin-top:10px">
  <button class="btn pri" id="qrbtn" style="width:100%;margin-top:10px" onclick="uploadQR()">อัปโหลด/เปลี่ยนคิวอาร์โค้ด</button><div class="mut" id="qrst" style="margin-top:6px"></div></div>
- <div class="mut" style="margin:14px 4px 0">คำขอเติมหยกเขียว</div><div id="tulist">${topupAdminList()}</div>`}
+ <div class="mut" style="margin:14px 4px 0">คำขอเติมหยกเขียว</div><div id="tulist">${topupAdminList()}</div>
+ <div class="mut" style="margin:14px 4px 0">คำขอแพ็กยศพิเศษ (699/1699)</div><div id="pklist">${premiumAdminList()}</div>`}
 async function uploadQR(){const st=$('#qrst'),bt=$('#qrbtn'),f=$('#qrfile').files[0];if(!f){st.textContent='เลือกรูปคิวอาร์ก่อน';return}
  if(f.size>2*1048576){st.textContent='ไฟล์เกิน 2MB';return}
  bt.disabled=true;st.textContent='กำลังอัปโหลด...';try{const img=await readB64Slip(f);await db.ref('settings/qr').set({image:img,ts:firebase.database.ServerValue.TIMESTAMP});st.textContent='✅ อัปเดตคิวอาร์แล้ว';$('#qrfile').value=''}
@@ -1391,7 +1518,7 @@ function vRank(){if(leaderboardErr)return '<div class="card"><div class="mut">�
  const list=rankTab==='pts'?byPts:rankTab==='fash'?byFash:rankTab==='rp'?byRp:byLife;
  return `<div class="rklist">${rankInner(list)}</div>`}
 function rankInner(list){return `<div class="tabs"><button class="tab ${rankTab==='pts'?'on':''}" onclick="rankTab='pts';R()">🏅 อันดับเหรียญ</button><button class="tab ${rankTab==='fash'?'on':''}" onclick="rankTab='fash';R()">👗 อันดับแฟชั่น</button><button class="tab ${rankTab==='rp'?'on':''}" onclick="rankTab='rp';R()">⚔️ อันดับแรงค์</button><button class="tab ${rankTab==='life'?'on':''}" onclick="rankTab='life';R()">⏱️ อันดับออนไลน์</button></div>
- ${rankTab==='rp'?`<div class="card" style="margin-top:0">${rankCardHTML(S&&S.rankMajor||0,S&&S.rankDiv||0,S&&S.rankStars||0,{compact:true,w:130})}<button class="btn gold" style="width:100%;margin-top:10px" onclick="go('duel')">⚔️ หาคู่ดวลแรงค์</button></div>`:''}
+ ${rankTab==='rp'?`<div class="card" style="margin-top:0">${rankCardHTML(S&&S.rankMajor||0,S&&S.rankDiv||0,S&&S.rankStars||0,{compact:true,w:130})}<button class="btn gold" style="width:100%;margin-top:10px" onclick="goArena()">⚔️ เข้าสู่สนามประลอง</button></div>`:''}
  <div class="card"><div class="mut" style="margin-bottom:4px">${rankTab==='pts'?'เรียงตามคะแนนสะสมทั้งหมด':rankTab==='fash'?'เรียงตามคะแนนแฟชั่น (รวมความแรร์ของกรอบ/ป้ายชื่อ/ธีม/ยศที่ปลดล็อกทั้งหมด)':rankTab==='rp'?'เรียงตามแรงค์ (ขั้น/ดาว) จากการดวลกับผู้เล่นอื่น':'เรียงตามเวลาออนไลน์สะสมทั้งหมดบนเว็บนี้'} · แสดงผู้เล่นทุกคนที่เคยสมัคร (${list.length} คน)</div></div>
  ${list.length?list.map((r,i)=>rankRow(r,i,rankTab==='pts'?fmt(r.pts||0)+' คะแนน':rankTab==='fash'?fmt(r.fash||0)+' แต้ม':rankTab==='rp'?rankInfo(r.rankMajor||0,r.rankDiv||0,r.rankStars||0).name+' · ⭐'+(r.rankStars||0):fmtDur(r.life))).join(''):'<div class="card"><div class="mut">ยังไม่มีข้อมูล</div></div>'}`}
 
@@ -1399,7 +1526,7 @@ function rankInner(list){return `<div class="tabs"><button class="tab ${rankTab=
 const HWNI={home:'nhome',missions:'ntarget',lib:'nbook',rank:'ntrophy',more:'nmenu'};
 const NAV=[['home','🏠','หน้าหลัก'],['missions','🎯','ภารกิจ'],['lib','📚','คลัง'],['rank','🏆','อันดับ'],['more','☰','เพิ่มเติม']];
 const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],rank:['อันดับผู้เล่น','เหรียญคะแนน และเวลาออนไลน์สะสม'],redeemcode:['กรอกโค้ดรับของรางวัล','ใช้โค้ดที่แอดมินแจกเพื่อรับคะแนน'],shop:['ร้านค้า','ใช้เหรียญทองซื้อของ (แลกคืนไม่ได้)'],topup:['เติมหยกเขียว','สแกนจ่าย แนบสลิป รอแอดมินตรวจสอบ'],bp:['เวอร์พาส','เลเวล 1-70 · รีเซ็ตทุกเดือน'],settings:['ตั้งค่า','คลังธีม UI และบัญชี'],profile:['โปรไฟล์ของฉัน','ข้อมูลทั้งหมดของคุณ'],user:['โปรไฟล์ผู้เล่น','ประวัติและเพื่อน'],chats:['ช่องแชท','ข้อความส่วนตัว'],gacha:['ตู้กาชาฮาโลวีน','สุ่มรับกรอบ ธีม และหินเพชร'],chat:['แชท','ข้อความส่วนตัว'],friends:['เพื่อน','คำขอและรายชื่อเพื่อน'],login:['ROV Point Hub','เข้าสู่ระบบ'],daily:['เช็กอินและภารกิจ','รับรางวัลทุกวัน ชวนเพื่อน'],explore:['ค้นหาและอันดับ','แฮชแท็ก ครีเอเตอร์ประจำสัปดาห์'],team:['ทีม','สร้างทีม แข่งอันดับ'],rewards:['ของรางวัลจำกัด','แลกด้วยคะแนน ของมีจำนวนจำกัด'],decor:['ของตกแต่ง','ซื้อตรงด้วยเหรียญทองหรือหยกเขียว'],jump:['โดดดึ๋ง รับรางวัลฟรี','กระโดดเก็บกล่อง รับบัตรเวอร์พาสและคูปองส่วนลด'],duel:['ดวลแรงค์','หาคู่แข่งจริง แพ้/ชนะมีผลกับดาวแรงค์']};
-const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more',redeemcode:'more',shop:'more',topup:'more',bp:'more',settings:'more',profile:'more',friends:'more',chats:'more',chat:'more',gacha:'more',decor:'more',jump:'more',user:'rank',duel:'rank'}[pg]||pg)===k;
+const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more',redeemcode:'more',shop:'more',topup:'more',bp:'more',settings:'more',profile:'more',friends:'more',chats:'more',chat:'more',gacha:'more',decor:'more',jump:'more',user:'rank',duel:'rank',arena:'rank'}[pg]||pg)===k;
 function go(k){if(k!=='chat')stopChat();pg=k;cur=null;if(k==='shop'&&!S.shopSeen){S.shopSeen=true;save()}R();window.scrollTo(0,0)}
 function openC(id){const c0=content.find(x=>x.id===id);if(c0&&c0.type==='video'){openVF(id);return}cur=id;pg='view';R();window.scrollTo(0,0)}
 function claimC(id){const c=content.find(x=>x.id===id);if(!c||S.seen[id])return;S.seen[id]=true;bpEvt('content');add(c.pts,(tn(c.type)||'เนื้อหา')+': '+c.title);R()}
@@ -1491,7 +1618,7 @@ function clearAvatar(){pfAvNew='';const e=$('#pfav2');if(e)e.innerHTML=avPrev()}
 let pfNickOk='';
 async function saveProfile(){const st=$('#pfst'),locked=!!(S.prof&&S.prof.name),name=locked?S.prof.name:$('#pfn').value.trim(),bio=$('#pfb').value.trim();
  if(!locked){const er=nickBad(name,uid);if(er){st.textContent=er;return}if(pfNickOk!==name){pfNickOk=name;st.textContent='ตั้งชื่อเล่น "'+name+'" ได้ครั้งเดียว เปลี่ยนภายหลังไม่ได้ — กด "บันทึกโปรไฟล์" อีกครั้งเพื่อยืนยัน';return}}
- const av=pfAvNew!==undefined?pfAvNew:((S.prof&&S.prof.av)||'');const bg=curBg();const pth=($('#pfth')||{}).value||'default',frame=($('#pff')||{}).value||'';S.prof={name,bio,av,bg,pth,frame};pfAvNew=undefined;pfBgNew=undefined;save();st.textContent='กำลังบันทึก...';
+ const av=pfAvNew!==undefined?pfAvNew:((S.prof&&S.prof.av)||'');const bg=curBg();const pth=($('#pfth')||{}).value||'default',frame=($('#pff')||{}).value||'';S.prof={name,bio,av,bg,pth,frame,bgVideoOn:(S.prof&&S.prof.bgVideoOn)||false};pfAvNew=undefined;pfBgNew=undefined;save();st.textContent='กำลังบันทึก...';
  let msg='';
  try{await db.ref('profiles/'+uid).set({name,bio,av,ts:Date.now()});try{await db.ref('profbg/'+uid).set(bg||null)}catch(e){msg='บันทึกแล้ว แต่พื้นหลังยังไม่แสดงให้ผู้อื่นเห็น (ต้องเพิ่มกฎ "profbg")'}}
  catch(e){msg='บันทึกในบัญชีแล้ว แต่ยังไม่แสดงให้ผู้เล่นอื่นเห็น (ต้องอัปเดตกฎ Database ให้มี "profiles")'}
@@ -1505,15 +1632,19 @@ function pfForm(){const pr=S.prof||{};return `<b class="n" style="font-size:18px
  <div class="row" style="gap:8px;margin-top:8px"><input type="file" accept="image/*" class="inp" onchange="pickBg(this)"><button class="btn" onclick="setBgPreset('')">ค่าเริ่มต้น</button></div>
  <label class="mut" style="display:block;margin-top:10px">ชื่อเล่น ${pr.name?'(ตั้งแล้ว เปลี่ยนไม่ได้)':'(2–20 ตัวอักษร ตั้งได้ครั้งเดียว)'}</label><input id="pfn" class="inp" maxlength="20" value="${esc(pr.name||'')}" ${pr.name?'readonly style="opacity:.7"':''} placeholder="เช่น นักล่าคะแนน">
  <label class="mut" style="display:block;margin-top:10px">แนะนำตัว</label><textarea id="pfb" rows="3" class="inp" maxlength="80" placeholder="สั้นๆ ไม่เกิน 80 ตัวอักษร">${esc(pr.bio||'')}</textarea>
+ ${S.pkVideoBanner?`<label class="mut" style="display:block;margin-top:14px">🎬 วิดีโอพื้นหลังโปรไฟล์ (สิทธิ์พิเศษ)</label><div class="mut" style="font-size:11px">เล่นอัตโนมัติวนซ้ำพร้อมเสียงบนเครื่องนี้เท่านั้น ไฟล์ไม่ถูกอัปโหลดขึ้นระบบ ดังนั้นผู้เล่นคนอื่นจะไม่เห็นวิดีโอนี้ — เห็นเฉพาะตอนที่คุณเปิดโปรไฟล์ตัวเองบนเครื่อง/เบราว์เซอร์นี้</div>
+ <div id="pfbgvprev">${(S.prof&&S.prof.bgVideoOn)?'<div class="mut" style="margin-top:6px">กำลังโหลดตัวอย่าง...</div>':'<div class="mut" style="margin-top:6px">ยังไม่ได้ตั้งวิดีโอ</div>'}</div>
+ <div class="row" style="gap:8px;margin-top:8px"><input type="file" accept="video/*" class="inp" onchange="pickBgVideo(this)"><button class="btn" onclick="clearBgVideo()">ลบวิดีโอ</button></div>`
+ :`<label class="mut" style="display:block;margin-top:14px">🎬 วิดีโอพื้นหลังโปรไฟล์</label><div class="card" style="margin-top:6px;padding:10px 12px"><div class="mut">สิทธิ์พิเศษเฉพาะผู้ซื้อแพ็กยศพิเศษ — ดูรายละเอียดได้ที่หน้าเติมเงิน</div><button class="btn gold" style="width:100%;margin-top:8px" onclick="closeProfEdit();go('topup')">ไปหน้าแพ็กยศพิเศษ</button></div>`}
  <div class="mut" id="pfst" style="margin-top:8px"></div>`}
-function openProfEdit(){pfAvNew=undefined;pfBgNew=undefined;const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:14px"><div class="gb" style="border-radius:22px;max-width:420px;max-height:90vh;padding:18px">${pfForm()}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px"><button class="btn" onclick="closeProfEdit()">ยกเลิก</button><button class="btn pri" onclick="saveProfile()">บันทึกโปรไฟล์</button></div></div></div>`}
+function openProfEdit(){pfAvNew=undefined;pfBgNew=undefined;const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:14px"><div class="gb" style="border-radius:22px;max-width:420px;max-height:90vh;padding:18px">${pfForm()}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px"><button class="btn" onclick="closeProfEdit()">ยกเลิก</button><button class="btn pri" onclick="saveProfile()">บันทึกโปรไฟล์</button></div></div></div>`;if(S.pkVideoBanner)setTimeout(bgVideoPreviewRefresh,50)}
 function closeProfEdit(){pfAvNew=undefined;pfBgNew=undefined;$('#dlg').innerHTML=''}
 function vProfile(){const pr=S.prof||{},rk=leaderboard.slice().sort((a,b)=>(b.pts||0)-(a.pts||0)).findIndex(r=>r.uid===uid)+1,nf=Object.keys(myFriends).length,nm=pr.name||pName(uid,{email:user&&user.email});
  const stats=[['คะแนน',fmt(S.pts)],['เหรียญทอง',fmt(S.gold||0)],['หยกเขียว',fmt(S.jade||0)],['สตรีคเช็กอิน',S.streak+' วัน'],['เวลาออนไลน์รวม',fmtDur(S.life)],['เริ่มเล่นเมื่อ',S.joined?new Date(S.joined).toLocaleDateString('th-TH',{dateStyle:'medium'}):'-'],['อันดับคะแนน',rk?'#'+rk:'-'],['เลเวลเวอร์พาส',bpLevel()+'/'+BP_MAX_LV],['พาสสะสม',passCount()>90?'ทุกพาส':passCount()+' พาส'],['เพื่อน',nf+' คน'],['คูปองที่แลก',S.my.length+' ใบ'],['Open ID',esc(S.oid||'ยังไม่ได้กรอก')]];
  const vt=vipShow(),pt=plateShow();
- return pthWrap(profTheme(),`<div class="card pcard" style="margin-top:0"><div class="pcover" style="${bgCss((S.prof&&S.prof.bg)||'',profTheme())}"></div><div class="pcb"><div id="pfav" style="display:inline-block">${avHTML(uid,{name:(S.prof&&S.prof.name)||''},92,true)}</div>
+ return pthWrap(profTheme(),`<div class="card pcard" style="margin-top:0"><div class="pcover" id="pcoverWrap" style="${bgCss((S.prof&&S.prof.bg)||'',profTheme())};position:relative;overflow:hidden"></div><div class="pcb"><div id="pfav" style="display:inline-block">${avHTML(uid,{name:(S.prof&&S.prof.name)||''},92,true)}</div>
  <div class="${namefxOn(uid,{})?'npframe':''}" style="margin-top:8px;position:relative;overflow:hidden;border-radius:10px;padding:2px 0">${npRowBg(uid,{})}<b class="n${npClass(uid,{})}" style="font-size:20px;position:relative;z-index:1">${esc(nm)}</b></div>${badgeImg(uid,{},22)}<div class="mut">${isAdmin?'แอดมิน':''}</div>
- <div style="margin-top:6px">${vt?vipImg(vt,44):''}${S.title?` <span class="ttl">${esc(S.title)}</span>`:''}</div>${pt?`<div>${plateImg(pt,44)}</div>`:''}${pthTag(profTheme())}${pr.bio?`<div style="margin-top:8px;white-space:pre-wrap">${esc(pr.bio)}</div>`:''}</div></div>`)+`
+ <div style="margin-top:6px">${vt?vipImg(vt,44):''}${S.title?` <span class="ttl">${esc(S.title)}</span>`:''}${S.pkSvip?' <span class="chip ok">💠 SVIP</span>':(S.pkVipUntil&&S.pkVipUntil>Date.now())?` <span class="chip ok">👑 VIP ถึง ${new Date(S.pkVipUntil).toLocaleDateString('th-TH',{dateStyle:'short'})}</span>`:''}</div>${pt?`<div>${plateImg(pt,44)}</div>`:''}${pthTag(profTheme())}${pr.bio?`<div style="margin-top:8px;white-space:pre-wrap">${esc(pr.bio)}</div>`:''}</div></div>`)+`
  <div class="card"><b class="n">ข้อมูลของฉัน</b><div class="pfg">${stats.map(([k,v])=>`<div><div class="mut">${k}</div><b>${v}</b></div>`).join('')}</div>
  <div class="row" style="margin-top:12px;gap:8px"><button class="btn" style="flex:1" onclick="go('friends')">เพื่อน${Object.keys(myReq).length?' ('+Object.keys(myReq).length+' คำขอ)':''}</button><button class="btn" style="flex:1" onclick="go('mine')">คูปองและประวัติ</button></div></div>
  <div class="card"><button class="btn pri" style="width:100%" onclick="openProfEdit()">แก้ไขโปรไฟล์</button></div>
@@ -2052,49 +2183,81 @@ function rankCardHTML(major,div,stars,opt){const r=rankInfo(major,div,stars);opt
  const divRow=r.top?'':`<div class="mut" style="text-align:center;margin-top:2px;font-size:12px">ขั้น ${RANK_DIV_LBL[r.div]}${r.stars>=r.starsNeeded?' · ชนะอีก 1 ครั้งเพื่อเลื่อนขั้น':''}</div>`;
  return `<div class="card" style="text-align:center;padding:14px${opt.compact?';margin-top:0':''}">${r.img?`<img src="${r.img}" alt="" style="max-width:${opt.w||160}px;width:100%;border-radius:10px">`:''}<div class="n" style="margin-top:8px;font-size:${opt.compact?14:16}px">${esc(r.name)}</div>${divRow}${starsRow}</div>`}
 // ---------- duel (ดวลแรงค์) ----------
-let duelState='idle',duelId=null,duelMySlot=null,duelOppInfo=null,duelRounds=[],duelRoundActive=false,duelIsBot=false,duelResult=null,duelOff=null,duelQueueTimer=null,duelRoundTimeout=null,duelAbandonTimer=null,duelProcessed=false,duelTargetTs=0;
-function duelReset(){duelState='idle';duelId=null;duelMySlot=null;duelOppInfo=null;duelRounds=[];duelRoundActive=false;duelIsBot=false;duelResult=null;duelProcessed=false;
- try{clearTimeout(duelQueueTimer)}catch(e){}try{clearTimeout(duelRoundTimeout)}catch(e){}try{clearTimeout(duelAbandonTimer)}catch(e){}
- try{if(duelOff&&duelOff.off)duelOff.off()}catch(e){}duelOff=null}
-async function duelStart(){if(isBanned()||!uid)return;duelReset();
+let duelState='idle',duelId=null,duelMySlot=null,duelOppInfo=null,duelRounds=[],duelRoundActive=false,duelIsBot=false,duelResult=null,duelOff=null,duelOff2=null,duelMatchLocked=false,duelQueueTimer=null,duelQueueTick=null,duelQueueStartTs=0,duelRoundTimeout=null,duelAbandonTimer=null,duelReadyTimer=null,duelProcessed=false,duelStarted=false,duelTargetTs=0,duelReadyMine=false,duelReadyOpp=false;
+function duelReset(){duelState='idle';duelId=null;duelMySlot=null;duelOppInfo=null;duelRounds=[];duelRoundActive=false;duelIsBot=false;duelResult=null;duelProcessed=false;duelStarted=false;duelReadyMine=false;duelReadyOpp=false;duelMatchLocked=false;
+ duelQueueCleanup();try{clearTimeout(duelRoundTimeout)}catch(e){}try{clearTimeout(duelAbandonTimer)}catch(e){}try{clearTimeout(duelReadyTimer)}catch(e){}}
+function duelQueueCleanup(){try{clearTimeout(duelQueueTimer)}catch(e){}try{clearInterval(duelQueueTick)}catch(e){}duelQueueTick=null;
+ try{if(duelOff&&duelOff.off)duelOff.off()}catch(e){}duelOff=null;
+ try{if(duelOff2&&duelOff2.off)duelOff2.off()}catch(e){}duelOff2=null}
+function duelMyInfo(){const st=rankState();return {uid,rp:S.rp||0,email:(user&&user.email)||'',rankMajor:st.major,rankDiv:st.div,rankStars:st.stars}}
+async function duelAttemptClaim(){ // ลองสแกนคิวและจับคู่ผู้เล่นจริง ใช้ uid<คู่แข่ง เป็นตัวตัดสินว่าใครเป็นฝ่าย "จับคู่" (กันจับคู่ซ้อนกันตอนทั้งสองฝั่งหาคู่พร้อมกัน)
+ if(duelMatchLocked||!uid)return false;
  try{
   const qsnap=await db.ref('rankQueue').once('value');const q=qsnap.val()||{};
-  const cands=Object.keys(q).filter(k=>k!==uid).map(k=>({uid:k,rp:(q[k]&&q[k].rp)||0}));
+  const cands=Object.keys(q).filter(k=>k!==uid&&uid<k).map(k=>({uid:k,rp:(q[k]&&q[k].rp)||0,email:(q[k]&&q[k].email)||'',rankMajor:(q[k]&&q[k].rankMajor)||0,rankDiv:(q[k]&&q[k].rankDiv)||0,rankStars:(q[k]&&q[k].rankStars)||0}));
   cands.sort((a,b)=>Math.abs(a.rp-(S.rp||0))-Math.abs(b.rp-(S.rp||0)));
   for(const c of cands){
+   if(duelMatchLocked)return false;
    let r;try{r=await db.ref('rankQueue/'+c.uid).transaction(v=>v?null:undefined)}catch(e){r=null}
    if(r&&r.committed){
+    duelMatchLocked=true;
+    try{await db.ref('rankQueue/'+uid).remove()}catch(e){}
+    duelQueueCleanup();
     const did=uid+'_'+c.uid+'_'+Date.now();
-    const room={a:{uid,rp:S.rp||0,email:(user&&user.email)||''},b:{uid:c.uid,rp:c.rp,email:''},status:'active',ts:Date.now(),rounds:{a:[],b:[]}};
+    const room={a:duelMyInfo(),b:c,status:'active',ts:Date.now(),ready:{a:false,b:false},rounds:{a:[],b:[]}};
     try{await db.ref('rankDuels/'+did).set(room);await db.ref('rankMatchOf/'+c.uid).set(did)}catch(e){}
-    duelId=did;duelMySlot='a';duelOppInfo=room.b;duelIsBot=false;duelState='play';R();duelListen();duelNextRound();
-    return}}
-  await db.ref('rankQueue/'+uid).set({rp:S.rp||0,ts:Date.now()});
-  duelState='queue';R();duelListenQueue();
+    duelId=did;duelMySlot='a';duelOppInfo=room.b;duelIsBot=false;duelState='matched';R();duelListen();duelReadyAbandonStart();
+    return true}}
+ }catch(e){}
+ return false}
+async function duelStart(){if(isBanned()||!uid)return;duelReset();duelMatchLocked=false;
+ try{
+  if(await duelAttemptClaim())return;
+  if(duelMatchLocked)return;
+  await db.ref('rankQueue/'+uid).set(Object.assign(duelMyInfo(),{ts:Date.now()}));
+  duelState='queue';duelQueueStartTs=Date.now();R();duelListenQueue();
+  duelQueueTick=setInterval(()=>{const e=document.getElementById('duelqt');if(e){const s=Math.floor((Date.now()-duelQueueStartTs)/1000);e.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}},1000);
  }catch(e){say('หาคู่แข่งไม่สำเร็จ ลองใหม่อีกครั้ง')}}
 function duelListenQueue(){
  duelQueueTimer=setTimeout(duelBotFallback,20000);
  duelOff=db.ref('rankMatchOf/'+uid);
- duelOff.on('value',async snap=>{const did=snap.val();if(!did||duelState!=='queue')return;
-  clearTimeout(duelQueueTimer);try{duelOff.off()}catch(e){}duelOff=null;db.ref('rankMatchOf/'+uid).remove().catch(()=>{});
+ duelOff.on('value',async snap=>{const did=snap.val();if(!did||duelState!=='queue'||duelMatchLocked)return;
+  duelMatchLocked=true;duelQueueCleanup();db.ref('rankMatchOf/'+uid).remove().catch(()=>{});
   try{const rs=await db.ref('rankDuels/'+did).once('value');const d=rs.val();if(!d)return;
-   duelId=did;duelMySlot=d.a.uid===uid?'a':'b';duelOppInfo=d[duelMySlot==='a'?'b':'a'];duelIsBot=false;duelState='play';R();duelListen();duelNextRound()
-  }catch(e){}})}
-function duelBotFallback(){if(duelState!=='queue')return;
- try{db.ref('rankQueue/'+uid).remove()}catch(e){}try{if(duelOff)duelOff.off()}catch(e){}duelOff=null;
+   duelId=did;duelMySlot=d.a.uid===uid?'a':'b';duelOppInfo=d[duelMySlot==='a'?'b':'a'];duelIsBot=false;duelState='matched';R();duelListen();duelReadyAbandonStart()
+  }catch(e){}});
+ // เฝ้าดูคิวทั้งหมดด้วย เผื่อมีคนเข้าคิวมาทีหลังตอนที่เรารออยู่แล้ว จะได้รีบจับคู่ทันทีแทนที่จะรอเฉยๆจนเจอบอท
+ duelOff2=db.ref('rankQueue');
+ duelOff2.on('value',()=>{if(duelState==='queue'&&!duelMatchLocked)duelAttemptClaim()})}
+function duelBotFallback(){if(duelState!=='queue'||duelMatchLocked)return;duelMatchLocked=true;
+ try{db.ref('rankQueue/'+uid).remove()}catch(e){}duelQueueCleanup();
  duelOppInfo={uid:'BOT',rp:S.rp||0,email:'คู่ต่อสู้จำลอง (บอท)'};duelIsBot=true;duelState='play';R();duelNextRound()}
-function duelCancel(){try{db.ref('rankQueue/'+uid).remove()}catch(e){}try{db.ref('rankMatchOf/'+uid).remove()}catch(e){}duelReset();go('rank');rankTab='rp'}
+function duelReadyAbandonStart(){try{clearTimeout(duelReadyTimer)}catch(e){}
+ duelReadyTimer=setTimeout(async()=>{if(duelState!=='matched'||!duelReadyMine||duelIsBot)return;try{
+  const snap=await db.ref('rankDuels/'+duelId+'/status').once('value');if(snap.val()!=='active')return;
+  await db.ref('rankDuels/'+duelId).update({status:'done',winner:uid}) // คู่แข่งไม่กดเตรียมพร้อม ถือว่าชนะ — เขียน status+winner พร้อมกันครั้งเดียว กันช่วงเวลาที่ status เป็น done แต่ winner ยังไม่มา
+ }catch(e){}},30000)}
+async function duelReady(){if(duelState!=='matched'||duelIsBot||duelReadyMine)return;duelReadyMine=true;R();
+ try{await db.ref('rankDuels/'+duelId+'/ready/'+duelMySlot).set(true)}catch(e){}}
+function duelCancel(){try{db.ref('rankQueue/'+uid).remove()}catch(e){}try{db.ref('rankMatchOf/'+uid).remove()}catch(e){}duelReset();goArena()}
+async function duelForfeit(){if(duelId&&!duelIsBot&&duelOppInfo&&duelOppInfo.uid){try{
+  const snap=await db.ref('rankDuels/'+duelId+'/status').once('value');
+  if(snap.val()==='active')await db.ref('rankDuels/'+duelId).update({status:'done',winner:duelOppInfo.uid})
+ }catch(e){}}
+ duelReset();goArena()}
 function duelListen(){const ref=db.ref('rankDuels/'+duelId);duelOff=ref;
  ref.on('value',async snap=>{const d=snap.val();if(!d)return;
   duelMySlot=d.a.uid===uid?'a':'b';const oppSlot=duelMySlot==='a'?'b':'a';duelOppInfo=d[oppSlot];
   if(d.status==='done'){duelFinish(d);return}
+  const rdy=d.ready||{};duelReadyMine=!!rdy[duelMySlot];duelReadyOpp=!!rdy[oppSlot];
+  if(duelState==='matched'){
+   if(rdy.a&&rdy.b&&!duelStarted){duelStarted=true;try{clearTimeout(duelReadyTimer)}catch(e){}duelState='play';R();duelNextRound();return}
+   if(pg==='duel')R();return}
   const ra=(d.rounds&&d.rounds.a)||[],rb=(d.rounds&&d.rounds.b)||[];
   if(ra.length>=3&&rb.length>=3){
    const avgA=ra.reduce((a,b)=>a+b,0)/ra.length,avgB=rb.reduce((a,b)=>a+b,0)/rb.length;
    const winner=avgA<avgB?d.a.uid:(avgB<avgA?d.b.uid:'draw');
-   try{const r=await db.ref('rankDuels/'+duelId+'/status').transaction(v=>v==='active'?'done':undefined);
-    if(r.committed){await db.ref('rankDuels/'+duelId+'/winner').set(winner)}
-   }catch(e){}
+   try{if(d.status==='active')await db.ref('rankDuels/'+duelId).update({status:'done',winner})}catch(e){} // เขียน status+winner พร้อมกันครั้งเดียว ไม่ให้มีช่วงที่ status=done แต่ winner ยังว่าง (เคยทำให้ผลเพี้ยนตอนทั้งคู่ส่งผลไล่เลี่ยกัน)
   } else if(pg==='duel')R()})}
 function duelNextRound(){if(duelRounds.length>=3){duelSubmitRounds();return}
  duelRoundActive=false;R();const delay=800+Math.random()*1700;
@@ -2108,24 +2271,26 @@ function duelTap(){if(duelState!=='play')return;
 async function duelSubmitRounds(){
  if(duelIsBot){
   const avgMe=duelRounds.reduce((a,b)=>a+b,0)/duelRounds.length,avgBot=380+Math.random()*220,won=avgMe<avgBot;
-  const before=rankState();rankApplyResult(won);save();
-  duelResult={win:won,draw:false,before,after:rankState(),oppName:'คู่ต่อสู้จำลอง (บอท)',bot:true};
+  const before=rankState();rankApplyResult(won);
+  const rec=arenaRecord1v1(won,false);
+  duelResult={win:won,draw:false,before,after:rankState(),oppName:'คู่ต่อสู้จำลอง (บอท)',bot:true,gold:rec.gold,stats:rec.stats};
   duelState='done';R();return}
  try{await db.ref('rankDuels/'+duelId+'/rounds/'+duelMySlot).set(duelRounds)}catch(e){}
  if(duelState==='play'){duelState='waitResult';R()} // อาจมีการสรุปผลไปแล้ว (duelFinish) ระหว่างรอ set() ถ้าคู่แข่งส่งผลไปก่อนแล้ว — อย่าทับสถานะ
  duelAbandonTimer=setTimeout(async()=>{try{
-  const r=await db.ref('rankDuels/'+duelId+'/status').transaction(v=>v==='active'?'done':undefined);
-  if(r.committed)await db.ref('rankDuels/'+duelId+'/winner').set(uid) // คู่แข่งหายไป ถือว่าชนะ
+  const snap=await db.ref('rankDuels/'+duelId+'/status').once('value');if(snap.val()!=='active')return;
+  await db.ref('rankDuels/'+duelId).update({status:'done',winner:uid}) // คู่แข่งหายไป ถือว่าชนะ
  }catch(e){}},60000)}
 function duelFinish(d){if(duelProcessed)return;duelProcessed=true;
- try{clearTimeout(duelAbandonTimer)}catch(e){}
+ try{clearTimeout(duelAbandonTimer)}catch(e){}try{clearTimeout(duelReadyTimer)}catch(e){}
  const mySlot=d.a.uid===uid?'a':'b',oppSlot=mySlot==='a'?'b':'a';
  const won=d.winner===uid,draw=d.winner==='draw';
- const before=rankState();if(!draw)rankApplyResult(won);save();
- duelResult={win:won,draw,before,after:rankState(),oppName:(d[oppSlot]&&d[oppSlot].email)||'คู่แข่ง'};
+ const before=rankState();if(!draw)rankApplyResult(won);
+ const rec=arenaRecord1v1(won,draw);
+ duelResult={win:won,draw,before,after:rankState(),oppName:(d[oppSlot]&&d[oppSlot].email)||'คู่แข่ง',gold:rec.gold,stats:rec.stats};
  try{if(duelOff)duelOff.off()}catch(e){}duelOff=null;
  duelState='done';R()}
-function vDuel(){if(duelState==='queue')return duelQueueHTML();if(duelState==='play')return duelPlayHTML();if(duelState==='waitResult')return duelWaitHTML();if(duelState==='done')return duelDoneHTML();return duelIdleHTML()}
+function vDuel(){if(duelState==='queue')return duelQueueHTML();if(duelState==='matched')return duelMatchedHTML();if(duelState==='play')return duelPlayHTML();if(duelState==='waitResult')return duelWaitHTML();if(duelState==='done')return duelDoneHTML();return duelIdleHTML()}
 function duelIdleHTML(){const st=rankState();
  return `<div class="card" style="margin-top:0;text-align:center;padding:24px 16px"><div style="font-size:42px">⚔️</div>
  <b class="n" style="font-size:19px;display:block;margin-top:8px">ดวลแรงค์</b>
@@ -2133,9 +2298,19 @@ function duelIdleHTML(){const st=rankState();
  <div style="margin-top:14px">${rankCardHTML(st.major,st.div,st.stars,{compact:true,w:140})}</div>
  <button class="btn gold" style="width:100%;margin-top:16px" onclick="duelStart()">หาคู่แข่ง</button></div>`}
 function duelQueueHTML(){return `<div class="card" style="margin-top:0;text-align:center;padding:28px 16px"><div style="font-size:36px">🔎</div>
- <b class="n" style="display:block;margin-top:8px">กำลังหาคู่แข่ง...</b>
- <div class="mut" style="margin-top:6px">ถ้าไม่มีคนอื่นออนไลน์ใน 20 วินาที ระบบจะจับคู่กับคู่ต่อสู้จำลองให้อัตโนมัติ</div>
+ <b class="n" style="display:block;margin-top:8px">กำลังหาคู่แข่ง... <span id="duelqt" class="mut">0:00</span></b>
+ <div class="mut" style="margin-top:6px">ถ้าเจอผู้เล่นจริงจะเข้าสู่ขั้นเตรียมพร้อมทันที ไม่ต้องรอ ถ้าไม่มีคนอื่นออนไลน์ใน 20 วินาที ระบบจะจับคู่กับคู่ต่อสู้จำลองให้อัตโนมัติ</div>
  <button class="btn" style="width:100%;margin-top:16px" onclick="duelCancel()">ยกเลิก</button></div>`}
+function duelMatchedHTML(){const mine=rankState();const opp=duelOppInfo||{};
+ return `<div class="card" style="margin-top:0;text-align:center;padding:24px 16px"><div style="font-size:36px">🤝</div>
+ <b class="n" style="display:block;margin-top:8px">เจอคู่แข่งแล้ว!</b>
+ <div class="mut" style="margin-top:4px">ทั้งสองฝ่ายต้องกด "เตรียมพร้อม" ก่อนถึงจะเริ่มดวลจริง</div>
+ <div class="row" style="gap:10px;margin-top:16px;align-items:stretch">
+  <div style="flex:1"><div class="mut" style="margin-bottom:6px">คุณ${duelReadyMine?' ✅':''}</div>${rankCardHTML(mine.major,mine.div,mine.stars,{compact:true,w:120})}</div>
+  <div style="display:flex;align-items:center;font-size:22px">⚔️</div>
+  <div style="flex:1"><div class="mut" style="margin-bottom:6px">${esc(opp.email||'คู่แข่ง')}${duelReadyOpp?' ✅':''}</div>${rankCardHTML(opp.rankMajor||0,opp.rankDiv||0,opp.rankStars||0,{compact:true,w:120})}</div>
+ </div>
+ ${duelReadyMine?`<div class="mut" style="margin-top:16px">⏳ รอคู่แข่งกดเตรียมพร้อม...</div><button class="btn" style="width:100%;margin-top:10px" onclick="duelForfeit()">ยกเลิก (นับว่าแพ้)</button>`:`<button class="btn gold" style="width:100%;margin-top:16px" onclick="duelReady()">✅ เตรียมพร้อม</button><button class="btn" style="width:100%;margin-top:10px" onclick="duelForfeit()">ยกเลิก</button>`}</div>`}
 function duelPlayHTML(){const n=duelRounds.length;
  return `<div class="card" style="margin-top:0;text-align:center"><div class="mut">รอบที่ ${Math.min(n+1,3)}/3 · คู่แข่ง: ${esc((duelOppInfo&&duelOppInfo.email)||'คู่ต่อสู้จำลอง (บอท)')}</div>
  <div style="margin-top:18px;height:160px;display:flex;align-items:center;justify-content:center">${duelRoundActive?`<button onclick="duelTap()" style="width:120px;height:120px;border-radius:50%;border:none;background:#2ecc71;font-size:40px;cursor:pointer">👊</button>`:`<button onclick="duelTap()" style="width:120px;height:120px;border-radius:50%;border:2px dashed var(--line);background:transparent;font-size:13px;color:var(--mut);cursor:pointer">รอสัญญาณ...</button>`}</div>
@@ -2149,8 +2324,295 @@ function duelDoneHTML(){const r=duelResult||{};const promoted=r.before&&r.after&
  <b class="n" style="font-size:20px;display:block;margin-top:8px">${r.draw?'เสมอ':r.win?'ชนะ!':'แพ้'}</b>
  <div class="mut" style="margin-top:4px">คู่แข่ง: ${esc(r.oppName||'-')}</div>
  <div style="margin-top:10px;font-size:18px;font-weight:700;color:${r.draw?'inherit':r.win?'#2e7d32':'#d32f2f'}">${r.draw?'ไม่มีการเปลี่ยนดาว':r.win?'+1 ⭐':'−1 ⭐'}${promoted?' · 🎉 เลื่อนขั้น!':''}${demoted?' · ตกขั้น':''}</div>
+ ${r.stats?`<div class="row" style="justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span class="chip">⚔️ สังหาร ${r.stats.kills}</span><span class="chip">💀 ถูกสังหาร ${r.stats.deaths}</span><span class="chip">🤝 ช่วยเหลือ ${r.stats.assists}</span><span class="chip ok">🪙 +${r.gold||0}</span></div>`:''}
  <div style="margin-top:8px">${r.after?rankCardHTML(r.after.major,r.after.div,r.after.stars,{compact:true,w:140}):''}</div>
- <div class="row" style="gap:8px;margin-top:16px"><button class="btn" style="flex:1" onclick="duelReset();go('rank');rankTab='rp';R()">กลับไปอันดับแรงค์</button><button class="btn gold" style="flex:1" onclick="duelStart()">ดวลอีกครั้ง</button></div></div>`}
+ <div class="row" style="gap:8px;margin-top:16px"><button class="btn" style="flex:1" onclick="duelReset();goArena()">กลับสนามประลอง</button><button class="btn" style="flex:1" onclick="duelReset();arenaStage='history';R()">ดูประวัติ</button><button class="btn gold" style="flex:1" onclick="duelStart()">ดวลอีกครั้ง</button></div></div>`}
+
+// ========================= สนามประลอง (ARENA) =========================
+const ARENA_HEROES=[
+ {id:'h1',name:'เทียนหลง จอมมังกร',role:'tank',roleName:'แทงก์',emoji:'🐉',diff:1,atk:40,def:95,spd:45,special:'เกราะมังกรสวรรค์: ลดความเสียหายที่ได้รับ 20% เมื่อ HP ต่ำกว่าครึ่ง',
+  skills:[{n:'หมัดเกล็ดมังกร',d:'พุ่งเข้าชนศัตรูและสร้างเกราะให้ตัวเอง'},{n:'กำแพงปราณ',d:'สร้างกำแพงพลังปราณกันศัตรูชั่วคราว'},{n:'เสียงคำรามมังกร',d:'ทำให้ศัตรูรอบตัวหวาดกลัว เคลื่อนที่ช้าลง'},{n:'พิโรธจอมมังกร',d:'พุ่งเข้าใส่ศัตรูทั้งหมดในแนวตรงพร้อมดึงเข้าหา'}]},
+ {id:'h2',name:'เจ้าชายทัพเหล็ก',role:'warrior',roleName:'นักรบ',emoji:'⚔️',diff:2,atk:85,def:65,spd:60,special:'จิตวิญญาณนักรบ: โจมตีติดต่อกัน 3 ครั้งจะเพิ่มพลังโจมตีชั่วคราว',
+  skills:[{n:'ฟันสะท้านภูผา',d:'ฟันดาบสร้างความเสียหายเป็นวงกว้าง'},{n:'ก้าวสายฟ้า',d:'พุ่งเข้าหาศัตรูอย่างรวดเร็ว'},{n:'ป้องกันเหล็กกล้า',d:'ยกโล่ป้องกันความเสียหายชั่วขณะ'},{n:'ดาบสวรรค์ทำลายล้าง',d:'ฟันดาบพลังมหาศาลใส่ศัตรูตรงหน้า'}]},
+ {id:'h3',name:'เงาราตรีไร้ร่าง',role:'assassin',roleName:'นักฆ่า',emoji:'🗡️',diff:3,atk:95,def:30,spd:90,special:'กลืนเงา: หายตัวชั่วคราวหลังใช้สกิลที่ 2',
+  skills:[{n:'จู่โจมเงามืด',d:'ย่องเข้าหาศัตรูจากที่กำบัง'},{n:'ตัดวิญญาณ',d:'ฟันรัวเร็วหลายจังหวะ'},{n:'ม่านเงา',d:'หายตัวชั่วคราวและเพิ่มความเร็ว'},{n:'ปลิดชีพในเงามืด',d:'สังหารศัตรูที่ HP ต่ำโดยทันที'}]},
+ {id:'h4',name:'อัคนีเทวีเผาสวรรค์',role:'mage',roleName:'จอมเวท',emoji:'🔥',diff:2,atk:90,def:35,spd:55,special:'เปลวปราณอัคคี: สกิลถัดไปหลังติดคริติคอลจะไม่มีคูลดาวน์',
+  skills:[{n:'ลูกไฟปราณ',d:'ยิงลูกไฟใส่ศัตรูระยะไกล'},{n:'วงแหวนอัคคี',d:'สร้างวงไฟเผาผลาญพื้นที่'},{n:'ปีกเพลิง',d:'เคลื่อนที่หลบหลีกด้วยปีกไฟ'},{n:'มหาวินาศอัคนี',d:'เรียกฝนไฟถล่มพื้นที่กว้าง'}]},
+ {id:'h5',name:'น้ำแข็งเทพีหิมะขาว',role:'mage',roleName:'จอมเวท',emoji:'❄️',diff:2,atk:80,def:45,spd:50,special:'ลมหนาวนิรันดร์: ศัตรูที่โดนสกิลจะเคลื่อนที่ช้าลง',
+  skills:[{n:'ธารน้ำแข็ง',d:'ยิงแท่งน้ำแข็งแทงศัตรู'},{n:'พายุหิมะ',d:'โปรยหิมะทำดาเมจต่อเนื่อง'},{n:'กำแพงน้ำแข็ง',d:'สร้างกำแพงกั้นเส้นทางศัตรู'},{n:'ยุคน้ำแข็ง',d:'แช่แข็งศัตรูทั้งหมดในรัศมี'}]},
+ {id:'h6',name:'วายุศรจอมธนู',role:'archer',roleName:'นักธนู',emoji:'🏹',diff:2,atk:88,def:40,spd:75,special:'สายตาเหยี่ยว: โจมตีจากระยะไกลสุดจะติดคริติคอลเสมอ',
+  skills:[{n:'ธนูพายุ',d:'ยิงธนูทะลุทะลวงเป็นแนว'},{n:'ก้าวลม',d:'กระโดดถอยหลังพร้อมยิงธนู'},{n:'ห่าธนูสวรรค์',d:'ยิงธนูรัวใส่ศัตรูหลายทิศ'},{n:'ลูกศรมัจจุราช',d:'ยิงธนูเล็งเป้าหมายไกลสุดแรงสุด'}]},
+ {id:'h7',name:'ชื่นใจเซียนผู้เยียวยา',role:'support',roleName:'ผู้สนับสนุน',emoji:'💫',diff:1,atk:35,def:55,spd:60,special:'สายธารปราณบุญ: ฮีลพันธมิตรที่ HP ต่ำสุดเพิ่มขึ้น 30%',
+  skills:[{n:'สายธารชุบชีวิต',d:'ฟื้นฟู HP ให้พันธมิตร'},{n:'ยันต์ป้องกันภัย',d:'มอบเกราะป้องกันชั่วคราว'},{n:'ปีกนางฟ้า',d:'เพิ่มความเร็วเคลื่อนที่ให้ทีม'},{n:'พรแห่งสวรรค์',d:'ฟื้นฟู HP มหาศาลพร้อมล้างสถานะผิดปกติทั้งทีม'}]},
+ {id:'h8',name:'สายฟ้าจอมทัพฟ้าคะนอง',role:'warrior',roleName:'นักรบ',emoji:'⚡',diff:2,atk:82,def:60,spd:70,special:'วายุสายฟ้า: โจมตีมีโอกาสปล่อยสายฟ้าเพิ่มเติม',
+  skills:[{n:'ฟาดสายฟ้า',d:'ฟันใส่ศัตรูพร้อมปล่อยไฟฟ้าช็อต'},{n:'กระโจนสายลม',d:'พุ่งตัวเข้าใส่ศัตรูอย่างรวดเร็ว'},{n:'เกราะวายุ',d:'ห่อหุ้มตัวด้วยสายลมป้องกัน'},{n:'สายฟ้าฟาดสวรรค์',d:'เรียกสายฟ้าจากฟ้าลงมาที่ศัตรู'}]},
+ {id:'h9',name:'วิญญาณหมาป่าแห่งขุนเขา',role:'assassin',roleName:'นักฆ่า',emoji:'🐺',diff:3,atk:92,def:38,spd:85,special:'สัญชาตญาณล่า: ความเร็วเพิ่มขึ้นเมื่อไล่ล่าศัตรูที่ HP ต่ำ',
+  skills:[{n:'กรงเล็บป่าเถื่อน',d:'ตะปบศัตรูด้วยกรงเล็บ'},{n:'วิ่งไล่ล่า',d:'เร่งความเร็ววิ่งเข้าหาเป้าหมาย'},{n:'หอนเรียกฝูง',d:'เรียกวิญญาณหมาป่ามาช่วยโจมตี'},{n:'ร่างทรงหมาป่าเทพ',d:'แปลงร่างเพิ่มพลังโจมตีและความเร็วมหาศาล'}]}
+];
+const ARENA_ROLES=[['tank','แทงก์','🛡️'],['warrior','นักรบ','⚔️'],['assassin','นักฆ่า','🗡️'],['mage','จอมเวท','🔮'],['archer','นักธนู','🏹'],['support','ผู้สนับสนุน','💫']];
+const ARENA_MODES={
+ '1v1':{size:1,label:'ประลองเทพ 1v1',sub:'ดวลตัวต่อตัว ชนะ 2 ใน 3 รอบ',icon:'⚔️',gold:{win:15,lose:5}},
+ '3v3':{size:3,label:'ประลองเทพ 3v3',sub:'ทีมละ 3 คน ดวลวัดพลังทีม',icon:'🔥',gold:{win:25,lose:8}},
+ '5v5':{size:5,label:'สงครามเทพ 5v5',sub:'ทีมละ 5 คน ศึกใหญ่ชี้ชะตา',icon:'🐉',gold:{win:40,lose:12}}
+};
+const arenaHeroById=id=>ARENA_HEROES.find(h=>h.id===id)||ARENA_HEROES[0];
+function arenaWinRate(){const h=S.arenaHist||[];if(!h.length)return 0;return Math.round(h.filter(x=>x.win).length/h.length*100)}
+function arenaStat(){const h=S.arenaHist||[];return {win:h.filter(x=>x.win).length,lose:h.filter(x=>!x.win&&!x.draw).length,total:h.length}}
+// ---------- หน้าหลักสนามประลอง ----------
+let arenaStage='home',arenaMode='1v1',arenaHeroId='h1';
+function goArena(){arenaStage='home';go('arena')}
+function arenaHeroWrap(h,opt){opt=opt||{};const on=arenaHeroId===h.id;
+ return `<div class="card arh ${on?'on':''}" style="margin-top:0;padding:12px;text-align:center;cursor:pointer" onclick="arenaHeroId='${h.id}';R()">
+ <div style="font-size:38px">${h.emoji}</div><b class="n" style="font-size:13px;display:block;margin-top:4px">${esc(h.name)}</b>
+ <div class="mut" style="font-size:11px">${arenaRoleIcon(h.role)} ${h.roleName} · ${'★'.repeat(h.diff)}${'☆'.repeat(3-h.diff)}</div></div>`}
+function arenaRoleIcon(role){const r=ARENA_ROLES.find(x=>x[0]===role);return r?r[2]:'❔'}
+function vArena(){
+ if(arenaStage==='hero')return arenaHeroHTML();
+ if(arenaStage==='history')return arenaHistoryHTML();
+ if(arenaMode==='1v1'&&duelState!=='idle')return `<div class="arenaPg">${vDuel()}</div>`;
+ if(arenaMode!=='1v1'&&teamState!=='idle')return `<div class="arenaPg">${teamVHTML()}</div>`;
+ return arenaHomeHTML()}
+function arenaHomeHTML(){const st=rankState();const stat=arenaStat();
+ return `<div class="arenaPg">
+ <div class="arTitle"><div class="arTitleIn">⚔️ สนามประลอง ⚔️</div><div class="mut" style="color:#d8c6a8">ตำนานเทพกู้จักรวาล</div></div>
+ <div class="card arGlow" style="margin-top:14px;text-align:center;padding:16px">
+  ${rankCardHTML(st.major,st.div,st.stars,{compact:true,w:120})}
+  <div class="row" style="gap:8px;margin-top:10px;justify-content:center;flex-wrap:wrap">
+   <span class="chip ok">ชนะ ${stat.win}</span><span class="chip wn">แพ้ ${stat.lose}</span><span class="chip">อัตราชนะ ${arenaWinRate()}%</span><span class="chip">RP ${fmt(st.major*1000+st.div*100+st.stars*10)}</span>
+  </div>
+ </div>
+ <div class="mut" style="margin:14px 2px 6px">เลือกโหมดการแข่งขัน</div>
+ ${Object.entries(ARENA_MODES).map(([k,m])=>`<div class="card arMode" style="margin-top:8px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="arenaMode='${k}';arenaStage='hero';R()">
+  <div style="font-size:30px">${m.icon}</div><div style="flex:1"><b class="n">${m.label}</b><div class="mut" style="font-size:12px">${m.sub}</div></div><div style="font-size:18px;color:#f5c94f">›</div></div>`).join('')}
+ <div class="row" style="gap:8px;margin-top:14px">
+  <button class="btn" style="flex:1" onclick="arenaStage='history';R()">📜 ประวัติการแข่งขัน</button>
+  <button class="btn" style="flex:1" onclick="go('rank');rankTab='rp'">🏆 กระดานอันดับ</button>
+ </div>
+ <button class="btn gold" style="width:100%;margin-top:8px" onclick="arenaSeasonDlg()">🎁 รางวัลประจำฤดูกาล</button>
+ </div>`}
+function arenaSeasonDlg(){const rows=RANK_MAJORS.map((m,i)=>`<div class="row" style="justify-content:space-between;padding:4px 0"><span>${i+1}. ${esc(m.name)}</span><span class="mut">ต้องการ ${m.stars||1} ดาว/ขั้น</span></div>`).join('');
+ say(`🎁 รางวัลประจำฤดูกาล\n\nสะสมแรงค์และดาวให้สูงที่สุดก่อนจบฤดูกาล เมื่อแอดมินทำการรีเซ็ตฤดูกาล ผู้เล่นอันดับต้นจะได้รับรางวัลพิเศษตามแรงค์ที่ทำได้\n\n` )}
+function arenaHeroHTML(){const m=ARENA_MODES[arenaMode];const h=arenaHeroById(arenaHeroId);
+ return `<div class="arenaPg"><div class="row" style="align-items:center;gap:8px"><button class="btn" onclick="arenaStage='home';R()">‹ กลับ</button><b class="n">เลือกตัวละคร · ${m.label}</b></div>
+ <div class="card arGlow" style="margin-top:12px;text-align:center;padding:18px">
+  <div style="font-size:64px">${h.emoji}</div><b class="n" style="font-size:19px;display:block;margin-top:6px">${esc(h.name)}</b>
+  <div class="mut">${arenaRoleIcon(h.role)} ${h.roleName} · ความยาก ${'★'.repeat(h.diff)}${'☆'.repeat(3-h.diff)}</div>
+  <div class="mut" style="margin-top:8px;font-size:12px">${esc(h.special)}</div>
+  <div class="row" style="gap:6px;margin-top:12px">
+   <div style="flex:1"><div class="mut" style="font-size:11px">พลังโจมตี</div><div class="arBar"><div style="width:${h.atk}%;background:#e85d5d"></div></div></div>
+   <div style="flex:1"><div class="mut" style="font-size:11px">ค่าป้องกัน</div><div class="arBar"><div style="width:${h.def}%;background:#5d9ee8"></div></div></div>
+   <div style="flex:1"><div class="mut" style="font-size:11px">ความเร็ว</div><div class="arBar"><div style="width:${h.spd}%;background:#5de88a"></div></div></div>
+  </div>
+  <div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:center">${h.skills.map((s,i)=>`<div class="chip" style="max-width:150px;white-space:normal;text-align:left">${['①','②','③','④'][i]} <b>${esc(s.n)}</b><br><span class="mut" style="font-size:11px">${esc(s.d)}</span></div>`).join('')}</div>
+ </div>
+ <div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap">${ARENA_HEROES.map(hh=>arenaHeroWrap(hh)).join('')}</div>
+ <button class="btn gold" style="width:100%;margin-top:14px" onclick="arenaConfirmHero()">✅ เลือกตัวนี้ เข้าสู่สนามประลอง</button>
+ </div>`}
+function arenaConfirmHero(){const h=arenaHeroById(arenaHeroId);arenaStage='home';
+ if(arenaMode==='1v1'){duelStart();go('arena');return}
+ teamStart(arenaMode)}
+// ---------- ทีมประลอง (3v3 / 5v5) ----------
+let teamState='idle',teamMode='3v3',teamId=null,teamMySlot=null,teamMine=null,teamOpp=null,teamRounds=[],teamRoundActive=false,teamIsBot=false,teamResult=null,teamOff=null,teamOff2=null,teamMatchLocked=false,teamQueueTimer=null,teamQueueTick=null,teamQueueStartTs=0,teamRoundTimeout=null,teamAbandonTimer=null,teamReadyTimer=null,teamProcessed=false,teamStarted=false,teamTargetTs=0,teamReadyMine=false,teamReadyOpp=false,teamCountdown=0,teamCountdownTimer=null;
+function teamReset(){teamState='idle';teamId=null;teamMySlot=null;teamMine=null;teamOpp=null;teamRounds=[];teamRoundActive=false;teamIsBot=false;teamResult=null;teamProcessed=false;teamStarted=false;teamReadyMine=false;teamReadyOpp=false;teamMatchLocked=false;teamCountdown=0;
+ teamQueueCleanup();try{clearTimeout(teamRoundTimeout)}catch(e){}try{clearTimeout(teamAbandonTimer)}catch(e){}try{clearTimeout(teamReadyTimer)}catch(e){}try{clearInterval(teamCountdownTimer)}catch(e){}}
+function teamQueueCleanup(){try{clearTimeout(teamQueueTimer)}catch(e){}try{clearInterval(teamQueueTick)}catch(e){}teamQueueTick=null;
+ try{if(teamOff&&teamOff.off)teamOff.off()}catch(e){}teamOff=null;
+ try{if(teamOff2&&teamOff2.off)teamOff2.off()}catch(e){}teamOff2=null}
+function teamMyInfo(){const st=rankState();const h=arenaHeroById(arenaHeroId);return {uid,rp:S.rp||0,email:(user&&user.email)||'',rankMajor:st.major,rankDiv:st.div,rankStars:st.stars,heroId:h.id,role:h.role}}
+function arenaBotRoster(n,excludeRole){const pool=ARENA_HEROES.filter(h=>h.role!==excludeRole);const used=[];const out=[];
+ for(let i=0;i<n;i++){let cand=pool.filter(h=>!used.includes(h.role));if(!cand.length)cand=pool;const pick=cand[Math.floor(Math.random()*cand.length)];used.push(pick.role);
+  out.push({heroId:pick.id,role:pick.role,name:'ผู้เล่นจำลอง'+(i+1),rounds:[1,2,3].map(()=>Math.round(340+Math.random()*320))})}
+ return out}
+async function teamAttemptClaim(mode){ // เหมือน duelAttemptClaim: ใช้ uid<คู่แข่ง กันจับคู่ซ้อนตอนหาคู่พร้อมกัน
+ if(teamMatchLocked||!uid)return false;
+ try{
+  const qsnap=await db.ref('teamQueue/'+mode).once('value');const q=qsnap.val()||{};
+  const cands=Object.keys(q).filter(k=>k!==uid&&uid<k).map(k=>Object.assign({uid:k},q[k]));
+  cands.sort((a,b)=>Math.abs((a.rp||0)-(S.rp||0))-Math.abs((b.rp||0)-(S.rp||0)));
+  const size=ARENA_MODES[mode].size;
+  for(const c of cands){
+   if(teamMatchLocked)return false;
+   let r;try{r=await db.ref('teamQueue/'+mode+'/'+c.uid).transaction(v=>v?null:undefined)}catch(e){r=null}
+   if(r&&r.committed){
+    teamMatchLocked=true;
+    try{await db.ref('teamQueue/'+mode+'/'+uid).remove()}catch(e){}
+    teamQueueCleanup();
+    const did=mode+'_'+uid+'_'+c.uid+'_'+Date.now();
+    const mine=teamMyInfo();
+    const room={mode,size,status:'active',ts:Date.now(),
+     a:{captain:mine,bots:arenaBotRoster(size-1,mine.role)},
+     b:{captain:{uid:c.uid,rp:c.rp||0,email:c.email||'',rankMajor:c.rankMajor||0,rankDiv:c.rankDiv||0,rankStars:c.rankStars||0,heroId:c.heroId||'h1',role:c.role||'warrior'},bots:arenaBotRoster(size-1,c.role||'warrior')},
+     ready:{a:false,b:false},rounds:{a:[],b:[]}};
+    try{await db.ref('teamMatches/'+did).set(room);await db.ref('teamMatchOf/'+mode+'/'+c.uid).set(did)}catch(e){}
+    teamId=did;teamMySlot='a';teamMine=room.a;teamOpp=room.b;teamIsBot=false;teamState='lobby';R();teamListen();teamReadyAbandonStart();
+    return true}}
+ }catch(e){}
+ return false}
+async function teamStart(mode){if(isBanned()||!uid)return;teamMode=mode;teamReset();teamMatchLocked=false;
+ try{
+  if(await teamAttemptClaim(mode))return;
+  if(teamMatchLocked)return;
+  await db.ref('teamQueue/'+mode+'/'+uid).set(Object.assign(teamMyInfo(),{ts:Date.now()}));
+  teamState='queue';teamQueueStartTs=Date.now();R();teamListenQueue(mode);
+  teamQueueTick=setInterval(()=>{const e=document.getElementById('teamqt');if(e){const s=Math.floor((Date.now()-teamQueueStartTs)/1000);e.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}},1000);
+ }catch(e){say('หาทีมคู่แข่งไม่สำเร็จ ลองใหม่อีกครั้ง')}}
+function teamListenQueue(mode){
+ teamQueueTimer=setTimeout(()=>teamBotFallback(mode),15000);
+ teamOff=db.ref('teamMatchOf/'+mode+'/'+uid);
+ teamOff.on('value',async snap=>{const did=snap.val();if(!did||teamState!=='queue'||teamMatchLocked)return;
+  teamMatchLocked=true;teamQueueCleanup();db.ref('teamMatchOf/'+mode+'/'+uid).remove().catch(()=>{});
+  try{const rs=await db.ref('teamMatches/'+did).once('value');const d=rs.val();if(!d)return;
+   teamId=did;teamMySlot=d.a.captain.uid===uid?'a':'b';teamMine=d[teamMySlot];teamOpp=d[teamMySlot==='a'?'b':'a'];teamIsBot=false;teamState='lobby';R();teamListen();teamReadyAbandonStart()
+  }catch(e){}});
+ teamOff2=db.ref('teamQueue/'+mode);
+ teamOff2.on('value',()=>{if(teamState==='queue'&&!teamMatchLocked)teamAttemptClaim(mode)})}
+function teamBotFallback(mode){if(teamState!=='queue'||teamMatchLocked)return;teamMatchLocked=true;
+ try{db.ref('teamQueue/'+mode+'/'+uid).remove()}catch(e){}teamQueueCleanup();
+ const size=ARENA_MODES[mode].size,mine=teamMyInfo();
+ teamMine={captain:mine,bots:arenaBotRoster(size-1,mine.role)};
+ teamOpp={captain:{uid:'BOT_CAPTAIN',email:'ทีมคู่ต่อสู้จำลอง (AI)',rp:mine.rp,rankMajor:mine.rankMajor,rankDiv:mine.rankDiv,rankStars:mine.rankStars,heroId:'h2',role:'warrior'},bots:arenaBotRoster(size-1,'warrior')};
+ teamIsBot=true;teamState='lobby';R()}
+function teamReadyAbandonStart(){try{clearTimeout(teamReadyTimer)}catch(e){}
+ if(teamIsBot)return;
+ teamReadyTimer=setTimeout(async()=>{if(teamState!=='lobby'||!teamReadyMine||teamIsBot)return;try{
+  const snap=await db.ref('teamMatches/'+teamId+'/status').once('value');if(snap.val()!=='active')return;
+  await db.ref('teamMatches/'+teamId).update({status:'done',winner:teamMySlot}) // คู่แข่งไม่กดเตรียมพร้อม ถือว่าทีมเราชนะ
+ }catch(e){}},30000)}
+async function teamReady(){if(teamState!=='lobby'||teamReadyMine)return;teamReadyMine=true;R();
+ if(teamIsBot){teamReadyOpp=true;teamBeginCountdown();return}
+ try{await db.ref('teamMatches/'+teamId+'/ready/'+teamMySlot).set(true)}catch(e){}}
+function teamBeginCountdown(){if(teamStarted)return;teamStarted=true;try{clearTimeout(teamReadyTimer)}catch(e){}
+ teamCountdown=10;R();
+ teamCountdownTimer=setInterval(()=>{teamCountdown--;if(teamCountdown<=0){clearInterval(teamCountdownTimer);teamState='play';R();teamNextRound();return}
+  const e=document.getElementById('teamcd');if(e)e.textContent=teamCountdown;else R()},1000)}
+function teamCancel(){try{db.ref('teamQueue/'+teamMode+'/'+uid).remove()}catch(e){}try{db.ref('teamMatchOf/'+teamMode+'/'+uid).remove()}catch(e){}teamReset();goArena()}
+async function teamForfeit(){if(teamId&&!teamIsBot){try{
+  const snap=await db.ref('teamMatches/'+teamId+'/status').once('value');
+  if(snap.val()==='active')await db.ref('teamMatches/'+teamId).update({status:'done',winner:teamMySlot==='a'?'b':'a'})
+ }catch(e){}}
+ teamReset();goArena()}
+function teamListen(){const ref=db.ref('teamMatches/'+teamId);teamOff=ref;
+ ref.on('value',async snap=>{const d=snap.val();if(!d)return;
+  teamMySlot=d.a.captain.uid===uid?'a':'b';const oppSlot=teamMySlot==='a'?'b':'a';teamMine=d[teamMySlot];teamOpp=d[oppSlot];
+  if(d.status==='done'){teamFinish(d);return}
+  const rdy=d.ready||{};teamReadyMine=!!rdy[teamMySlot];teamReadyOpp=!!rdy[oppSlot];
+  if(teamState==='lobby'){
+   if(rdy.a&&rdy.b&&!teamStarted){teamBeginCountdown();return}
+   if(pg==='arena')R();return}
+  const ra=(d.rounds&&d.rounds.a)||[],rb=(d.rounds&&d.rounds.b)||[];
+  if(ra.length>=3&&rb.length>=3){
+   const botVals=side=>((d[side].bots||[]).reduce((arr,b)=>arr.concat(b.rounds||[]),[]));
+   const avgA=[...ra,...botVals('a')].reduce((a,b)=>a+b,0)/(ra.length+botVals('a').length);
+   const avgB=[...rb,...botVals('b')].reduce((a,b)=>a+b,0)/(rb.length+botVals('b').length);
+   const winner=avgA<avgB?'a':(avgB<avgA?'b':'draw');
+   try{if(d.status==='active')await db.ref('teamMatches/'+teamId).update({status:'done',winner})}catch(e){} // เขียน status+winner พร้อมกันครั้งเดียว กันผลเพี้ยนแบบที่เคยเจอในระบบดวล 1v1
+  } else if(pg==='arena')R()})}
+function teamNextRound(){if(teamRounds.length>=3){teamSubmitRounds();return}
+ teamRoundActive=false;R();const delay=800+Math.random()*1700;
+ teamRoundTimeout=setTimeout(()=>{teamRoundActive=true;teamTargetTs=Date.now();R()},delay)}
+function teamTap(){if(teamState!=='play')return;
+ if(teamRoundActive){teamRounds.push(Math.max(80,Date.now()-teamTargetTs))}
+ else{try{clearTimeout(teamRoundTimeout)}catch(e){}teamRounds.push(2000)}
+ teamRoundActive=false;
+ if(teamRounds.length<3)setTimeout(teamNextRound,450);else teamSubmitRounds();
+ R()}
+function arenaSimStats(mode,won,draw){const n=ARENA_MODES[mode].size;
+ const kills=draw?Math.round(n*0.6):won?Math.round(n*0.9+Math.random()*n):Math.round(n*0.3+Math.random()*n*0.5);
+ const deaths=draw?Math.round(n*0.6):won?Math.round(n*0.3+Math.random()*n*0.4):Math.round(n*0.7+Math.random()*n*0.6);
+ const assists=Math.round(n*0.5+Math.random()*n);
+ return {kills,deaths:Math.max(0,deaths),assists}}
+function arenaRecord1v1(won,draw){const g=ARENA_MODES['1v1'].gold;let gold=won?g.win:g.lose;
+ S.arenaStreak=won?((S.arenaStreak||0)+1):0;if(won&&S.arenaStreak>1)gold+=Math.min(20,(S.arenaStreak-1)*3);
+ addGold(gold,(won?'ชนะ':draw?'เสมอ':'แพ้')+'การแข่งขันประลองเทพ 1v1');
+ const stats=arenaSimStats('1v1',won,draw);
+ S.arenaHist=S.arenaHist||[];S.arenaHist.unshift({mode:'1v1',ts:Date.now(),win:won,draw,kills:stats.kills,deaths:stats.deaths,assists:stats.assists,gold,oppBot:duelIsBot});
+ S.arenaHist=S.arenaHist.slice(0,40);save();
+ return {gold,stats}}
+async function teamSubmitRounds(){
+ if(teamIsBot){
+  const avgMe=teamRounds.reduce((a,b)=>a+b,0)/teamRounds.length;
+  const botVals=(teamMine.bots||[]).reduce((arr,b)=>arr.concat(b.rounds||[]),[]);
+  const avgTeam=[...teamRounds,...botVals].reduce((a,b)=>a+b,0)/(teamRounds.length+botVals.length);
+  const oppBotVals=(teamOpp.bots||[]).reduce((arr,b)=>arr.concat(b.rounds||[]),[]);
+  const avgOpp=oppBotVals.reduce((a,b)=>a+b,0)/Math.max(1,oppBotVals.length);
+  const won=avgTeam<avgOpp;
+  teamFinishResult(won,false);return}
+ try{await db.ref('teamMatches/'+teamId+'/rounds/'+teamMySlot).set(teamRounds)}catch(e){}
+ if(teamState==='play'){teamState='waitResult';R()}
+ teamAbandonTimer=setTimeout(async()=>{try{
+  const snap=await db.ref('teamMatches/'+teamId+'/status').once('value');if(snap.val()!=='active')return;
+  await db.ref('teamMatches/'+teamId).update({status:'done',winner:teamMySlot}) // คู่แข่งหายไป ถือว่าทีมเราชนะ
+ }catch(e){}},60000)}
+function teamFinish(d){if(teamProcessed)return;teamProcessed=true;
+ try{clearTimeout(teamAbandonTimer)}catch(e){}try{clearTimeout(teamReadyTimer)}catch(e){}
+ const won=d.winner===teamMySlot,draw=d.winner==='draw';
+ teamFinishResult(won,draw)}
+function teamFinishResult(won,draw){
+ const before=rankState();if(!draw)rankApplyResult(won);
+ const g=ARENA_MODES[teamMode].gold;let gold=won?g.win:g.lose;
+ S.arenaStreak=won?((S.arenaStreak||0)+1):0;if(won&&S.arenaStreak>1)gold+=Math.min(20,(S.arenaStreak-1)*3);
+ addGold(gold,(won?'ชนะ':draw?'เสมอ':'แพ้')+'การแข่งขัน'+ARENA_MODES[teamMode].label);
+ const stats=arenaSimStats(teamMode,won,draw);
+ S.arenaHist=S.arenaHist||[];S.arenaHist.unshift({mode:teamMode,ts:Date.now(),win:won,draw,kills:stats.kills,deaths:stats.deaths,assists:stats.assists,starsBefore:before.stars+before.div*100+before.major*1000,starsAfter:rankState().stars+rankState().div*100+rankState().major*1000,gold,oppBot:teamIsBot});
+ S.arenaHist=S.arenaHist.slice(0,40);save();
+ teamResult={win:won,draw,before,after:rankState(),gold,stats,oppIsBot:teamIsBot};
+ try{if(teamOff)teamOff.off()}catch(e){}teamOff=null;
+ teamState='done';R()}
+function teamVHTML(){
+ if(teamState==='queue')return teamQueueHTML();
+ if(teamState==='lobby')return teamLobbyHTML();
+ if(teamState==='play')return teamPlayHTML();
+ if(teamState==='waitResult')return teamWaitHTML();
+ if(teamState==='done')return teamDoneHTML();
+ return arenaHomeHTML()}
+function teamQueueHTML(){return `<div class="card arGlow" style="margin-top:0;text-align:center;padding:28px 16px"><div style="font-size:36px">🔎</div>
+ <b class="n" style="display:block;margin-top:8px">กำลังหาทีมคู่แข่ง... <span id="teamqt" class="mut">0:00</span></b>
+ <div class="mut" style="margin-top:6px">ถ้าเจอหัวหน้าทีมคู่แข่งที่เป็นผู้เล่นจริงจะเข้าห้องรอทันที ตำแหน่งที่เหลือในทีมจะเติมด้วย AI จำลอง ถ้าไม่มีคนอื่นออนไลน์ใน 15 วินาที ระบบจะจัดทีมคู่แข่งจำลองให้อัตโนมัติ</div>
+ <button class="btn" style="width:100%;margin-top:16px" onclick="teamCancel()">ยกเลิก</button></div>`}
+function teamMemberChip(m,isCaptain){const h=arenaHeroById(m.heroId||'h1');
+ return `<div class="arMember"><div style="font-size:26px">${h.emoji}</div><div style="flex:1;min-width:0"><b class="n" style="font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(isCaptain?(m.email||'ผู้เล่น'):m.name)}</b><div class="mut" style="font-size:10px">${arenaRoleIcon(m.role)} ${h.roleName}${isCaptain?'':' · AI'}</div></div></div>`}
+function teamLobbyHTML(){const size=ARENA_MODES[teamMode].size;
+ const sideHTML=(side,ready)=>`<div style="flex:1"><div class="mut" style="text-align:center;margin-bottom:6px">${side===teamMySlot?'ทีมของคุณ':'ทีมคู่แข่ง'}${ready?' ✅':''}</div>
+  ${teamMemberChip(side===teamMySlot?teamMine.captain:teamOpp.captain,true)}
+  ${((side===teamMySlot?teamMine:teamOpp).bots||[]).map(b=>teamMemberChip(b,false)).join('')}</div>`;
+ return `<div class="card arGlow" style="margin-top:0;padding:18px 14px">
+ <div style="text-align:center"><div style="font-size:30px">🤝</div><b class="n">ห้องรอ · ${ARENA_MODES[teamMode].label}</b>
+ ${teamIsBot?`<div class="mut" style="font-size:12px;margin-top:2px">⚠️ ไม่พบทีมคู่แข่งที่เป็นผู้เล่นจริงในเวลา จึงจัดทีมคู่แข่งจำลอง (AI) ให้</div>`:'<div class="mut" style="font-size:12px;margin-top:2px">ทั้งสองทีมต้องกด "พร้อม" ก่อนเริ่มแข่งขัน</div>'}</div>
+ <div class="row" style="gap:10px;margin-top:14px;align-items:flex-start">${sideHTML('a',teamMySlot==='a'?teamReadyMine:teamReadyOpp)}<div style="display:flex;align-items:center;font-size:20px">⚔️</div>${sideHTML('b',teamMySlot==='b'?teamReadyMine:teamReadyOpp)}</div>
+ ${teamStarted?`<div class="mut" style="text-align:center;margin-top:16px">เริ่มแข่งขันในอีก <b id="teamcd" style="color:#f5c94f;font-size:18px">${teamCountdown}</b> วินาที</div>`:
+  teamReadyMine?`<div class="mut" style="text-align:center;margin-top:16px">⏳ รอทีมคู่แข่งกดพร้อม...</div><button class="btn" style="width:100%;margin-top:10px" onclick="teamForfeit()">ยกเลิก (นับว่าแพ้)</button>`:
+  `<button class="btn gold" style="width:100%;margin-top:16px" onclick="teamReady()">✅ พร้อม</button><button class="btn" style="width:100%;margin-top:10px" onclick="teamForfeit()">ยกเลิก</button>`}
+ </div>`}
+function teamPlayHTML(){const n=teamRounds.length;
+ return `<div class="card arGlow" style="margin-top:0;text-align:center"><div class="mut">รอบที่ ${Math.min(n+1,3)}/3 · การต่อสู้ทีม ${ARENA_MODES[teamMode].label}</div>
+ <div style="margin-top:18px;height:160px;display:flex;align-items:center;justify-content:center">${teamRoundActive?`<button onclick="teamTap()" style="width:120px;height:120px;border-radius:50%;border:none;background:#2ecc71;font-size:40px;cursor:pointer">👊</button>`:`<button onclick="teamTap()" style="width:120px;height:120px;border-radius:50%;border:2px dashed var(--line);background:transparent;font-size:13px;color:var(--mut);cursor:pointer">รอสัญญาณ...</button>`}</div>
+ <div class="mut" style="margin-top:10px">แตะเร็วที่สุดตอนวงกลมเปลี่ยนเป็นสีเขียว ผลจะถูกรวมกับเพื่อนร่วมทีม AI เพื่อตัดสินทีมที่ชนะ</div>
+ ${n?`<div class="row" style="justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap">${teamRounds.map(t=>`<span class="chip">${t} ms</span>`).join('')}</div>`:''}</div>`}
+function teamWaitHTML(){const avg=teamRounds.length?Math.round(teamRounds.reduce((a,b)=>a+b,0)/teamRounds.length):0;
+ return `<div class="card arGlow" style="margin-top:0;text-align:center;padding:28px 16px"><div style="font-size:36px">⏳</div><b class="n" style="display:block;margin-top:8px">รอทีมคู่แข่งดวลให้เสร็จ...</b><div class="mut" style="margin-top:6px">เวลาเฉลี่ยของคุณ: ${avg} ms</div></div>`}
+function teamDoneHTML(){const r=teamResult||{};const promoted=r.before&&r.after&&(r.after.major>r.before.major||(r.after.major===r.before.major&&r.after.div>r.before.div));
+ const demoted=r.before&&r.after&&(r.after.major<r.before.major||(r.after.major===r.before.major&&r.after.div<r.before.div));
+ const st=r.stats||{kills:0,deaths:0,assists:0};
+ return `<div class="card arGlow" style="margin-top:0;text-align:center;padding:28px 16px"><div style="font-size:48px">${r.draw?'🤝':r.win?'🏆':'💔'}</div>
+ <b class="n" style="font-size:22px;display:block;margin-top:8px;${r.win?'color:#f5c94f;text-shadow:0 0 12px rgba(245,201,79,.6)':''}">${r.draw?'เสมอ':r.win?'ชัยชนะ!':'พ่ายแพ้'}</b>
+ <div class="mut" style="margin-top:4px">${ARENA_MODES[teamMode].label}${r.oppIsBot?' · คู่แข่งเป็น AI จำลอง':''}</div>
+ <div style="margin-top:10px;font-size:18px;font-weight:700;color:${r.draw?'inherit':r.win?'#2e7d32':'#d32f2f'}">${r.draw?'ไม่มีการเปลี่ยนดาว':r.win?'+1 ⭐':'−1 ⭐'}${promoted?' · 🎉 เลื่อนขั้น!':''}${demoted?' · ตกขั้น':''}</div>
+ <div class="row" style="justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span class="chip">⚔️ สังหาร ${st.kills}</span><span class="chip">💀 ถูกสังหาร ${st.deaths}</span><span class="chip">🤝 ช่วยเหลือ ${st.assists}</span><span class="chip ok">🪙 +${r.gold||0}</span></div>
+ <div style="margin-top:8px">${r.after?rankCardHTML(r.after.major,r.after.div,r.after.stars,{compact:true,w:140}):''}</div>
+ <div class="row" style="gap:8px;margin-top:16px"><button class="btn" style="flex:1" onclick="teamReset();goArena()">กลับสนามประลอง</button><button class="btn" style="flex:1" onclick="arenaStage='history';teamReset();R()">ดูประวัติ</button><button class="btn gold" style="flex:1" onclick="teamStart(teamMode)">เล่นอีกครั้ง</button></div></div>`}
+// ---------- ประวัติการแข่งขัน ----------
+let arenaHistFilter='all';
+function arenaHistoryHTML(){const h=S.arenaHist||[];
+ const list=h.filter(x=>arenaHistFilter==='all'?true:arenaHistFilter==='win'?x.win:arenaHistFilter==='lose'?(!x.win&&!x.draw):x.mode===arenaHistFilter);
+ const tabs=[['all','ทั้งหมด'],['5v5','5v5'],['3v3','3v3'],['1v1','1v1'],['win','ชนะ'],['lose','แพ้']];
+ return `<div class="arenaPg"><div class="row" style="align-items:center;gap:8px"><button class="btn" onclick="arenaStage='home';R()">‹ กลับ</button><b class="n">📜 ประวัติการแข่งขัน</b></div>
+ <div class="tabs" style="margin-top:10px;flex-wrap:wrap">${tabs.map(([k,n])=>`<button class="tab ${arenaHistFilter===k?'on':''}" onclick="arenaHistFilter='${k}';R()">${n}</button>`).join('')}</div>
+ ${list.length?list.map(x=>`<div class="card" style="margin-top:8px;padding:12px 14px">
+  <div class="row" style="justify-content:space-between"><b class="n" style="color:${x.draw?'inherit':x.win?'#2e7d32':'#d32f2f'}">${x.draw?'เสมอ':x.win?'ชนะ':'แพ้'} · ${x.mode}</b><span class="mut" style="font-size:12px">${new Date(x.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'})}</span></div>
+  <div class="row" style="gap:8px;margin-top:6px;flex-wrap:wrap"><span class="chip">⚔️ ${x.kills}</span><span class="chip">💀 ${x.deaths}</span><span class="chip">🤝 ${x.assists}</span><span class="chip ok">🪙 +${x.gold||0}</span>${x.oppBot?'<span class="chip">คู่แข่ง AI</span>':''}</div>
+  </div>`).join(''):'<div class="card"><div class="mut">ยังไม่มีประวัติการแข่งขัน</div></div>'}
+ </div>`}
+
 const FP=k=>(FASHION_PTS&&FASHION_PTS[k]!=null)?FASHION_PTS[k]:(FASHION_DEF[k]||0);
 function fashionScore(){if(!S)return 0;let sc=0;
  if(S.ownLbFrame)sc+=FP('frame');
@@ -2179,7 +2641,10 @@ function chatStyleOpen(){const cur=(S.prof&&S.prof.cbs)||'auto';
 function chatStyleSet(k){if(k!=='auto'&&!cbsOk(k)){say('ยังไม่ได้ปลดล็อกสไตล์นี้');return}S.prof=S.prof||{};S.prof.cbs=k;save();lbSync='';pushUser(true);chatStyleOpen();if(pg==='chat')chatPaint()}
 function chatRankSet(v){S.prof=S.prof||{};S.prof.csr=v?1:0;save();lbSync='';pushUser(true);if(pg==='chat')chatPaint()}
 const plateImg=(k,h)=>k?`<img class="plti" src="${VIPI.p[k-1]}" alt="" style="height:${h||34}px">`:'';
-function myTitles(){const m={};(S.inventory||[]).forEach(x=>{if(x&&x.desc&&String(x.desc).indexOf('เวอร์พาส Lv.')===0)m[x.name]=1});return Object.keys(m)}
+function myTitles(){const m={};(S.inventory||[]).forEach(x=>{if(x&&x.desc&&String(x.desc).indexOf('เวอร์พาส Lv.')===0)m[x.name]=1});
+ if(S.pkTitle699||S.pkSvip)m['เทพผู้พิทักษ์จักรวาล']=1;
+ if(S.pkSvip)m['ปฐมเทพสูงสุด']=1;
+ return Object.keys(m)}
 function setTitle(i){const t=myTitles();S.title=i<0?'':(t[i]||'');save();R()}
 function vipSettings(){const pc=passCount(),adm=typeof isAdmin!=='undefined'&&isAdmin;
  const grid=(kind)=>`<div class="vgrid">${[1,2,3,4,5,6].map(k=>{const ok=vipUnlocked(k),on=(kind==='v'?vipShow():plateShow())===k;
@@ -2328,7 +2793,7 @@ async function jumpCfgSave(){const d=jumpCfgDraft||JUMPCFG;const btn=$('#jumpcfg
  try{await db.ref('settings/jumpEvent').set(d);jumpCfgDraft=null;const e=$('#jumpst');if(e){e.textContent='บันทึกแล้ว ✓';setTimeout(()=>{if(e)e.textContent=''},2000)}}
  catch(e){say('บันทึกไม่สำเร็จ ('+((e&&e.code)||'ลองใหม่')+')')}finally{if(btn)btn.disabled=false}}
 function msToLocalInput(ms){const off=new Date(ms).getTimezoneOffset()*60000;return new Date(ms-off).toISOString().slice(0,16)}
-function jumpActive(){const n=Date.now();return n>=JUMPCFG.start&&n<=JUMPCFG.end&&!S.jumpBanned}
+function jumpActive(){const n=Date.now();return n>=JUMPCFG.start&&n<=JUMPCFG.end&&!(S&&S.jumpBanned)}
 const DEVID=(()=>{try{let d=localStorage.getItem('rovdevid');if(!d){d='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);localStorage.setItem('rovdevid',d)}return d}catch(e){return 'nodev'}})();
 async function jumpDeviceCheck(){if(!S||!uid||S.jumpBanned)return;try{
  const myRef=db.ref('devices/'+DEVID+'/'+uid);
@@ -2828,8 +3293,8 @@ function vGacha(){const h=hwS(),M2=gachaM===2,CF=HWM(gachaM),cu=M2?'ore':'stone'
  <div class="tabs hwtabs" style="margin-top:14px">${tabs}</div>${body}</div>`}
 
 
-const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel};
-function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000)}
+const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena};
+function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile')setTimeout(attachProfileVideo,60)}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isBanned();roll();if(wb&&!isBanned()){R();return}if(wb){const e=$('#bnrem');if(e)e.innerHTML='<b>'+banRemain(S.ban)+'</b>';return}S.on++;S.life=(S.life||0)+1;bpEvt('sec');if(pg==='missions'&&missionsTab==='bpm'&&S.on%5===0&&!document.querySelector('#dlg .ov'))R();{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
   const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
@@ -3488,7 +3953,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachBpLevels();attachGC();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachBpLevels();attachGC();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
