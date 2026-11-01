@@ -2666,13 +2666,21 @@ function chatBadge(){const n=chatUnread()+chatPend();return n?`<span class="bdg"
 function fabUpdate(){let f=document.getElementById('cfab');if(!f){f=document.createElement('button');f.id='cfab';f.onclick=()=>go('chats');document.body.appendChild(f)}
  const show=!!(S&&uid&&pg!=='login'&&pg!=='chat'&&pg!=='chats'&&pg!=='rank'&&pg!=='missions'&&pg!=='user'&&pg!=='bp'&&pg!=='gacha'&&!isBanned());f.style.display=show?'grid':'none';if(show)f.innerHTML=chI()+chatBadge()}
 function canOSNotify(){return !!(S&&S.notifOn&&typeof Notification!=='undefined'&&Notification.permission==='granted')}
-function osNotify(title,body){if(!canOSNotify())return;if(!(document.hidden||!document.hasFocus()))return;try{new Notification(title||'ROV Point Hub',{body:body||'',tag:'rovph',renotify:true})}catch(e){}}
+let swReg=null;
+function swInit(){if(!('serviceWorker' in navigator))return;navigator.serviceWorker.register('sw.js').then(r=>{swReg=r}).catch(()=>{})}
+function swReady(timeoutMs){if(!('serviceWorker' in navigator))return Promise.resolve(null);
+ return Promise.race([navigator.serviceWorker.ready.then(r=>r).catch(()=>null),new Promise(res=>setTimeout(()=>res(swReg),timeoutMs||1500))])}
+async function osNotify(title,body){if(!canOSNotify())return;if(!(document.hidden||!document.hasFocus()))return;
+ const opts={body:body||'',tag:'rovph',renotify:true};
+ try{const reg=await swReady(1500);if(reg&&reg.showNotification){await reg.showNotification(title||'ROV Point Hub',opts);return}}catch(e){}
+ try{new Notification(title||'ROV Point Hub',opts)}catch(e){}}
 async function toggleOSNotif(){
  if(typeof Notification==='undefined'){say('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการแจ้งเตือนนอกเว็บ');return}
  if(S.notifOn){S.notifOn=false;save();R();say('ปิดการแจ้งเตือนนอกเว็บแล้ว');return}
  let p=Notification.permission;
  if(p==='default')p=await Notification.requestPermission();
  if(p!=='granted'){say('ไม่ได้รับอนุญาตแจ้งเตือน กรุณาเปิดสิทธิ์แจ้งเตือนของเว็บนี้ในตั้งค่าเบราว์เซอร์/มือถือ แล้วลองเปิดอีกครั้ง');return}
+ swInit();
  S.notifOn=true;save();R();say('เปิดการแจ้งเตือนนอกเว็บแล้ว ✅\n\nเงื่อนไข: ต้องเปิดเว็บนี้ทิ้งไว้ (สลับไปแอปอื่น/ล็อกหน้าจอได้ แต่ห้ามปิดแท็บ/ปิดแอปจริงๆ) ถึงจะมีการแจ้งเตือนเด้งขึ้นมา — แนะนำให้กดติดตั้งเป็นแอปที่หน้าจอหลักไว้ด้วยจะสะดวกสุด')}
 function notifSettingsHTML(){const on=!!S.notifOn,granted=typeof Notification!=='undefined'&&Notification.permission==='granted';
  return `<div class="card" style="margin-top:0"><b class="n">🔔 การแจ้งเตือนนอกเว็บ</b><div class="mut" style="margin-top:4px">เปิดไว้แล้วเปิดเว็บทิ้งไว้เบื้องหลัง (สลับแอป/ล็อกหน้าจอได้) จะมีการแจ้งเตือนเด้งขึ้นมาเวลามีข้อความแชทใหม่ คำเชิญ หรือประกาศจากแอดมิน — ต้องติดตั้งเว็บนี้เป็นแอปที่หน้าจอหลักก่อนถึงจะได้ผลดีที่สุด</div>
@@ -3765,7 +3773,7 @@ function pwaInit(){try{const c=document.createElement('canvas');c.width=c.height
  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWAE=e})}
 function pwaCard(){if(window.matchMedia&&matchMedia('(display-mode: standalone)').matches||navigator.standalone)return '';return `<div class="card"><div class="row"><div><b class="n">ติดตั้งเป็นแอป</b><div class="mut">เปิดจากหน้าจอหลักได้เลย ไม่มีแถบเบราว์เซอร์</div></div><button class="btn pri" onclick="pwaGo()">ติดตั้ง</button></div></div>`}
 async function pwaGo(){if(PWAE){PWAE.prompt();try{await PWAE.userChoice}catch(e){}PWAE=null;return}dlgH('<b>วิธีติดตั้ง</b><div style="margin-top8px;margin-top:8px;line-height:1.6">iPhone: เปิดด้วย Safari กดปุ่มแชร์ แล้วเลือก "เพิ่มไปยังหน้าจอโฮม"<br>Android: กดเมนูสามจุดของ Chrome แล้วเลือก "ติดตั้งแอป" หรือ "เพิ่มไปยังหน้าจอหลัก"</div>')}
-pwaInit();
+pwaInit();swInit();
 // ---- explore: search / hashtags / weekly creator ranking ----
 let XQ='';
 const tagsOf=t=>(String(t||'').match(/#[^\s#]{1,24}/g)||[]).map(x=>x.toLowerCase());
