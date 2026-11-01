@@ -1220,34 +1220,28 @@ async function rejectPremium(uid2,id){const t=premiumReq.find(x=>x.uid===uid2&&x
   await db.ref('premiumReq/'+uid2+'/'+id+'/note').set('หลักฐานไม่ชัดเจน กรุณาติดต่อแอดมิน');
   await db.ref('premiumReq/'+uid2+'/'+id+'/reviewedAt').set(firebase.database.ServerValue.TIMESTAMP)}
  catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
-// ---------- วิดีโอพื้นหลังโปรไฟล์ (เก็บในเครื่องผ่าน IndexedDB เท่านั้น ไม่อัปโหลดขึ้นระบบ — ผู้เล่นอื่นจะไม่เห็น) ----------
-function idbOpenMedia(){return new Promise((res,rej)=>{try{const r=indexedDB.open('rovpointhub_media',1);
- r.onupgradeneeded=()=>{r.result.createObjectStore('media')};
- r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
-async function idbSaveBgVideo(blob){try{const db2=await idbOpenMedia();return await new Promise((res,rej)=>{const tx=db2.transaction('media','readwrite');tx.objectStore('media').put(blob,'bgVideo_'+uid);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error)})}catch(e){return false}}
-async function idbLoadBgVideo(){try{const db2=await idbOpenMedia();return await new Promise(res=>{const tx=db2.transaction('media','readonly');const rq=tx.objectStore('media').get('bgVideo_'+uid);rq.onsuccess=()=>res(rq.result||null);rq.onerror=()=>res(null)})}catch(e){return null}}
-async function idbDeleteBgVideo(){try{const db2=await idbOpenMedia();return await new Promise(res=>{const tx=db2.transaction('media','readwrite');tx.objectStore('media').delete('bgVideo_'+uid);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false)})}catch(e){return false}}
-let bgVideoObjUrl=null;
+// ---------- วิดีโอพื้นหลังโปรไฟล์ (อัปโหลดขึ้น Firebase จริง — ผู้เล่นคนอื่น/เพื่อนเห็นได้ทุกคน เหมือนรูปโปรไฟล์/พื้นหลังปกติ) ----------
+let myBgVideoData,pbgvid={}; // myBgVideoData: undefined=ยังไม่โหลด, ''|dataURI=โหลดแล้ว (ของตัวเอง) · pbgvid: แคชของผู้เล่นคนอื่นตาม uid
+async function loadMyBgVideo(){if(!uid||myBgVideoData!==undefined)return;
+ try{const v=(await db.ref('profbgvid/'+uid).once('value')).val();myBgVideoData=v||'';if(pg==='profile')R()}catch(e){myBgVideoData=''}}
 async function pickBgVideo(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('video/')){const e=$('#pfst');if(e)e.textContent='เลือกไฟล์วิดีโอ';return}
- if(f.size>60*1048576){const e=$('#pfst');if(e)e.textContent='ไฟล์วิดีโอใหญ่เกิน 60MB กรุณาเลือกไฟล์ที่เล็กกว่านี้';return}
- const st=$('#pfst');if(st)st.textContent='กำลังบันทึกวิดีโอ...';
- const ok=await idbSaveBgVideo(f);
- if(ok){S.prof=S.prof||{};S.prof.bgVideoOn=true;save();if(st)st.textContent='✅ ตั้งวิดีโอพื้นหลังแล้ว (เห็นเฉพาะเครื่องนี้เท่านั้น)';bgVideoPreviewRefresh()}
- else if(st)st.textContent='บันทึกวิดีโอไม่สำเร็จ ลองไฟล์ที่เล็กลงหรือเบราว์เซอร์อื่น'}
-async function clearBgVideo(){await idbDeleteBgVideo();S.prof=S.prof||{};S.prof.bgVideoOn=false;save();bgVideoPreviewRefresh();const e=$('#pfst');if(e)e.textContent='ลบวิดีโอพื้นหลังแล้ว'}
-async function bgVideoPreviewRefresh(){const e=$('#pfbgvprev');if(!e)return;
- const blob=await idbLoadBgVideo();
- if(bgVideoObjUrl){try{URL.revokeObjectURL(bgVideoObjUrl)}catch(err){}bgVideoObjUrl=null}
- if(blob){bgVideoObjUrl=URL.createObjectURL(blob);e.innerHTML=`<video src="${bgVideoObjUrl}" muted loop autoplay playsinline style="width:100%;height:90px;object-fit:cover;border-radius:14px;margin-top:6px"></video>`}
+ if(f.size>6*1048576){const e=$('#pfst');if(e)e.textContent='ไฟล์วิดีโอใหญ่เกิน 6MB กรุณาเลือกคลิปสั้นๆ ไฟล์เล็กลง';return}
+ const st=$('#pfst');if(st)st.textContent='กำลังอัปโหลดวิดีโอ...';
+ try{const dataUri=await readB64Slip(f);
+  await db.ref('profbgvid/'+uid).set(dataUri);
+  myBgVideoData=dataUri;S.prof=S.prof||{};S.prof.bgVideoOn=true;save();
+  if(st)st.textContent='✅ ตั้งวิดีโอพื้นหลังแล้ว เพื่อนและผู้เล่นคนอื่นจะเห็นวิดีโอนี้ตอนเปิดดูโปรไฟล์คุณ';
+  bgVideoPreviewRefresh()}
+ catch(e){if(st)st.textContent='อัปโหลดไม่สำเร็จ: '+((e&&e.code)||'ลองใหม่ หรือเลือกไฟล์ที่เล็กลง')}}
+async function clearBgVideo(){try{await db.ref('profbgvid/'+uid).remove()}catch(e){}
+ myBgVideoData='';S.prof=S.prof||{};S.prof.bgVideoOn=false;save();bgVideoPreviewRefresh();
+ const e=$('#pfst');if(e)e.textContent='ลบวิดีโอพื้นหลังแล้ว'}
+function bgVideoPreviewRefresh(){const e=$('#pfbgvprev');if(!e)return;
+ if(myBgVideoData)e.innerHTML=`<video src="${myBgVideoData}" muted loop autoplay playsinline style="width:100%;height:90px;object-fit:cover;border-radius:14px;margin-top:6px"></video>`;
  else e.innerHTML='<div class="mut" style="margin-top:6px">ยังไม่ได้ตั้งวิดีโอ</div>'}
-async function attachProfileVideo(){
- if(!(S&&(S.pkVideoBanner||isAdmin)))return;
- const wrap=$('#pcoverWrap');if(!wrap||!(S.prof&&S.prof.bgVideoOn))return;
- const blob=await idbLoadBgVideo();if(!blob)return;
- if(bgVideoObjUrl){try{URL.revokeObjectURL(bgVideoObjUrl)}catch(e){}}
- bgVideoObjUrl=URL.createObjectURL(blob);
- wrap.innerHTML=`<video id="pcovervid" src="${bgVideoObjUrl}" loop playsinline style="width:100%;height:100%;object-fit:cover"></video><button id="pcovervidunmute" class="chip" style="position:absolute;right:10px;bottom:10px;display:none" onclick="pcoverUnmute()">🔇 แตะเพื่อเปิดเสียง</button>`;
- const v=document.getElementById('pcovervid');
+function coverVideoHTML(dataUri){if(!dataUri)return'';
+ return `<video id="pcovervid" src="${dataUri}" loop playsinline style="width:100%;height:100%;object-fit:cover"></video><button id="pcovervidunmute" class="chip" style="position:absolute;right:10px;bottom:10px;display:none" onclick="pcoverUnmute()">🔇 แตะเพื่อเปิดเสียง</button>`}
+async function tryPlayCoverVideo(){const v=document.getElementById('pcovervid');if(!v)return;
  try{await v.play()}catch(e){
   try{v.muted=true;await v.play();const b=document.getElementById('pcovervidunmute');if(b)b.style.display='block'}catch(e2){}}}
 function pcoverUnmute(){const v=document.getElementById('pcovervid');if(!v)return;v.muted=false;v.play().catch(()=>{});const b=document.getElementById('pcovervidunmute');if(b)b.style.display='none'}
@@ -1609,7 +1603,7 @@ function bgPrevRefresh(){const e=$('#pfbgp');if(e)e.setAttribute('style',bgCss(c
 async function pickBg(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('image/')){$('#pfst').textContent='เลือกไฟล์รูปภาพ';return}
  try{pfBgNew=await cropWide(f,480,200);bgPrevRefresh()}catch(e){$('#pfst').textContent='อ่านรูปไม่ได้'}}
 function setBgPreset(v){pfBgNew=v;bgPrevRefresh()}
-async function loadBg(id){if(id===uid||pbg[id]!==undefined)return;try{const v=(await db.ref('profbg/'+id).once('value')).val();pbg[id]=v||'';if(pg==='user'&&pu===id)R()}catch(e){pbg[id]=''}}
+async function loadBg(id){if(id===uid||pbg[id]!==undefined)return;try{const[v,vv]=await Promise.all([db.ref('profbg/'+id).once('value'),db.ref('profbgvid/'+id).once('value')]);pbg[id]=v.val()||'';pbgvid[id]=vv.val()||'';if(pg==='user'&&pu===id)R()}catch(e){pbg[id]='';pbgvid[id]=''}}
 function cropSquare(f,sz){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const m=Math.min(im.width,im.height),c=document.createElement('canvas');c.width=c.height=sz;c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,sz,sz);res(c.toDataURL('image/jpeg',.78))};im.src=r.result};r.readAsDataURL(f)})}
 async function pickAvatar(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('image/')){$('#pfst').textContent='เลือกไฟล์รูปภาพ';return}
  try{pfAvNew=await cropSquare(f,112);const e=$('#pfav2');if(e)e.innerHTML=avPrev()}catch(e){$('#pfst').textContent='อ่านรูปไม่ได้'}}
@@ -1632,17 +1626,18 @@ function pfForm(){const pr=S.prof||{};return `<b class="n" style="font-size:18px
  <div class="row" style="gap:8px;margin-top:8px"><input type="file" accept="image/*" class="inp" onchange="pickBg(this)"><button class="btn" onclick="setBgPreset('')">ค่าเริ่มต้น</button></div>
  <label class="mut" style="display:block;margin-top:10px">ชื่อเล่น ${pr.name?'(ตั้งแล้ว เปลี่ยนไม่ได้)':'(2–20 ตัวอักษร ตั้งได้ครั้งเดียว)'}</label><input id="pfn" class="inp" maxlength="20" value="${esc(pr.name||'')}" ${pr.name?'readonly style="opacity:.7"':''} placeholder="เช่น นักล่าคะแนน">
  <label class="mut" style="display:block;margin-top:10px">แนะนำตัว</label><textarea id="pfb" rows="3" class="inp" maxlength="80" placeholder="สั้นๆ ไม่เกิน 80 ตัวอักษร">${esc(pr.bio||'')}</textarea>
- ${S.pkVideoBanner?`<label class="mut" style="display:block;margin-top:14px">🎬 วิดีโอพื้นหลังโปรไฟล์ (สิทธิ์พิเศษ)</label><div class="mut" style="font-size:11px">เล่นอัตโนมัติวนซ้ำพร้อมเสียงบนเครื่องนี้เท่านั้น ไฟล์ไม่ถูกอัปโหลดขึ้นระบบ ดังนั้นผู้เล่นคนอื่นจะไม่เห็นวิดีโอนี้ — เห็นเฉพาะตอนที่คุณเปิดโปรไฟล์ตัวเองบนเครื่อง/เบราว์เซอร์นี้</div>
+ ${S.pkVideoBanner?`<label class="mut" style="display:block;margin-top:14px">🎬 วิดีโอพื้นหลังโปรไฟล์ (สิทธิ์พิเศษ)</label><div class="mut" style="font-size:11px">เล่นอัตโนมัติวนซ้ำพร้อมเสียง — เพื่อนและผู้เล่นคนอื่นที่เข้ามาดูโปรไฟล์คุณจะเห็นวิดีโอนี้แทนภาพพื้นหลังเดิมด้วย (ไฟล์ไม่เกิน 6MB)</div>
  <div id="pfbgvprev">${(S.prof&&S.prof.bgVideoOn)?'<div class="mut" style="margin-top:6px">กำลังโหลดตัวอย่าง...</div>':'<div class="mut" style="margin-top:6px">ยังไม่ได้ตั้งวิดีโอ</div>'}</div>
  <div class="row" style="gap:8px;margin-top:8px"><input type="file" accept="video/*" class="inp" onchange="pickBgVideo(this)"><button class="btn" onclick="clearBgVideo()">ลบวิดีโอ</button></div>`
  :`<label class="mut" style="display:block;margin-top:14px">🎬 วิดีโอพื้นหลังโปรไฟล์</label><div class="card" style="margin-top:6px;padding:10px 12px"><div class="mut">สิทธิ์พิเศษเฉพาะผู้ซื้อแพ็กยศพิเศษ — ดูรายละเอียดได้ที่หน้าเติมเงิน</div><button class="btn gold" style="width:100%;margin-top:8px" onclick="closeProfEdit();go('topup')">ไปหน้าแพ็กยศพิเศษ</button></div>`}
  <div class="mut" id="pfst" style="margin-top:8px"></div>`}
-function openProfEdit(){pfAvNew=undefined;pfBgNew=undefined;const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:14px"><div class="gb" style="border-radius:22px;max-width:420px;max-height:90vh;padding:18px">${pfForm()}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px"><button class="btn" onclick="closeProfEdit()">ยกเลิก</button><button class="btn pri" onclick="saveProfile()">บันทึกโปรไฟล์</button></div></div></div>`;if(S.pkVideoBanner)setTimeout(bgVideoPreviewRefresh,50)}
+async function openProfEdit(){pfAvNew=undefined;pfBgNew=undefined;const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:14px"><div class="gb" style="border-radius:22px;max-width:420px;max-height:90vh;padding:18px">${pfForm()}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px"><button class="btn" onclick="closeProfEdit()">ยกเลิก</button><button class="btn pri" onclick="saveProfile()">บันทึกโปรไฟล์</button></div></div></div>`;
+ if(S.pkVideoBanner){await loadMyBgVideo();bgVideoPreviewRefresh()}}
 function closeProfEdit(){pfAvNew=undefined;pfBgNew=undefined;$('#dlg').innerHTML=''}
 function vProfile(){const pr=S.prof||{},rk=leaderboard.slice().sort((a,b)=>(b.pts||0)-(a.pts||0)).findIndex(r=>r.uid===uid)+1,nf=Object.keys(myFriends).length,nm=pr.name||pName(uid,{email:user&&user.email});
  const stats=[['คะแนน',fmt(S.pts)],['เหรียญทอง',fmt(S.gold||0)],['หยกเขียว',fmt(S.jade||0)],['สตรีคเช็กอิน',S.streak+' วัน'],['เวลาออนไลน์รวม',fmtDur(S.life)],['เริ่มเล่นเมื่อ',S.joined?new Date(S.joined).toLocaleDateString('th-TH',{dateStyle:'medium'}):'-'],['อันดับคะแนน',rk?'#'+rk:'-'],['เลเวลเวอร์พาส',bpLevel()+'/'+BP_MAX_LV],['พาสสะสม',passCount()>90?'ทุกพาส':passCount()+' พาส'],['เพื่อน',nf+' คน'],['คูปองที่แลก',S.my.length+' ใบ'],['Open ID',esc(S.oid||'ยังไม่ได้กรอก')]];
  const vt=vipShow(),pt=plateShow();
- return pthWrap(profTheme(),`<div class="card pcard" style="margin-top:0"><div class="pcover" id="pcoverWrap" style="${bgCss((S.prof&&S.prof.bg)||'',profTheme())};position:relative;overflow:hidden"></div><div class="pcb"><div id="pfav" style="display:inline-block">${avHTML(uid,{name:(S.prof&&S.prof.name)||''},92,true)}</div>
+ return pthWrap(profTheme(),`<div class="card pcard" style="margin-top:0"><div class="pcover" id="pcoverWrap" style="${bgCss((S.prof&&S.prof.bg)||'',profTheme())};position:relative;overflow:hidden">${(S.prof&&S.prof.bgVideoOn&&myBgVideoData)?coverVideoHTML(myBgVideoData):''}</div><div class="pcb"><div id="pfav" style="display:inline-block">${avHTML(uid,{name:(S.prof&&S.prof.name)||''},92,true)}</div>
  <div class="${namefxOn(uid,{})?'npframe':''}" style="margin-top:8px;position:relative;overflow:hidden;border-radius:10px;padding:2px 0">${npRowBg(uid,{})}<b class="n${npClass(uid,{})}" style="font-size:20px;position:relative;z-index:1">${esc(nm)}</b></div>${badgeImg(uid,{},22)}<div class="mut">${isAdmin?'แอดมิน':''}</div>
  <div style="margin-top:6px">${vt?vipImg(vt,44):''}${S.title?` <span class="ttl">${esc(S.title)}</span>`:''}${S.pkSvip?' <span class="chip ok">💠 SVIP</span>':(S.pkVipUntil&&S.pkVipUntil>Date.now())?` <span class="chip ok">👑 VIP ถึง ${new Date(S.pkVipUntil).toLocaleDateString('th-TH',{dateStyle:'short'})}</span>`:''}</div>${pt?`<div>${plateImg(pt,44)}</div>`:''}${pthTag(profTheme())}${pr.bio?`<div style="margin-top:8px;white-space:pre-wrap">${esc(pr.bio)}</div>`:''}</div></div>`)+`
  <div class="card"><b class="n">ข้อมูลของฉัน</b><div class="pfg">${stats.map(([k,v])=>`<div><div class="mut">${k}</div><b>${v}</b></div>`).join('')}</div>
@@ -1655,7 +1650,7 @@ function vUser(){const id=pu,r=leaderboard.find(x=>x.uid===id)||{},p=profs[id]||
  if(!r.uid&&!p.name)return '<div class="card" style="margin-top:0"><button class="btn" onclick="go(\'rank\')">← กลับ</button><div class="mut" style="margin-top:8px">ไม่พบผู้เล่น</div></div>';
  const rel=userRel||{friend:!!myFriends[id],incoming:!!myReq[id],sent:false};
  const act=rel.friend?`<span class="chip ok">เป็นเพื่อนกันแล้ว</span><button class="btn" onclick="removeFriend('${id}')">ลบเพื่อน</button>`:rel.incoming?`<button class="btn pri" onclick="acceptFriend('${id}')">ตอบรับคำขอเป็นเพื่อน</button><button class="btn" onclick="declineFriend('${id}')">ปฏิเสธ</button>`:rel.sent?`<span class="chip wn">ส่งคำขอแล้ว</span><button class="btn" onclick="cancelFriendReq('${id}')">ยกเลิกคำขอ</button>`:`<button class="btn pri" onclick="sendFriendReq('${id}')">เพิ่มเพื่อน</button>`;
- const th=r.theme||'default';return `<div class="card" style="margin-top:0"><button class="btn" onclick="go('rank')">← กลับอันดับ</button></div>`+pthWrap(th,`<div class="card pcard" style="margin-top:10px"><div class="pcover" style="${bgCss(pbg[id],th)}"></div><div class="pcb">${avHTML(id,r,92,true)}<div style="margin-top:8px"><b class="n" style="font-size:20px">${esc(pName(id,r))}</b></div>${isAdmin?`<div class="mut" style="word-break:break-all">${esc(r.email||'')}</div>`:''}
+ const th=r.theme||'default';return `<div class="card" style="margin-top:0"><button class="btn" onclick="go('rank')">← กลับอันดับ</button></div>`+pthWrap(th,`<div class="card pcard" style="margin-top:10px"><div class="pcover" style="${bgCss(pbg[id],th)};position:relative;overflow:hidden">${pbgvid[id]?coverVideoHTML(pbgvid[id]):''}</div><div class="pcb">${avHTML(id,r,92,true)}<div style="margin-top:8px"><b class="n" style="font-size:20px">${esc(pName(id,r))}</b></div>${isAdmin?`<div class="mut" style="word-break:break-all">${esc(r.email||'')}</div>`:''}
  <div style="margin-top:6px">${r.vip?vipImg(r.vip,44):''}${r.title?` <span class="ttl">${esc(r.title)}</span>`:''}</div>${r.plate?`<div>${plateImg(r.plate,44)}</div>`:''}${pthTag(th)}${p.bio?`<div style="margin-top:8px;white-space:pre-wrap">${esc(p.bio)}</div>`:''}</div></div>
  <div class="card"><b class="n">ประวัติผู้เล่น</b><div class="pfg"><div><div class="mut">คะแนน</div><b>${fmt(r.pts||0)}</b></div><div><div class="mut">อันดับคะแนน</div><b>${rk?'#'+rk:'-'}</b></div><div><div class="mut">เวลาออนไลน์รวม</div><b>${fmtDur(r.life)}</b></div><div><div class="mut">เริ่มเล่นเมื่อ</div><b>${r.joined?new Date(r.joined).toLocaleDateString('th-TH',{dateStyle:'medium'}):'-'}</b></div></div></div>
  <div class="card"><div class="row" style="flex-wrap:wrap;gap:8px">${act}</div><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:10px">${chatBtns(id)}</div><div class="row" style="margin-top:10px;gap:8px"><button class="btn" style="flex:1;color:#d32f2f" onclick="reportPlayer('${id}')">รายงานผู้เล่น</button>${isAdmin?`<button class="btn gold" style="flex:1" onclick="adminOpenPlayer('${id}')">จัดการผู้เล่น</button>`:''}</div><div class="mut" id="usst" style="margin-top:8px"></div></div>`)}
@@ -3294,7 +3289,7 @@ function vGacha(){const h=hwS(),M2=gachaM===2,CF=HWM(gachaM),cu=M2?'ore':'stone'
 
 
 const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena};
-function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile')setTimeout(attachProfileVideo,60)}
+function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60)}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isBanned();roll();if(wb&&!isBanned()){R();return}if(wb){const e=$('#bnrem');if(e)e.innerHTML='<b>'+banRemain(S.ban)+'</b>';return}S.on++;S.life=(S.life||0)+1;bpEvt('sec');if(pg==='missions'&&missionsTab==='bpm'&&S.on%5===0&&!document.querySelector('#dlg .ov'))R();{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
   const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
