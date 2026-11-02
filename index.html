@@ -550,6 +550,11 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:var
 .ugcam .ugrec{position:absolute;left:50%;margin-left:-42px;bottom:calc(var(--sb) + 93px);z-index:7}
 .ugrec.on svg circle:first-child{stroke:rgba(255,255,255,.35)}
 .ugtile{position:absolute;left:14px;bottom:calc(var(--sb) + 13px);width:38px;height:38px;border-radius:8px;box-shadow:4px -3px 0 -1px rgba(255,255,255,.35);border:2px solid #fff;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;z-index:6;cursor:pointer}.ugtile svg{width:24px;height:24px}
+.ugtile2{position:absolute;right:14px;bottom:calc(var(--sb) + 13px);width:38px;height:38px;border-radius:8px;box-shadow:-4px -3px 0 -1px rgba(255,255,255,.35);border:2px solid #fff;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;z-index:6;cursor:pointer;font-size:19px;color:#fff}
+.liveVidWrap{position:relative;width:100%;aspect-ratio:9/16;max-height:70vh;background:#000;border-radius:16px;overflow:hidden}
+.liveVidWrap video{width:100%;height:100%;object-fit:cover}
+.liveBadge{position:absolute;top:10px;left:10px;background:#ff2d55;color:#fff;font-weight:800;font-size:12px;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:4px}
+.liveViewers{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.5);color:#fff;font-size:12px;padding:4px 10px;border-radius:20px}
 .uggrid{position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(90deg,transparent calc(33.33% - .5px),rgba(255,255,255,.45) 0 calc(33.33% + .5px),transparent 0 calc(66.66% - .5px),rgba(255,255,255,.45) 0 calc(66.66% + .5px),transparent 0),linear-gradient(transparent calc(33.33% - .5px),rgba(255,255,255,.45) 0 calc(33.33% + .5px),transparent 0 calc(66.66% - .5px),rgba(255,255,255,.45) 0 calc(66.66% + .5px),transparent 0)}
 .ugfl{position:absolute;inset:0;border:0 solid rgba(255,255,255,.95);pointer-events:none;z-index:2;transition:border-width .2s}.ugfl.on{border-width:34px;box-shadow:inset 0 0 30px 8px rgba(255,255,255,.7)}
 .ugcd{position:absolute;left:0;right:0;top:36%;text-align:center;font-size:120px;font-weight:800;z-index:8;text-shadow:0 2px 14px rgba(0,0,0,.6);pointer-events:none}
@@ -1522,8 +1527,8 @@ function rankInner(list){return `<div class="tabs"><button class="tab ${rankTab=
 const HWNI={home:'nhome',missions:'ntarget',lib:'nbook',rank:'ntrophy',more:'nmenu'};
 const NAV=[['home','🏠','หน้าหลัก'],['missions','🎯','ภารกิจ'],['lib','📚','คลัง'],['rank','🏆','อันดับ'],['more','☰','เพิ่มเติม']];
 const PG={home:['ROV Point Hub','สะสมคะแนน → แลกคูปอง ROV'],missions:['ภารกิจประจำวัน','ทำภารกิจเพื่อรับคะแนน'],lib:['คลังเนื้อหา','ดู/อ่านเนื้อหาจริง รับคะแนน'],view:['ดู/อ่านเนื้อหา','อยู่ในหน้านี้จนครบเวลา'],redeem:['แลกคูปอง','ใช้คะแนนแลกคูปอง ROV'],more:['เพิ่มเติม','เมนูอื่นๆ'],mine:['คูปองและประวัติ','โค้ดที่แลกแล้ว'],admin:['หน้าแอดมิน','อัปโหลดเนื้อหาจริง'],contact:['ติดต่อแอดมิน','ส่งข้อความถึงผู้ดูแลระบบ'],rank:['อันดับผู้เล่น','เหรียญคะแนน และเวลาออนไลน์สะสม'],redeemcode:['กรอกโค้ดรับของรางวัล','ใช้โค้ดที่แอดมินแจกเพื่อรับคะแนน'],shop:['ร้านค้า','ใช้เหรียญทองซื้อของ (แลกคืนไม่ได้)'],topup:['เติมหยกเขียว','สแกนจ่าย แนบสลิป รอแอดมินตรวจสอบ'],bp:['เวอร์พาส','เลเวล 1-70 · รีเซ็ตทุกเดือน'],settings:['ตั้งค่า','คลังธีม UI และบัญชี'],profile:['โปรไฟล์ของฉัน','ข้อมูลทั้งหมดของคุณ'],user:['โปรไฟล์ผู้เล่น','ประวัติและเพื่อน'],chats:['ช่องแชท','ข้อความส่วนตัว'],gacha:['ตู้กาชาฮาโลวีน','สุ่มรับกรอบ ธีม และหินเพชร'],chat:['แชท','ข้อความส่วนตัว'],friends:['เพื่อน','คำขอและรายชื่อเพื่อน'],login:['ROV Point Hub','เข้าสู่ระบบ'],daily:['เช็กอินและภารกิจ','รับรางวัลทุกวัน ชวนเพื่อน'],explore:['ค้นหาและอันดับ','แฮชแท็ก ครีเอเตอร์ประจำสัปดาห์'],team:['ทีม','สร้างทีม แข่งอันดับ'],rewards:['ของรางวัลจำกัด','แลกด้วยคะแนน ของมีจำนวนจำกัด'],decor:['ของตกแต่ง','ซื้อตรงด้วยเหรียญทองหรือหยกเขียว'],jump:['โดดดึ๋ง รับรางวัลฟรี','กระโดดเก็บกล่อง รับบัตรเวอร์พาสและคูปองส่วนลด'],duel:['ดวลแรงค์','หาคู่แข่งจริง แพ้/ชนะมีผลกับดาวแรงค์']};
-const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more',redeemcode:'more',shop:'more',topup:'more',bp:'more',settings:'more',profile:'more',friends:'more',chats:'more',chat:'more',gacha:'more',decor:'more',jump:'more',user:'rank',duel:'rank',arena:'rank'}[pg]||pg)===k;
-function go(k){if(k!=='chat')stopChat();pg=k;cur=null;if(k==='shop'&&!S.shopSeen){S.shopSeen=true;save()}R();window.scrollTo(0,0)}
+const navOn=k=>({view:'lib',mine:'more',admin:'more',contact:'more',redeem:'more',redeemcode:'more',shop:'more',topup:'more',bp:'more',settings:'more',profile:'more',friends:'more',chats:'more',chat:'more',gacha:'more',decor:'more',jump:'more',user:'rank',duel:'rank',arena:'rank',live:'more'}[pg]||pg)===k;
+function go(k){if(k!=='chat')stopChat();if(pg==='live'&&k!=='live')liveTeardown();pg=k;cur=null;if(k==='shop'&&!S.shopSeen){S.shopSeen=true;save()}R();window.scrollTo(0,0)}
 function openC(id){const c0=content.find(x=>x.id===id);if(c0&&c0.type==='video'){openVF(id);return}cur=id;pg='view';R();window.scrollTo(0,0)}
 function claimC(id){const c=content.find(x=>x.id===id);if(!c||S.seen[id])return;S.seen[id]=true;bpEvt('content');add(c.pts,(tn(c.type)||'เนื้อหา')+': '+c.title);R()}
 
@@ -1761,7 +1766,7 @@ function vMoreF(){if(hwUi())return vMoreH();const it=[['daily','เช็กอ�
  +`<div class="card"><div class="row"><div style="min-width:0"><b class="n" style="word-break:break-all">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'}</div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>`}
 function vMore(){if(FX())return vMoreF();const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-direction:row;align-items:center;gap:12px" onclick="${k}"><span class="em">${e}</span><b>${t}</b></button>`;
  return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน (อีเมลนี้ถูกกำหนดไว้ล่วงหน้า)':'ผู้เล่น'}</div></div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>
- <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('profile')",'👤','โปรไฟล์ของฉัน')}${b("go('gacha')",'🎃','ตู้กาชาฮาโลวีน')}${b("go('chats')",'💬','ช่องแชท'+chatBadge())}${b("go('friends')",'🤝','เพื่อน')}${b("go('settings')",'⚙️','ตั้งค่า / คลังธีม UI')}${b("go('bp')",'🎫','เวอร์พาส')}${b("go('redeem')",'🎟️','แลกคูปอง')}${b("go('redeemcode')",'🎁','กรอกโค้ดรับของรางวัล')}${b("go('shop')",'🛒','ร้านค้า (เหรียญทอง)')}${b("go('decor')",'✨','ของตกแต่ง')}${b("go('jump')",'🪂','โดดดึ๋ง รับรางวัลฟรี')}${b("go('topup')",'💎','เติมหยกเขียว')}${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('openWhatsNew()','🎉','มีอะไรใหม่')}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
+ <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('profile')",'👤','โปรไฟล์ของฉัน')}${b("goLive()",'🔴','ไลฟ์สด')}${b("go('gacha')",'🎃','ตู้กาชาฮาโลวีน')}${b("go('chats')",'💬','ช่องแชท'+chatBadge())}${b("go('friends')",'🤝','เพื่อน')}${b("go('settings')",'⚙️','ตั้งค่า / คลังธีม UI')}${b("go('bp')",'🎫','เวอร์พาส')}${b("go('redeem')",'🎟️','แลกคูปอง')}${b("go('redeemcode')",'🎁','กรอกโค้ดรับของรางวัล')}${b("go('shop')",'🛒','ร้านค้า (เหรียญทอง)')}${b("go('decor')",'✨','ของตกแต่ง')}${b("go('jump')",'🪂','โดดดึ๋ง รับรางวัลฟรี')}${b("go('topup')",'💎','เติมหยกเขียว')}${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('openWhatsNew()','🎉','มีอะไรใหม่')}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
 
 // ---------- contact admin (player side) ----------
 function readB64Img(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
@@ -3298,7 +3303,92 @@ function vGacha(){const h=hwS(),M2=gachaM===2,CF=HWM(gachaM),cu=M2?'ore':'stone'
  <div class="tabs hwtabs" style="margin-top:14px">${tabs}</div>${body}</div>`}
 
 
-const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena};
+// ================= ไลฟ์สด (WebRTC แบบเพื่อน-ต่อ-เพื่อน ผ่านสัญญาณ Firebase — เหมาะกับคนดูกลุ่มเล็ก) =================
+const RTC_CFG={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}]};
+let liveStage='list',liveActive={},liveActiveOff=null,liveMyStream=null,liveViewerPCs={},liveSignalOff=null,liveWatchPC=null,liveWatchBcUid=null,liveWatchStream=null,liveWatchBcOff=null;
+function goLive(){liveStage='list';attachLiveList();go('live')}
+function attachLiveList(){if(liveActiveOff)return;liveActiveOff=db.ref('live/active');liveActiveOff.on('value',snap=>{liveActive=snap.val()||{};if(pg==='live'&&liveStage==='list')R()},()=>{})}
+function detachLiveList(){if(liveActiveOff){try{liveActiveOff.off()}catch(e){}liveActiveOff=null}}
+function liveTeardown(){if(liveStage==='hosting')liveEndHostSilent();else if(liveStage==='watch')liveLeaveWatch();else if(liveStage==='hostPrep'&&liveMyStream){liveMyStream.getTracks().forEach(t=>t.stop());liveMyStream=null}
+ detachLiveList();liveStage='list'}
+function liveBackToList(){liveStage='list';attachLiveList();go('live')}
+async function liveStartHostPrep(){
+ if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){say('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการไลฟ์สด');return}
+ if(!(window.RTCPeerConnection)){say('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการไลฟ์สด');return}
+ try{liveMyStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:true})}
+ catch(e){say('ไม่ได้รับอนุญาตใช้กล้อง/ไมค์ กรุณาอนุญาตแล้วลองใหม่');return}
+ liveStage='hostPrep';go('live');
+ setTimeout(()=>{const v=$('#livePrepVid');if(v)v.srcObject=liveMyStream},50)}
+function liveCancelPrep(){if(liveMyStream){liveMyStream.getTracks().forEach(t=>t.stop());liveMyStream=null}liveBackToList()}
+async function liveGoLiveNow(){const t=(($('#liveTtl')&&$('#liveTtl').value)||'').trim().slice(0,40)||pName(uid,{email:user&&user.email});
+ try{await db.ref('live/active/'+uid).set({name:pName(uid,{email:user&&user.email}),title:t,viewerCount:0,ts:firebase.database.ServerValue.TIMESTAMP});
+  db.ref('live/active/'+uid).onDisconnect().remove()}
+ catch(e){say('เริ่มไลฟ์ไม่สำเร็จ ('+((e&&e.code)||'ลองใหม่')+')');return}
+ liveViewerPCs={};liveHostAttachSignal();liveStage='hosting';R();
+ setTimeout(()=>{const v=$('#liveHostVid');if(v)v.srcObject=liveMyStream},50)}
+function liveIceListen(ref,pc){const seen={};ref.on('value',snap=>{const v=snap.val()||{};Object.keys(v).forEach(k=>{if(seen[k])return;seen[k]=1;const c=v[k];if(c)pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})})})}
+function liveHostAttachSignal(){const ref=db.ref('live/signal/'+uid);liveSignalOff=ref;
+ ref.on('value',snap=>{const v=snap.val()||{};
+  Object.keys(v).forEach(vUid=>{const data=v[vUid]||{};if(!liveViewerPCs[vUid]&&data.offer)liveHostAcceptViewer(vUid,data.offer)});
+  Object.keys(liveViewerPCs).forEach(vUid=>{if(!v[vUid])liveHostDropViewer(vUid)})
+ },()=>{})}
+async function liveHostAcceptViewer(vUid,offer){const pc=new RTCPeerConnection(RTC_CFG);liveViewerPCs[vUid]=pc;
+ (liveMyStream.getTracks()||[]).forEach(t=>pc.addTrack(t,liveMyStream));
+ pc.onicecandidate=e=>{if(e.candidate)db.ref('live/signal/'+uid+'/'+vUid+'/iceFromBroadcaster').push(e.candidate.toJSON())};
+ pc.onconnectionstatechange=()=>{if(['failed','closed','disconnected'].includes(pc.connectionState))liveHostDropViewer(vUid)};
+ try{await pc.setRemoteDescription(new RTCSessionDescription(offer));
+  const ans=await pc.createAnswer();await pc.setLocalDescription(ans);
+  await db.ref('live/signal/'+uid+'/'+vUid+'/answer').set({type:ans.type,sdp:ans.sdp});
+  liveIceListen(db.ref('live/signal/'+uid+'/'+vUid+'/iceFromViewer'),pc);
+  liveUpdateViewerCount()}
+ catch(e){liveHostDropViewer(vUid)}}
+function liveHostDropViewer(vUid){const pc=liveViewerPCs[vUid];if(pc){try{pc.close()}catch(e){}delete liveViewerPCs[vUid]}
+ try{db.ref('live/signal/'+uid+'/'+vUid+'/iceFromViewer').off()}catch(e){}
+ try{db.ref('live/signal/'+uid+'/'+vUid).off()}catch(e){}liveUpdateViewerCount()}
+function liveUpdateViewerCount(){const n=Object.keys(liveViewerPCs).length;db.ref('live/active/'+uid+'/viewerCount').set(n).catch(()=>{});if(pg==='live'&&liveStage==='hosting')R()}
+function liveEndHostSilent(){try{db.ref('live/active/'+uid).remove()}catch(e){}try{db.ref('live/signal/'+uid).remove()}catch(e){}
+ if(liveSignalOff){try{liveSignalOff.off()}catch(e){}liveSignalOff=null}
+ Object.keys(liveViewerPCs).forEach(liveHostDropViewer);
+ if(liveMyStream){liveMyStream.getTracks().forEach(t=>t.stop());liveMyStream=null}}
+function liveEndHost(){liveEndHostSilent();liveBackToList()}
+async function liveWatch(bcUid){liveWatchBcUid=bcUid;liveStage='watch';go('live');
+ liveWatchPC=new RTCPeerConnection(RTC_CFG);liveWatchStream=new MediaStream();
+ liveWatchPC.ontrack=e=>{(e.streams[0]?e.streams[0].getTracks():[e.track]).forEach(t=>{try{liveWatchStream.addTrack(t)}catch(er){}});
+  const v=$('#liveWatchVid');if(v&&!v.srcObject)v.srcObject=liveWatchStream;liveTryPlayWatch()};
+ liveWatchPC.onicecandidate=e=>{if(e.candidate)db.ref('live/signal/'+bcUid+'/'+uid+'/iceFromViewer').push(e.candidate.toJSON())};
+ liveWatchPC.onconnectionstatechange=()=>{if(['failed','disconnected','closed'].includes(liveWatchPC.connectionState)&&pg==='live'&&liveStage==='watch'&&liveWatchBcUid===bcUid)liveWatchEnded(false)};
+ try{const offer=await liveWatchPC.createOffer({offerToReceiveVideo:true,offerToReceiveAudio:true});await liveWatchPC.setLocalDescription(offer);
+  const myPath='live/signal/'+bcUid+'/'+uid;db.ref(myPath).onDisconnect().remove();
+  await db.ref(myPath+'/offer').set({type:offer.type,sdp:offer.sdp});
+  db.ref(myPath+'/answer').on('value',snap=>{const a=snap.val();if(a&&liveWatchPC&&!liveWatchPC.currentRemoteDescription)liveWatchPC.setRemoteDescription(new RTCSessionDescription(a)).catch(()=>{})});
+  liveIceListen(db.ref(myPath+'/iceFromBroadcaster'),liveWatchPC);
+  liveWatchBcOff=db.ref('live/active/'+bcUid);liveWatchBcOff.on('value',snap=>{if(!snap.exists()&&pg==='live'&&liveStage==='watch'&&liveWatchBcUid===bcUid)liveWatchEnded(true)})}
+ catch(e){say('เข้าชมไลฟ์ไม่สำเร็จ ลองใหม่');liveLeaveWatch();liveBackToList()}}
+async function liveTryPlayWatch(){const v=$('#liveWatchVid');if(!v)return;try{await v.play()}catch(e){try{v.muted=true;await v.play();const b=$('#liveUnmuteBtn');if(b)b.style.display='block'}catch(e2){}}}
+function liveUnmute(){const v=$('#liveWatchVid');if(!v)return;v.muted=false;v.play().catch(()=>{});const b=$('#liveUnmuteBtn');if(b)b.style.display='none'}
+function liveWatchEnded(byHost){liveLeaveWatch();liveStage='list';attachLiveList();go('live');if(byHost)say('การไลฟ์สดนี้จบแล้ว')}
+function liveLeaveWatch(){if(liveWatchBcUid){try{db.ref('live/signal/'+liveWatchBcUid+'/'+uid+'/answer').off()}catch(e){}try{db.ref('live/signal/'+liveWatchBcUid+'/'+uid+'/iceFromBroadcaster').off()}catch(e){}try{db.ref('live/signal/'+liveWatchBcUid+'/'+uid).remove()}catch(e){}try{db.ref('live/signal/'+liveWatchBcUid+'/'+uid).off()}catch(e){}}
+ if(liveWatchBcOff){try{liveWatchBcOff.off()}catch(e){}liveWatchBcOff=null}
+ if(liveWatchPC){try{liveWatchPC.close()}catch(e){}liveWatchPC=null}
+ liveWatchStream=null;liveWatchBcUid=null}
+function liveLeaveAndBack(){liveLeaveWatch();liveBackToList()}
+function liveListHTML(){const list=Object.keys(liveActive).map(k=>Object.assign({uid:k},liveActive[k])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+ return `<div class="card" style="margin-top:0"><button class="btn pri" style="width:100%" onclick="liveStartHostPrep()">🔴 เริ่มไลฟ์สด</button><div class="mut" style="margin-top:6px;font-size:12px">เปิดกล้อง/เสียงสดให้เพื่อนในเว็บเข้ามาดูได้แบบเรียลไทม์ — เหมาะกับคนดูกลุ่มเล็กๆ ไม่กี่คนต่อครั้ง</div></div>
+ <div class="card"><b class="n">🔴 กำลังไลฟ์สดอยู่ตอนนี้</b>${list.length?list.map(c=>`<div class="row rrow" style="padding:10px 12px"><div class="gap" style="min-width:0;flex:1">${avHTML(c.uid,{name:c.name},40)}<div style="min-width:0"><b class="n">${esc(c.name||'ผู้เล่น')}</b><div class="mut" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.title||'')}</div></div></div><button class="btn pri" onclick="liveWatch('${c.uid}')">👁️ ${c.viewerCount||0} เข้าชม</button></div>`).join(''):'<div class="mut" style="margin-top:8px">ยังไม่มีใครไลฟ์อยู่ตอนนี้</div>'}</div>`}
+function liveHostPrepHTML(){return `<div class="card" style="margin-top:0"><button class="btn" onclick="liveCancelPrep()">← ยกเลิก</button></div>
+ <div class="card"><div class="liveVidWrap"><video id="livePrepVid" autoplay muted playsinline></video></div>
+ <input id="liveTtl" class="inp" style="margin-top:12px" maxlength="40" placeholder="ใส่หัวข้อไลฟ์ (ไม่บังคับ)">
+ <button class="btn pri" style="width:100%;margin-top:10px" onclick="liveGoLiveNow()">🔴 เริ่มไลฟ์เลย</button></div>`}
+function liveHostingHTML(){const n=Object.keys(liveViewerPCs).length;
+ return `<div class="card" style="margin-top:0"><div class="liveVidWrap"><video id="liveHostVid" autoplay muted playsinline></video><span class="liveBadge">🔴 กำลังไลฟ์</span><span class="liveViewers">👁️ ${n}</span></div>
+ <button class="btn" style="width:100%;margin-top:10px;color:#d32f2f" onclick="liveEndHost()">จบไลฟ์</button></div>`}
+function liveWatchHTML(){const bc=liveActive[liveWatchBcUid]||{};
+ return `<div class="card" style="margin-top:0"><button class="btn" onclick="liveLeaveAndBack()">← ออกจากไลฟ์</button></div>
+ <div class="card"><div class="liveVidWrap"><video id="liveWatchVid" autoplay playsinline></video><span class="liveBadge">🔴 LIVE</span><button id="liveUnmuteBtn" class="chip" style="position:absolute;right:10px;bottom:10px;display:none" onclick="liveUnmute()">🔇 แตะเพื่อเปิดเสียง</button></div>
+ <div style="margin-top:10px"><b class="n">${esc(bc.name||'ผู้เล่น')}</b><div class="mut">${esc(bc.title||'')}</div></div></div>`}
+function vLive(){if(liveStage==='hostPrep')return liveHostPrepHTML();if(liveStage==='hosting')return liveHostingHTML();if(liveStage==='watch')return liveWatchHTML();return liveListHTML()}
+
+const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena,live:vLive};
 function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60)}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isBanned();roll();if(wb&&!isBanned()){R();return}if(wb){const e=$('#bnrem');if(e)e.innerHTML='<b>'+banRemain(S.ban)+'</b>';return}S.on++;S.life=(S.life||0)+1;bpEvt('sec');if(pg==='missions'&&missionsTab==='bpm'&&S.on%5===0&&!document.querySelector('#dlg .ov'))R();{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
@@ -3429,7 +3519,8 @@ function ugCamUI(){const T=UGM,I=d=>'<svg viewBox="0 0 24 24" fill="none" stroke
  <div class="ugdur">${ugDurBtns()}</div>
  <div class="ugfxs" id="ugfxs" onscroll="ugFxScroll()"${T.fxv===false?' hidden':''}>${UGFX.map((f,i)=>`<button class="ugfxi" data-i="${i}" onclick="ugFxTap(${i})" aria-label="${f.n}"><i style="background:${f.g}"></i><img alt="" style="filter:${f.c||'none'}" hidden></button>`).join('')}</div>
  <button class="ugrec" id="ugrec" onclick="ugRecBtn()" aria-label="บันทึก"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="38" fill="none" stroke="#fff" stroke-width="5"/><circle id="ugring" cx="42" cy="42" r="38" fill="none" stroke="#ff2d55" stroke-width="5" stroke-linecap="round" stroke-dasharray="238.8" stroke-dashoffset="238.8" transform="rotate(-90 42 42)"/></svg><i></i></button>
- <label class="ugtile" aria-label="อัปโหลดคลิป">${I('<path d="M12 16V5M7.5 9.5L12 5l4.5 4.5M5 20h14"/>')}<input type="file" accept="video/*" onchange="ugFile(this)" hidden></label></div>`,'cam');
+ <label class="ugtile" aria-label="อัปโหลดคลิป">${I('<path d="M12 16V5M7.5 9.5L12 5l4.5 4.5M5 20h14"/>')}<input type="file" accept="video/*" onchange="ugFile(this)" hidden></label>
+ <button class="ugtile2" aria-label="ดึงคลิปจาก TikTok" onclick="ugTikTokPrompt()">🎵</button></div>`,'cam');
  requestAnimationFrame(()=>{ugFxCenter(UGM.fx||0,false);ugDurCenter(false)})}
 // ----- camera tools (real) -----
 function ugToast(t){const e=$('#ugtoast');if(!e)return;e.textContent=t;e.classList.add('on');clearTimeout(UGM.tt);UGM.tt=setTimeout(()=>{const x=$('#ugtoast');if(x)x.classList.remove('on')},1500)}
@@ -3500,6 +3591,35 @@ function ugRec(){if(UGM.rec&&UGM.rec.state==='recording'){UGM.rec.stop();return}
  rec.onstop=()=>{clearInterval(UGM.timer);if(UGM.maud)UGM.maud.pause();const b=new Blob(UGM.chunks,{type:UGM.mime.split(';')[0]});ugStopStream();ugGotBlob(b)};
  rec.start(500);UGM.rec=rec;if(UGM.mus&&UGM.maud&&UGM.maud.src){UGM.maud.currentTime=0;UGM.maud.play().catch(()=>{})}UGM.t0=Date.now();const bt=$('#ugrec');if(bt)bt.classList.add('on');
  UGM.timer=setInterval(()=>{const t=(Date.now()-UGM.t0)/1000,tm=$('#ugtm'),rg=$('#ugring');if(tm)tm.textContent='● '+ugFmt(t,UGM.dur)+' / '+(UGM.dur>=60?ugFmt(UGM.dur,UGM.dur):UGM.dur+' วินาที');if(rg)rg.style.strokeDashoffset=(238.8*(1-Math.min(1,t/UGM.dur))).toFixed(1);if(t>=UGM.dur&&UGM.rec&&UGM.rec.state==='recording')UGM.rec.stop()},100)}
+// ---------- ดึงคลิปจาก TikTok (ใช้บริการฟรีของบุคคลที่สาม ไม่ใช่ API ทางการของ TikTok — อาจใช้ไม่ได้ชั่วคราวถ้าบริการนั้นล่ม) ----------
+const TIKWM_API='https://www.tikwm.com/api/';
+function isTikTokLink(u){return /(^|\.)tiktok\.com\//i.test(u||'')}
+function ugTikTokPrompt(){const e=$('#dlg');e.innerHTML=`<div class="ov" style="align-items:center;padding:16px"><div class="gb" style="border-radius:22px;max-width:400px;padding:18px">
+ <b class="n" style="font-size:18px">🎵 ดึงคลิปจาก TikTok</b>
+ <div class="mut" style="margin-top:6px;font-size:12.5px;line-height:1.6">คัดลอกลิงก์คลิป TikTok ของคุณ (ต้องตั้งเป็นสาธารณะ) มาวางด้านล่าง แล้วกด "ดึงคลิป" — ใช้บริการฟรีจากภายนอก อาจใช้เวลาสักครู่หรือไม่สำเร็จในบางคลิป ถ้าไม่สำเร็จให้ลองอัปโหลดไฟล์แทน</div>
+ <input id="ugttlink" class="inp" style="margin-top:12px" placeholder="https://www.tiktok.com/@.../video/...">
+ <div class="row" style="margin-top:14px;gap:8px"><button class="btn" style="flex:1" onclick="$('#dlg').innerHTML=''">ยกเลิก</button><button class="btn gold" style="flex:1" id="ugttbtn" onclick="ugTikTokGo()">ดึงคลิป</button></div>
+ <div class="mut" id="ugttlerr" style="margin-top:8px;color:#d32f2f"></div></div></div>`}
+async function ugTikTokGo(){const v=$('#ugttlink'),er=$('#ugttlerr'),bt=$('#ugttbtn'),url=((v&&v.value)||'').trim();
+ if(!isTikTokLink(url)){if(er)er.textContent='ลิงก์นี้ไม่ใช่ลิงก์ TikTok กรุณาคัดลอกลิงก์จากปุ่มแชร์ในแอป TikTok';return}
+ if(bt)bt.disabled=true;if(er)er.textContent='กำลังดึงคลิปจาก TikTok...';
+ try{
+  const r=await fetch(TIKWM_API+'?url='+encodeURIComponent(url));
+  const j=await r.json();
+  if(!j||j.code!==0||!j.data)throw new Error('resolve-failed');
+  let vurl=j.data.hdplay||j.data.play;
+  if(!vurl)throw new Error('no-url');
+  if(vurl.startsWith('/'))vurl='https://www.tikwm.com'+vurl;
+  if(er)er.textContent='กำลังโหลดไฟล์คลิป...';
+  const vr=await fetch(vurl);
+  if(!vr.ok)throw new Error('download-failed');
+  const blob=await vr.blob();
+  if(!blob||!blob.size)throw new Error('empty-blob');
+  $('#dlg').innerHTML='';ugStopStream();
+  ugGotBlob(new File([blob],'tiktok.mp4',{type:blob.type||'video/mp4'}));
+ }catch(e){
+  if(er)er.textContent='ดึงคลิปไม่สำเร็จ (คลิปอาจเป็นส่วนตัว ลิงก์ผิด หรือบริการขัดข้องชั่วคราว) ลองใหม่อีกครั้ง หรืออัปโหลดไฟล์แทน';
+  if(bt)bt.disabled=false}}
 function ugFile(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;const er=$('#ugerr');if(!f.type.startsWith('video/')){if(er)er.textContent='เลือกไฟล์วิดีโอเท่านั้น';return}
  const mx=ugMaxMB();if(f.size>mx*1048576){if(er)er.textContent='ไฟล์เกิน '+mx+' MB (ไฟล์ของคุณ '+(f.size/1048576).toFixed(1)+' MB) ลองตัดให้สั้นลงก่อน';return}ugStopStream();ugGotBlob(f)}
 function ugGotBlob(b){const mx=ugMaxMB();if(b.size>mx*1048576){ugCamUI();ugCamStart();const er=$('#ugerr');if(er)er.textContent='คลิปใหญ่เกิน '+mx+' MB ลองถ่ายให้สั้นลง';return}
