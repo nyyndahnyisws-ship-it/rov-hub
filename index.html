@@ -3397,11 +3397,11 @@ function liveEndHost(){liveEndHostSilent();liveBackToList()}
 async function liveWatch(bcUid){liveWatchBcUid=bcUid;liveStage='watch';liveWatchStatus='connecting';go('live');
  liveWatchPC=new RTCPeerConnection(RTC_CFG);liveWatchStream=new MediaStream();
  liveWatchPC.ontrack=e=>{(e.streams[0]?e.streams[0].getTracks():[e.track]).forEach(t=>{try{liveWatchStream.addTrack(t)}catch(er){}});
-  const v=$('#liveWatchVid');if(v&&!v.srcObject)v.srcObject=liveWatchStream;liveTryPlayWatch();
+  liveWatchAttachVideo();
   if(liveWatchStatus!=='connected'){liveWatchStatus='connected';try{clearTimeout(liveWatchConnTimer)}catch(er){}if(pg==='live'&&liveStage==='watch')R()}};
  liveWatchPC.onicecandidate=e=>{if(e.candidate)db.ref('live/signal/'+bcUid+'/'+uid+'/iceFromViewer').push(e.candidate.toJSON())};
  liveWatchPC.onconnectionstatechange=()=>{const st=liveWatchPC.connectionState;
-  if(st==='connected'){liveWatchStatus='connected';try{clearTimeout(liveWatchConnTimer)}catch(e){}if(pg==='live'&&liveStage==='watch'&&liveWatchBcUid===bcUid)R();return}
+  if(st==='connected'){const changed=liveWatchStatus!=='connected';liveWatchStatus='connected';try{clearTimeout(liveWatchConnTimer)}catch(e){}if(changed&&pg==='live'&&liveStage==='watch'&&liveWatchBcUid===bcUid)R();else liveWatchAttachVideo();return}
   if(['failed','disconnected','closed'].includes(st)&&pg==='live'&&liveStage==='watch'&&liveWatchBcUid===bcUid){
    if(liveWatchStatus==='connected')liveWatchEnded(false);else{liveWatchStatus='failed';try{clearTimeout(liveWatchConnTimer)}catch(e){}R()}}};
  try{clearTimeout(liveWatchConnTimer)}catch(e){}
@@ -3414,6 +3414,7 @@ async function liveWatch(bcUid){liveWatchBcUid=bcUid;liveStage='watch';liveWatch
   liveWatchBcOff=db.ref('live/active/'+bcUid);liveWatchBcOff.on('value',snap=>{if(!snap.exists()&&pg==='live'&&liveStage==='watch'&&liveWatchBcUid===bcUid)liveWatchEnded(true)})}
  catch(e){say('เข้าชมไลฟ์ไม่สำเร็จ ลองใหม่');liveLeaveWatch();liveBackToList()}}
 function liveWatchRetry(){const bc=liveWatchBcUid;liveLeaveWatch();if(bc)liveWatch(bc);else liveBackToList()}
+function liveWatchAttachVideo(){const v=$('#liveWatchVid');if(!v||!liveWatchStream)return;if(v.srcObject!==liveWatchStream)v.srcObject=liveWatchStream;liveTryPlayWatch()}
 async function liveTryPlayWatch(){const v=$('#liveWatchVid');if(!v)return;try{await v.play()}catch(e){try{v.muted=true;await v.play();const b=$('#liveUnmuteBtn');if(b)b.style.display='block'}catch(e2){}}}
 function liveUnmute(){const v=$('#liveWatchVid');if(!v)return;v.muted=false;v.play().catch(()=>{});const b=$('#liveUnmuteBtn');if(b)b.style.display='none'}
 function liveWatchEnded(byHost){liveLeaveWatch();liveStage='list';attachLiveList();go('live');if(byHost)say('การไลฟ์สดนี้จบแล้ว')}
@@ -3444,7 +3445,7 @@ function liveWatchHTML(){const bc=liveActive[liveWatchBcUid]||{};
 function vLive(){if(liveStage==='hostPrep')return liveHostPrepHTML();if(liveStage==='hosting')return liveHostingHTML();if(liveStage==='watch')return liveWatchHTML();return liveListHTML()}
 
 const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena,live:vLive};
-function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60)}
+function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60)}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isBanned();roll();if(wb&&!isBanned()){R();return}if(wb){const e=$('#bnrem');if(e)e.innerHTML='<b>'+banRemain(S.ban)+'</b>';return}S.on++;S.life=(S.life||0)+1;bpEvt('sec');if(pg==='missions'&&missionsTab==='bpm'&&S.on%5===0&&!document.querySelector('#dlg .ov'))R();{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
   const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
