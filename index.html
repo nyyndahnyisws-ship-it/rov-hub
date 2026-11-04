@@ -3326,12 +3326,14 @@ function vGacha(){const h=hwS(),M2=gachaM===2,CF=HWM(gachaM),cu=M2?'ore':'stone'
 
 
 // ================= ไลฟ์สด (WebRTC แบบเพื่อน-ต่อ-เพื่อน ผ่านสัญญาณ Firebase — เหมาะกับคนดูกลุ่มเล็ก) =================
-// มี TURN relay ฟรีจากภายนอก (Open Relay Project) ต่อจาก STUN เผื่อ STUN อย่างเดียวทะลุผ่าน NAT ของมือถือ/เน็ตมือถือไม่ได้ (กรณีนี้พบบ่อยมาก โดยเฉพาะสองเครื่องคนละเครือข่าย/คนละค่ายมือถือ)
+// ใช้ TURN relay ส่วนตัว (บัญชี Metered ของเจ้าของแอปเอง ไม่แชร์กับคนอื่น) แทนตัวสาธารณะเดิม เพื่อความเสถียรกว่าตอนเชื่อมต่อข้ามเครือข่าย/ข้ามค่ายมือถือ
 const RTC_CFG={iceServers:[
  {urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'},
- {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
- {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
- {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'}
+ {urls:'stun:stun.relay.metered.ca:80'},
+ {urls:'turn:global.relay.metered.ca:80',username:'393930fa52b56c27a7884993',credential:'QfXweIx16aqCAiIy'},
+ {urls:'turn:global.relay.metered.ca:80?transport=tcp',username:'393930fa52b56c27a7884993',credential:'QfXweIx16aqCAiIy'},
+ {urls:'turn:global.relay.metered.ca:443',username:'393930fa52b56c27a7884993',credential:'QfXweIx16aqCAiIy'},
+ {urls:'turns:global.relay.metered.ca:443?transport=tcp',username:'393930fa52b56c27a7884993',credential:'QfXweIx16aqCAiIy'}
 ]};
 let liveStage='list',liveActive={},liveActiveOff=null,liveMyStream=null,liveViewerPCs={},liveSignalOff=null,liveWatchPC=null,liveWatchBcUid=null,liveWatchStream=null,liveWatchBcOff=null,liveWatchStatus='connecting',liveWatchConnTimer=null;
 function goLive(){liveStage='list';attachLiveList();go('live')}
@@ -3499,9 +3501,13 @@ async function vfMount(el){const id=el.dataset.id,c=vfFind(id);if(!c||el.dataset
  v.addEventListener('play',()=>{vfRing(c);const pp=$('#vfp-'+id);if(pp)pp.classList.remove('on');if(c.mus&&VF.cur===id&&VF.aud&&VF.aud.dataset.id===c.mus)VF.aud.play().catch(()=>{})});v.addEventListener('pause',()=>{vfRing(c);if(c.mus&&VF.cur===id&&VF.aud)VF.aud.pause()});
  el.querySelector('.vfmedia').appendChild(v);if(VF.cur===id)vfPlay(el)}
 function vfUnmount(el){const v=el.querySelector('video');if(v){try{v.pause();v.removeAttribute('src');v.load()}catch(e){}v.remove()}el.dataset.m=''}
-function vfPlay(el){const v=el.querySelector('video');if(!v)return;VF.vid=v;v.muted=VF.muted||!!v.dataset.mus;const p=v.play();if(p&&p.catch)p.catch(()=>{v.muted=true;VF.muted=true;vfMuteUI();v.play().catch(()=>{})})}
-function vfTap(id){const v=VF.vid;if(!v||VF.cur!==id)return;const pp=$('#vfp-'+id);if(v.paused){v.play().catch(()=>{});if(pp)pp.classList.remove('on')}else{v.pause();if(pp)pp.classList.add('on')}}
-function vfMuteUI(){document.querySelectorAll('#vf [id^="vfm-"]').forEach(b=>{b.innerHTML=(VF.muted?VF_IC.mute:VF_IC.vol)+'<span>เสียง</span>'})}
+function vfPlay(el){const v=el.querySelector('video');if(!v)return;VF.vid=v;v.muted=VF.muted||!!v.dataset.mus;const p=v.play();
+ if(p&&p.catch)p.catch(()=>{ // เบราว์เซอร์บล็อกเล่นเสียงอัตโนมัติ (ไม่ใช่ผู้เล่นสั่งปิดเสียงเอง) — ปิดเสียงไว้ชั่วคราวเฉพาะคลิปนี้เพื่อให้เล่นต่อได้ แต่ "ไม่" เปลี่ยนค่าเสียงโดยรวมถาวร (เดิมบั๊กนี้ทำให้ปิดเสียงค้างทุกคลิปที่เหลือ)
+  v.muted=true;v.dataset.autoMuted='1';v.play().catch(()=>{})})}
+function vfTap(id){const v=VF.vid;if(!v||VF.cur!==id)return;
+ if(v.dataset.autoMuted==='1'&&!VF.muted){v.muted=false;v.dataset.autoMuted='';if(VF.aud&&VF.aud.dataset.id)VF.aud.muted=false} // แตะหน้าจอ = ท่าทางจากผู้ใช้จริง ถือโอกาสเปิดเสียงกลับตามที่ผู้เล่นต้องการจริงๆ (เบราว์เซอร์อนุญาตเสียงตอนมีการแตะโดยตรงแบบนี้)
+ const pp=$('#vfp-'+id);if(v.paused){v.play().catch(()=>{});if(pp)pp.classList.remove('on')}else{v.pause();if(pp)pp.classList.add('on')}}
+function vfMuteUI(){const effMuted=VF.muted||!!(VF.vid&&VF.vid.dataset.autoMuted==='1');document.querySelectorAll('#vf [id^="vfm-"]').forEach(b=>{b.innerHTML=(effMuted?VF_IC.mute:VF_IC.vol)+'<span>เสียง</span>'})}
 function vfMute(){VF.muted=!VF.muted;if(VF.vid)VF.vid.muted=VF.muted||!!VF.vid.dataset.mus;if(VF.aud)VF.aud.muted=VF.muted;vfMuteUI()}
 function vfMsg(t){const m=$('#vfmsg');if(!m)return;m.textContent=t;m.classList.add('on');clearTimeout(VF.mt);VF.mt=setTimeout(()=>m.classList.remove('on'),1800)}
 function vfRing(c){if(!VF.open||!c)return;const id=c.id,q=Math.min(S.cp[id]||0,c.sec),d=!!S.seen[id],rd=q>=c.sec,pl=!!(VF.vid&&VF.cur===id&&!VF.vid.paused&&!VF.vid.ended);
