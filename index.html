@@ -1225,23 +1225,120 @@ async function rejectPremium(uid2,id){const t=premiumReq.find(x=>x.uid===uid2&&x
   await db.ref('premiumReq/'+uid2+'/'+id+'/note').set('หลักฐานไม่ชัดเจน กรุณาติดต่อแอดมิน');
   await db.ref('premiumReq/'+uid2+'/'+id+'/reviewedAt').set(firebase.database.ServerValue.TIMESTAMP)}
  catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+// ---------- พื้นที่เก็บข้อมูล ROVHUB VIP/SVIP (โควตาแยกต่อผู้เล่น เงินจริงเท่านั้น แยกจากแพ็กยศพิเศษด้านบน) ----------
+const GB=1073741824;
+const STORAGE_PACKS=[
+ {id:'vip',baht:699,days:60,gb:10,label:'ROVHUB VIP',desc:'เพิ่มพื้นที่เก็บคลิป/วิดีโอพื้นหลังโปรไฟล์ +10GB (จาก 2GB เป็น 12GB) และเพิ่มขนาดอัปโหลดสูงสุดต่อครั้งจาก 5MB เป็น 15MB นาน 60 วัน · ชำระเงินจริงเท่านั้น ไม่รับหยกเขียว'},
+ {id:'svip',baht:4899,days:150,gb:30,label:'ROVHUB SVIP',desc:'เพิ่มพื้นที่เก็บคลิป/วิดีโอพื้นหลังโปรไฟล์ +30GB และปลดล็อกอัปโหลดคลิปในคลังได้สูงสุด 200MB/ครั้ง (วิดีโอพื้นหลังโปรไฟล์สูงสุด 20MB/ครั้ง) นาน 150 วัน · ชำระเงินจริงเท่านั้น ไม่รับหยกเขียว'}];
+let stPick=-1;
+const rovVipActive=()=>!!(S.rovVipUntil&&Date.now()<S.rovVipUntil);
+const rovSvipActive=()=>!!(S.rovSvipUntil&&Date.now()<S.rovSvipUntil);
+function storageQuotaBytes(){return 2*GB+(rovVipActive()?10*GB:0)+(rovSvipActive()?30*GB:0)}
+function fmtGB(b){return (Math.max(0,b)/GB).toFixed(2).replace(/\.00$/,'')+' GB'}
+let myStorageUsed=null,myStorageUsedLoading=false;
+async function computeMyStorageUsedBytes(){let used=0;
+ try{const sn=await db.ref('ugc').orderByChild('uid').equalTo(uid).once('value');const v=sn.val()||{};Object.keys(v).forEach(id=>used+=(v[id]&&v[id].sz)||0)}catch(e){}
+ const ids=(S.myq||[]).slice();for(const id of ids){try{const sn=await db.ref('ugcq/'+id).once('value'),q=sn.val();if(q&&q.st!=='r')used+=(q.sz||0)}catch(e){}}
+ try{const sn=await db.ref('profbgvid/'+uid).once('value');const d=sn.val();if(d)used+=Math.ceil(d.length*0.75)}catch(e){}
+ return used}
+async function loadMyStorageUsed(){if(myStorageUsedLoading||!uid||myStorageUsed!==null)return;myStorageUsedLoading=true;
+ try{myStorageUsed=await computeMyStorageUsedBytes()}catch(e){}
+ myStorageUsedLoading=false;if(pg==='topup')R()}
+async function storageCheckAllow(extraBytes){const used=await computeMyStorageUsedBytes();myStorageUsed=used;const quota=storageQuotaBytes();
+ return{ok:used+Math.max(0,extraBytes)<=quota,used,quota}}
+let storageReq=[],storageReqRefOff=null,myStorageReq=[],myStorageReqRefOff=null;
+function attachStorageReqAll(){storageReqRefOff=db.ref('storageReq');
+ storageReqRefOff.on('value',snap=>{const v=snap.val()||{};const list=[];
+  Object.keys(v).forEach(u=>Object.keys(v[u]).forEach(id=>list.push(Object.assign({uid:u,id},v[u][id]))));
+  storageReq=list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(pg==='admin'&&adminTab==='topup'){const e=$('#stlist');if(e)e.innerHTML=storageAdminList()}},()=>{})}
+function attachMyStorageReq(){myStorageReqRefOff=db.ref('storageReq/'+uid);
+ myStorageReqRefOff.on('value',snap=>{const v=snap.val()||{};myStorageReq=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  creditStorageApproved();
+  if(pg==='topup')R()},()=>{})}
+async function creditStorageApproved(){if(!S||!uid)return;
+ for(const t of myStorageReq.slice()){if(t.status!=='approved'||t.credited)continue;
+  try{const r=await db.ref('storageReq/'+uid+'/'+t.id+'/credited').transaction(c=>c?undefined:true);
+   if(r&&r.committed){
+    const pack=STORAGE_PACKS.find(p=>p.id===t.pack);if(!pack)continue;
+    const now=Date.now(),addMs=pack.days*86400000;
+    if(pack.id==='vip')S.rovVipUntil=Math.max(S.rovVipUntil||0,now)+addMs;
+    else S.rovSvipUntil=Math.max(S.rovSvipUntil||0,now)+addMs;
+    S.log=S.log||[];S.log.unshift({t:tstr(),m:'ปลดล็อก '+pack.label+' +'+pack.gb+'GB ('+pack.baht+' บาท)',n:0,cur:'storage'});S.log=S.log.slice(0,80);
+    save();R();
+    say('🎉 ยินดีด้วย! คุณได้รับ '+pack.label+' พื้นที่เก็บข้อมูลเพิ่ม +'+pack.gb+'GB แล้ว')}
+  }catch(e){}}}
+async function submitStorageReq(){if(stPick<0)return;const st=$('#stst'),bt=$('#stbtn'),f=$('#stslip').files[0],p=STORAGE_PACKS[stPick];
+ if(!f){st.textContent='แนบสลิปก่อน';return}if(f.size>2*1048576){st.textContent='ไฟล์สลิปเกิน 2MB';return}
+ bt.disabled=true;st.textContent='กำลังส่ง...';try{const slip=await readB64Slip(f);
+  const id='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  await db.ref('storageReq/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',pack:p.id,baht:p.baht,slip,status:'pending',ts:firebase.database.ServerValue.TIMESTAMP});
+  st.textContent='✅ ส่งแล้ว รอแอดมินตรวจสอบ';stPick=-1;$('#stslip').value='';R()}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+function storageUsageHTML(){const quota=storageQuotaBytes();
+ if(myStorageUsed===null)return '<div class="mut" style="margin-top:8px">กำลังคำนวณพื้นที่ที่ใช้ไป...</div>';
+ const pct=Math.min(100,Math.round(myStorageUsed/quota*100));
+ return `<div class="mut" style="margin-top:8px">ใช้ไปแล้ว ${fmtGB(myStorageUsed)} จาก ${fmtGB(quota)}${pct>=100?' <span class="chip wn">เต็มแล้ว</span>':''}</div><div class="bar" style="margin-top:6px"><i style="width:${pct}%"></i></div>`}
+function storagePkHTML(){
+ let h='<div class="mut" style="margin:18px 4px 6px">📦 พื้นที่เก็บข้อมูล (คลิป/วิดีโอพื้นหลังโปรไฟล์)</div>';
+ h+=`<div class="card" style="margin-top:0"><div class="mut">ทุกบัญชีได้พื้นที่เริ่มต้นฟรี 2GB สำหรับลงคลิปและวิดีโอพื้นหลังโปรไฟล์ (อัปโหลดสูงสุด 5MB/ครั้ง) ถ้าใช้พื้นที่เต็มจะอัปโหลด/เปลี่ยนอะไรที่กินพื้นที่ไม่ได้เลยจนกว่าจะลบของเก่าหรือซื้อพื้นที่เพิ่ม</div>
+ ${storageUsageHTML()}
+ ${rovVipActive()?`<div class="chip ok" style="margin-top:8px">🟢 ROVHUB VIP ใช้งานถึง ${new Date(S.rovVipUntil).toLocaleDateString('th-TH',{dateStyle:'medium'})} (อัปโหลดสูงสุด 15MB/ครั้ง)</div>`:''}
+ ${rovSvipActive()?`<div class="chip ok" style="margin-top:8px">🟣 ROVHUB SVIP ใช้งานถึง ${new Date(S.rovSvipUntil).toLocaleDateString('th-TH',{dateStyle:'medium'})} (คลิปในคลังสูงสุด 200MB/ครั้ง · วิดีโอพื้นหลังโปรไฟล์สูงสุด 20MB/ครั้ง)</div>`:''}
+ </div>
+ <div class="grid" style="margin-top:10px">${STORAGE_PACKS.map((p,i)=>{const on=stPick===i;
+  return `<button class="menu" style="text-align:center;align-items:center;border-color:${on?'var(--gold)':'var(--line)'};border-width:${on?'2px':'1px'}" onclick="stPick=${i};R()"><span class="em">${p.id==='svip'?'🟣':'🟢'}</span><b>${esc(p.label)}</b><span class="mut">+${p.gb}GB · ${fmt(p.baht)} บาท/${Math.round(p.days/30)} เดือน</span></button>`}).join('')}</div>`;
+ if(stPick>=0){const p=STORAGE_PACKS[stPick];
+  h+=`<div class="card"><b class="n">สแกนจ่ายเงิน</b><div class="mut" style="margin-top:4px">${esc(p.desc)}</div>
+  <div class="mut" style="margin-top:8px">โอน <b>${fmt(p.baht)} บาท</b> ตามคิวอาร์โค้ดด้านล่าง แล้วแนบสลิปส่งให้แอดมินตรวจสอบ</div>
+  ${qrImage?`<img src="${qrImage}" style="width:100%;max-width:280px;display:block;margin:12px auto;border-radius:14px">`:'<div class="mut" style="margin-top:10px">แอดมินยังไม่ได้แนบคิวอาร์โค้ด — รอแอดมินอัปโหลดก่อน</div>'}
+  <label class="mut" style="display:block;margin-top:10px">แนบสลิปการโอนเงิน</label><input id="stslip" type="file" accept="image/png,image/jpeg,image/webp" class="inp">
+  <div class="mut" id="stst" style="margin-top:8px"></div>
+  <button class="btn gold" id="stbtn" style="width:100%;margin-top:6px" onclick="submitStorageReq()">ส่งสลิปให้ตรวจสอบ</button></div>`}
+ h+='<div class="mut" style="margin:14px 4px 8px">ประวัติคำขอเพิ่มพื้นที่ของฉัน</div>'+(myStorageReq.length?myStorageReq.map(t=>{const p=STORAGE_PACKS.find(x=>x.id===t.pack);return `<div class="card"><div class="row"><b class="n">${p?(p.id==='svip'?'🟣 ':'🟢 ')+p.label:t.pack} · ${fmt(t.baht)} บาท</b>${stChip(t.status)}</div><div class="mut" style="margin-top:4px">${t.ts?new Date(t.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div>${t.status==='rejected'&&t.note?`<div class="mut" style="margin-top:4px;color:#d32f2f">เหตุผล: ${esc(t.note)}</div>`:''}</div>`}).join(''):'<div class="card"><div class="mut">ยังไม่มีประวัติ</div></div>');
+ return h}
+const storageAdminList=()=>{const pend=storageReq.filter(t=>t.status==='pending'),done=storageReq.filter(t=>t.status!=='pending');
+ const row=t=>{const p=STORAGE_PACKS.find(x=>x.id===t.pack);return `<div class="card"><div class="row"><b class="n">${p?(p.id==='svip'?'🟣 '+p.label:'🟢 '+p.label):t.pack} · ${fmt(t.baht)} บาท</b>${stChip(t.status)}</div>
+ <div class="mut" style="margin-top:4px">${esc(t.email||'')} · ${t.ts?new Date(t.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div>
+ ${t.slip?`<img src="${t.slip}" style="max-width:180px;border-radius:10px;margin-top:8px" onclick="viewSlipSt('${t.uid}','${t.id}')">`:''}
+ ${t.status==='pending'?`<div class="row" style="margin-top:10px;gap:8px"><button class="btn gold" onclick="approveStorage('${t.uid}','${t.id}')">✅ อนุมัติ</button><button class="btn" style="color:#d32f2f" onclick="rejectStorage('${t.uid}','${t.id}')">❌ ปฏิเสธ</button></div>`
+ :t.note?`<div class="mut" style="margin-top:6px">หมายเหตุ: ${esc(t.note)}</div>`:''}</div>`};
+ return (pend.length?'<div class="mut" style="margin:4px 4px 0">⏳ รอตรวจสอบ ('+pend.length+')</div>'+pend.map(row).join(''):'<div class="card"><div class="mut">ไม่มีรายการรอตรวจสอบ</div></div>')
+ +(done.length?'<div class="mut" style="margin:14px 4px 0">ประวัติที่ตรวจแล้ว</div>'+done.slice(0,20).map(row).join(''):'')}
+function viewSlipSt(uid2,id){const t=storageReq.find(x=>x.uid===uid2&&x.id===id);if(t&&t.slip)dlgH('<img src="'+t.slip+'" style="width:100%;border-radius:10px">')}
+async function approveStorage(uid2,id){const t=storageReq.find(x=>x.uid===uid2&&x.id===id);if(!t)return;const p=STORAGE_PACKS.find(x=>x.id===t.pack);
+ if(!(await dlg('ยืนยันอนุมัติให้ '+(t.email||uid2)+' รับ '+(p?p.label:t.pack)+' ('+fmt(t.baht)+' บาท) ?','อนุมัติ')))return;
+ try{await db.ref('storageReq/'+uid2+'/'+id+'/status').set('approved');await db.ref('storageReq/'+uid2+'/'+id+'/reviewedAt').set(firebase.database.ServerValue.TIMESTAMP);say('อนุมัติแล้ว ✅')}
+ catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+async function rejectStorage(uid2,id){const t=storageReq.find(x=>x.uid===uid2&&x.id===id);if(!t)return;
+ if(!(await dlg('ปฏิเสธคำขอนี้?','ปฏิเสธ')))return;
+ try{await db.ref('storageReq/'+uid2+'/'+id+'/status').set('rejected');
+  await db.ref('storageReq/'+uid2+'/'+id+'/note').set('หลักฐานไม่ชัดเจน กรุณาติดต่อแอดมิน');
+  await db.ref('storageReq/'+uid2+'/'+id+'/reviewedAt').set(firebase.database.ServerValue.TIMESTAMP)}
+ catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
 // ---------- วิดีโอพื้นหลังโปรไฟล์ (อัปโหลดขึ้น Firebase จริง — ผู้เล่นคนอื่น/เพื่อนเห็นได้ทุกคน เหมือนรูปโปรไฟล์/พื้นหลังปกติ) ----------
 let myBgVideoData,pbgvid={}; // myBgVideoData: undefined=ยังไม่โหลด, ''|dataURI=โหลดแล้ว (ของตัวเอง) · pbgvid: แคชของผู้เล่นคนอื่นตาม uid
 async function loadMyBgVideo(){if(!uid||myBgVideoData!==undefined)return;
  try{const v=(await db.ref('profbgvid/'+uid).once('value')).val();myBgVideoData=v||'';if(pg==='profile')R()}catch(e){myBgVideoData=''}}
-function bgVideoMaxMB(){return S.pkSvip?12:8}
+function uploadMaxMB(){return rovSvipActive()?200:(rovVipActive()?15:5)} // ลิมิตอัปโหลดต่อครั้งตามแพ็กพื้นที่: ฟรี 5MB · ROVHUB VIP 15MB · ROVHUB SVIP 200MB
+function bgVideoMaxMB(){ // วิดีโอพื้นหลังโปรไฟล์เก็บตรงใน Firebase Realtime Database (ไม่ใช่ Cloudinary เหมือนคลิป) จึงจำกัด SVIP ไว้ที่ 20MB แทน 200MB — ไฟล์ 200MB แบบ base64 ในโหนดเดียวเสี่ยงเกินลิมิตขนาดโหนดของ Firebase และเสี่ยงมือถือค้าง/แครชตอนโหลดโปรไฟล์
+ return rovSvipActive()?20:(rovVipActive()?15:5)}
 async function pickBgVideo(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('video/')){const e=$('#pfst');if(e)e.textContent='เลือกไฟล์วิดีโอ';return}
  const maxMB=bgVideoMaxMB();
  if(f.size>maxMB*1048576){const e=$('#pfst');if(e)e.textContent='ไฟล์วิดีโอใหญ่เกิน '+maxMB+'MB กรุณาเลือกคลิปสั้นๆ ไฟล์เล็กลง';return}
- const st=$('#pfst');if(st)st.textContent='กำลังอัปโหลดวิดีโอ...';
+ const st=$('#pfst');if(st)st.textContent='กำลังตรวจสอบพื้นที่...';
+ let existingSz=0;try{existingSz=myBgVideoData?Math.ceil(myBgVideoData.length*0.75):0}catch(e){}
+ const chk=await storageCheckAllow(f.size-existingSz);
+ if(!chk.ok){if(st)st.textContent='พื้นที่เก็บข้อมูลเต็ม (ใช้ไป '+fmtGB(chk.used)+' จาก '+fmtGB(chk.quota)+') กรุณาลบคลิป/วิดีโอเก่า หรือซื้อพื้นที่เพิ่มที่หน้าเติมเงิน';return}
+ if(st)st.textContent='กำลังอัปโหลดวิดีโอ...';
  try{const dataUri=await readB64Slip(f);
   await db.ref('profbgvid/'+uid).set(dataUri);
-  myBgVideoData=dataUri;S.prof=S.prof||{};S.prof.bgVideoOn=true;save();
+  myBgVideoData=dataUri;S.prof=S.prof||{};S.prof.bgVideoOn=true;save();myStorageUsed=null;
   if(st)st.textContent='✅ ตั้งวิดีโอพื้นหลังแล้ว เพื่อนและผู้เล่นคนอื่นจะเห็นวิดีโอนี้ตอนเปิดดูโปรไฟล์คุณ';
   bgVideoPreviewRefresh()}
  catch(e){if(st)st.textContent='อัปโหลดไม่สำเร็จ: '+((e&&e.code)||'ลองใหม่ หรือเลือกไฟล์ที่เล็กลง')}}
 async function clearBgVideo(){try{await db.ref('profbgvid/'+uid).remove()}catch(e){}
- myBgVideoData='';S.prof=S.prof||{};S.prof.bgVideoOn=false;save();bgVideoPreviewRefresh();
+ myBgVideoData='';S.prof=S.prof||{};S.prof.bgVideoOn=false;save();myStorageUsed=null;bgVideoPreviewRefresh();
  const e=$('#pfst');if(e)e.textContent='ลบวิดีโอพื้นหลังแล้ว'}
 function bgVideoPreviewRefresh(){const e=$('#pfbgvprev');if(!e)return;
  if(myBgVideoData)e.innerHTML=`<video src="${myBgVideoData}" muted loop autoplay playsinline style="width:100%;height:90px;object-fit:cover;border-radius:14px;margin-top:6px"></video>`;
@@ -1266,6 +1363,7 @@ function vTopup(){const j=S.jade||0;
   <button class="btn gold" id="tubtn" style="width:100%;margin-top:6px" onclick="submitTopup()">ส่งสลิปให้ตรวจสอบ</button></div>`}
  h+='<div class="mut" style="margin:18px 4px 8px">ประวัติการเติมของฉัน</div>'+(myTopups.length?myTopups.map(t=>`<div class="card"><div class="row"><b class="n">💎 ${fmt(t.jade+t.bonus)} หยก · ${fmt(t.baht)} บาท</b>${stChip(t.status)}</div><div class="mut" style="margin-top:4px">${t.ts?new Date(t.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div>${t.status==='rejected'&&t.note?`<div class="mut" style="margin-top:4px;color:#d32f2f">เหตุผล: ${esc(t.note)}</div>`:''}</div>`).join(''):'<div class="card"><div class="mut">ยังไม่มีประวัติการเติม</div></div>');
  h+=premiumPkHTML();
+ h+=storagePkHTML();
  return h}
 async function submitTopup(){if(tuPick<0)return;const st=$('#tust'),bt=$('#tubtn'),f=$('#tuslip').files[0],p=PACKS[tuPick];
  if(!f){st.textContent='แนบสลิปก่อน';return}if(f.size>2*1048576){st.textContent='ไฟล์สลิปเกิน 2MB';return}
@@ -1282,7 +1380,8 @@ function vAdminTopup(){return `<div class="card" style="margin-top:0"><b class="
  <div id="qrprev">${qrPreview()}</div><input id="qrfile" type="file" accept="image/png,image/jpeg,image/webp" class="inp" style="margin-top:10px">
  <button class="btn pri" id="qrbtn" style="width:100%;margin-top:10px" onclick="uploadQR()">อัปโหลด/เปลี่ยนคิวอาร์โค้ด</button><div class="mut" id="qrst" style="margin-top:6px"></div></div>
  <div class="mut" style="margin:14px 4px 0">คำขอเติมหยกเขียว</div><div id="tulist">${topupAdminList()}</div>
- <div class="mut" style="margin:14px 4px 0">คำขอแพ็กยศพิเศษ (699/1699)</div><div id="pklist">${premiumAdminList()}</div>`}
+ <div class="mut" style="margin:14px 4px 0">คำขอแพ็กยศพิเศษ (699/1699)</div><div id="pklist">${premiumAdminList()}</div>
+ <div class="mut" style="margin:14px 4px 0">คำขอเพิ่มพื้นที่ (ROVHUB VIP/SVIP)</div><div id="stlist">${storageAdminList()}</div>`}
 async function uploadQR(){const st=$('#qrst'),bt=$('#qrbtn'),f=$('#qrfile').files[0];if(!f){st.textContent='เลือกรูปคิวอาร์ก่อน';return}
  if(f.size>2*1048576){st.textContent='ไฟล์เกิน 2MB';return}
  bt.disabled=true;st.textContent='กำลังอัปโหลด...';try{const img=await readB64Slip(f);await db.ref('settings/qr').set({image:img,ts:firebase.database.ServerValue.TIMESTAMP});st.textContent='✅ อัปเดตคิวอาร์แล้ว';$('#qrfile').value=''}
@@ -1633,7 +1732,7 @@ function pfForm(){const pr=S.prof||{};return `<b class="n" style="font-size:18px
  <div class="row" style="gap:8px;margin-top:8px"><input type="file" accept="image/*" class="inp" onchange="pickBg(this)"><button class="btn" onclick="setBgPreset('')">ค่าเริ่มต้น</button></div>
  <label class="mut" style="display:block;margin-top:10px">ชื่อเล่น ${pr.name?'(ตั้งแล้ว เปลี่ยนไม่ได้)':'(2–20 ตัวอักษร ตั้งได้ครั้งเดียว)'}</label><input id="pfn" class="inp" maxlength="20" value="${esc(pr.name||'')}" ${pr.name?'readonly style="opacity:.7"':''} placeholder="เช่น นักล่าคะแนน">
  <label class="mut" style="display:block;margin-top:10px">แนะนำตัว</label><textarea id="pfb" rows="3" class="inp" maxlength="80" placeholder="สั้นๆ ไม่เกิน 80 ตัวอักษร">${esc(pr.bio||'')}</textarea>
- ${S.pkVideoBanner?`<label class="mut" style="display:block;margin-top:14px">🎬 วิดีโอพื้นหลังโปรไฟล์ (สิทธิ์พิเศษ)</label><div class="mut" style="font-size:11px">เล่นอัตโนมัติวนซ้ำพร้อมเสียง — เพื่อนและผู้เล่นคนอื่นที่เข้ามาดูโปรไฟล์คุณจะเห็นวิดีโอนี้แทนภาพพื้นหลังเดิมด้วย (ไฟล์ไม่เกิน ${bgVideoMaxMB()}MB${S.pkSvip?' สำหรับสมาชิก SVIP':''})</div>
+ ${S.pkVideoBanner?`<label class="mut" style="display:block;margin-top:14px">🎬 วิดีโอพื้นหลังโปรไฟล์ (สิทธิ์พิเศษ)</label><div class="mut" style="font-size:11px">เล่นอัตโนมัติวนซ้ำพร้อมเสียง — เพื่อนและผู้เล่นคนอื่นที่เข้ามาดูโปรไฟล์คุณจะเห็นวิดีโอนี้แทนภาพพื้นหลังเดิมด้วย (ไฟล์ไม่เกิน ${bgVideoMaxMB()}MB${rovSvipActive()?' — ROVHUB SVIP':rovVipActive()?' — ROVHUB VIP':' — แพ็กพื้นที่ฟรี'})</div>
  <div id="pfbgvprev">${(S.prof&&S.prof.bgVideoOn)?'<div class="mut" style="margin-top:6px">กำลังโหลดตัวอย่าง...</div>':'<div class="mut" style="margin-top:6px">ยังไม่ได้ตั้งวิดีโอ</div>'}</div>
  <div class="row" style="gap:8px;margin-top:8px"><input type="file" accept="video/*" class="inp" onchange="pickBgVideo(this)"><button class="btn" onclick="clearBgVideo()">ลบวิดีโอ</button></div>`
  :`<label class="mut" style="display:block;margin-top:14px">🎬 วิดีโอพื้นหลังโปรไฟล์</label><div class="card" style="margin-top:6px;padding:10px 12px"><div class="mut">สิทธิ์พิเศษเฉพาะผู้ซื้อแพ็กยศพิเศษ — ดูรายละเอียดได้ที่หน้าเติมเงิน</div><button class="btn gold" style="width:100%;margin-top:8px" onclick="closeProfEdit();go('topup')">ไปหน้าแพ็กยศพิเศษ</button></div>`}
@@ -3447,7 +3546,7 @@ function liveWatchHTML(){const bc=liveActive[liveWatchBcUid]||{};
 function vLive(){if(liveStage==='hostPrep')return liveHostPrepHTML();if(liveStage==='hosting')return liveHostingHTML();if(liveStage==='watch')return liveWatchHTML();return liveListHTML()}
 
 const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena,live:vLive};
-function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60)}
+function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60);if(pg==='topup')loadMyStorageUsed()}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isBanned();roll();if(wb&&!isBanned()){R();return}if(wb){const e=$('#bnrem');if(e)e.innerHTML='<b>'+banRemain(S.ban)+'</b>';return}S.on++;S.life=(S.life||0)+1;bpEvt('sec');if(pg==='missions'&&missionsTab==='bpm'&&S.on%5===0&&!document.querySelector('#dlg .ov'))R();{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
   const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
@@ -3648,7 +3747,7 @@ function ugFlip(){if(UGM.rec&&UGM.rec.state==='recording')return;UGM.facing=UGM.
 function ugDur(n){if(UGM.rec&&UGM.rec.state==='recording')return;UGM.dur=n;document.querySelectorAll('.ugdb').forEach(b=>b.classList.toggle('on',b.id==='ugd'+n));ugDurCenter(true)}
 function ugDurCenter(sm){const r=$('.ugdur'),b=r&&r.querySelector('.ugdb.on');if(!b)return;r.scrollTo({left:b.offsetLeft+b.offsetWidth/2-r.clientWidth/2,behavior:sm?'smooth':'auto'})}
 function ugRec(){if(UGM.rec&&UGM.rec.state==='recording'){UGM.rec.stop();return}if(!UGM.stream){ugCamStart();return}
- const mt=ugMime(),rs=ugRecStream();let rec;try{rec=new MediaRecorder(rs,Object.assign(mt?{mimeType:mt}:{},{videoBitsPerSecond:ugBits(),audioBitsPerSecond:64000}))}catch(e){try{rec=new MediaRecorder(rs)}catch(e2){const er=$('#ugerr');if(er)er.textContent='เบราว์เซอร์นี้อัดวิดีโอไม่ได้ ใช้ปุ่มอัปโหลดแทน';return}}
+ const mt=ugMime(),rs=ugRecStream();let rec;try{rec=new MediaRecorder(rs,Object.assign(mt?{mimeType:mt}:{},{videoBitsPerSecond:ugBits(),audioBitsPerSecond:UG_AUD_BPS}))}catch(e){try{rec=new MediaRecorder(rs)}catch(e2){const er=$('#ugerr');if(er)er.textContent='เบราว์เซอร์นี้อัดวิดีโอไม่ได้ ใช้ปุ่มอัปโหลดแทน';return}}
  UGM.chunks=[];UGM.mime=rec.mimeType||mt||'video/webm';rec.ondataavailable=e=>{if(e.data&&e.data.size)UGM.chunks.push(e.data)};
  rec.onstop=()=>{clearInterval(UGM.timer);if(UGM.maud)UGM.maud.pause();const b=new Blob(UGM.chunks,{type:UGM.mime.split(';')[0]});ugStopStream();ugGotBlob(b)};
  rec.start(500);UGM.rec=rec;if(UGM.mus&&UGM.maud&&UGM.maud.src){UGM.maud.currentTime=0;UGM.maud.play().catch(()=>{})}UGM.t0=Date.now();const bt=$('#ugrec');if(bt)bt.classList.add('on');
@@ -3684,8 +3783,11 @@ async function ugTikTokGo(){const v=$('#ugttlink'),er=$('#ugttlerr'),bt=$('#ugtt
   if(bt)bt.disabled=false}}
 function ugFile(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;const er=$('#ugerr');if(!f.type.startsWith('video/')){if(er)er.textContent='เลือกไฟล์วิดีโอเท่านั้น';return}
  const mx=ugMaxMB();if(f.size>mx*1048576){if(er)er.textContent='ไฟล์เกิน '+mx+' MB (ไฟล์ของคุณ '+(f.size/1048576).toFixed(1)+' MB) ลองตัดให้สั้นลงก่อน';return}ugStopStream();ugGotBlob(f)}
-function ugGotBlob(b){const mx=ugMaxMB();if(b.size>mx*1048576){ugCamUI();ugCamStart();const er=$('#ugerr');if(er)er.textContent='คลิปใหญ่เกิน '+mx+' MB ลองถ่ายให้สั้นลง';return}
- if(!b.size){ugCamUI();ugCamStart();return}UGM.blob=b;if(UGM.url)URL.revokeObjectURL(UGM.url);UGM.url=URL.createObjectURL(b);
+async function ugGotBlob(b){const mx=ugMaxMB();if(b.size>mx*1048576){ugCamUI();ugCamStart();const er=$('#ugerr');if(er)er.textContent='คลิปใหญ่เกิน '+mx+' MB ลองถ่ายให้สั้นลง';return}
+ if(!b.size){ugCamUI();ugCamStart();return}
+ const chk=await storageCheckAllow(b.size);
+ if(!chk.ok){ugCamUI();ugCamStart();const er=$('#ugerr');if(er)er.textContent='พื้นที่เก็บข้อมูลเต็ม (ใช้ไป '+fmtGB(chk.used)+' จาก '+fmtGB(chk.quota)+') กรุณาลบคลิปเก่า หรือซื้อพื้นที่เพิ่มที่หน้าเติมเงิน';return}
+ UGM.blob=b;if(UGM.url)URL.revokeObjectURL(UGM.url);UGM.url=URL.createObjectURL(b);
  ugShow(`<div class="ugcam"><video id="ugpr" src="${UGM.url}" playsinline loop controls autoplay></video><div class="vftop"><button class="vfx" onclick="ugRetake()" aria-label="กลับ">‹</button><button class="ugpill ugsnd" onclick="ugMusicPick()"><i class="mdk${UGM.mus?' on':''}"></i><span id="ugmus">${UGM.mus?esc(UGM.mus.title):'เพิ่มเสียง'}</span></button><span class="vfcnt">${(b.size/1048576).toFixed(1)} MB</span></div>
  <div class="ugbot ugform"><input id="ugttl" class="inp" maxlength="80" placeholder="ใส่ชื่อ/คำบรรยายคลิป"><div class="ugnote" style="margin:8px 0">คลิปจะขึ้นฟีดหลังแอดมินตรวจและกำหนดคะแนนให้ ผู้ลงกำหนดคะแนนเองไม่ได้</div><div class="ugrow"><button class="btn" onclick="ugRetake()">ถ่ายใหม่</button><button class="btn gold" id="ugpost" onclick="ugPost()">ลงคลิป</button></div><div class="ugnote" id="ugpst"></div></div></div>`,'prev');ugPrevMute()}
 function ugRetake(){UGM.blob=null;ugCamUI();ugCamStart()}
@@ -3694,7 +3796,7 @@ function ugThumb(url){return new Promise(res=>{try{const v=document.createElemen
 // ----- Cloudinary video hosting (free plan, unsigned preset) -----
 const CLD={cloud:'iy0s2bou',preset:'rovclips'};
 const cldOn=()=>!!(CLD.cloud&&CLD.preset);
-const ugMaxMB=()=>cldOn()?95:((UGCFG&&+UGCFG.maxMB)||UG_DEF.maxMB);
+const ugMaxMB=()=>cldOn()?uploadMaxMB():((UGCFG&&+UGCFG.maxMB)||UG_DEF.maxMB);
 function cldUrl(u){u=String(u||'');if(/\/video\/upload\//.test(u)&&/\.webm(\?|$)/i.test(u))return u.replace('/video/upload/','/video/upload/f_mp4,vc_h264/').replace(/\.webm(\?|$)/i,'.mp4$1');return u}
 function cldUpload(blob,on){return new Promise((res,rej)=>{const x=new XMLHttpRequest(),fd=new FormData(),er=m=>{const e=new Error(m);e.code=m;rej(e)};fd.append('file',blob);fd.append('upload_preset',CLD.preset);
  x.open('POST','https://api.cloudinary.com/v1_1/'+CLD.cloud+'/video/upload');
@@ -3703,7 +3805,11 @@ function cldUpload(blob,on){return new Promise((res,rej)=>{const x=new XMLHttpRe
  x.onerror=()=>er('เครือข่ายมีปัญหา');x.ontimeout=x.onerror;x.send(fd)})}
 const UGDUR=()=>cldOn()?[[600,'10 นาที'],[60,'60 วินาที'],[15,'15 วินาที']]:[[30,'30 วินาที'],[15,'15 วินาที']];
 function ugDurBtns(){const o=UGDUR();if(!o.some(x=>x[0]===UGM.dur))UGM.dur=15;return o.map(x=>`<button id="ugd${x[0]}" class="ugdb${UGM.dur===x[0]?' on':''}" onclick="ugDur(${x[0]})">${x[1]}</button>`).join('')}
-function ugBits(){return cldOn()?(UGM.dur>=300?1100000:UGM.dur>=60?2000000:2500000):(UGM.dur>=30?900000:1800000)}
+const UG_AUD_BPS=128000; // เสียงคุณภาพสูง ไม่บีบอัดจนเสียงแตก/อู้
+function ugBits(){ // ไม่บีบอัดคลิปเกินจำเป็น — ใช้บิตเรตสูงสุดเท่าที่ขนาดไฟล์สูงสุด (ตามแพ็กที่มี) จะรับไหวสำหรับความยาวคลิปที่เลือก
+ if(!cldOn())return UGM.dur>=30?900000:1800000;
+ const capBits=ugMaxMB()*1048576*8*0.85,dur=Math.max(1,UGM.dur||15);
+ return Math.max(400000,Math.min(16000000,Math.floor(capBits/dur-UG_AUD_BPS)))}
 const ugFmt=(t,d)=>d>=60?Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0'):t.toFixed(1)+' วินาที';
 async function ugPost(){const st=$('#ugpst'),bt=$('#ugpost'),title=($('#ugttl').value||'').trim().slice(0,80);if(!UGM.blob)return;if(!title){st.textContent='ใส่ชื่อคลิปก่อน';return}
  bt.disabled=true;st.textContent='กำลังเตรียมไฟล์...';let id='g'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -3712,7 +3818,7 @@ async function ugPost(){const st=$('#ugpst'),bt=$('#ugpost'),title=($('#ugttl').
   else{data=await readB64(UGM.blob);if(data.length>6000000)throw new Error('big');st.textContent='กำลังอัปโหลด...'}
   await db.ref('ugcq/'+id).set(Object.assign({uid,name:ugName(),title,thumb:th,st:'p',sz:UGM.blob.size,mus:UGM.mus?UGM.mus.id:'',mt:UGM.mus?UGM.mus.title:'',ts:firebase.database.ServerValue.TIMESTAMP},vurl?{vurl,dur}:{}));
   if(!vurl){try{await db.ref('ugcv/'+id).set(data)}catch(e){try{await db.ref('ugcq/'+id).remove()}catch(e2){}throw e}}
-  S.myq=[id].concat(S.myq||[]).slice(0,60);save();dqEvt('p');UGM.blob=null;ugOpenMine('ส่งคลิปแล้ว รอแอดมินตรวจและกำหนดคะแนนให้')}
+  S.myq=[id].concat(S.myq||[]).slice(0,60);save();dqEvt('p');UGM.blob=null;myStorageUsed=null;ugOpenMine('ส่งคลิปแล้ว รอแอดมินตรวจและกำหนดคะแนนให้')}
  catch(e){st.textContent='ส่งไม่สำเร็จ ('+((e&&e.code)||'ไฟล์ใหญ่หรือเครือข่ายมีปัญหา')+') ลองใหม่';bt.disabled=false}}
 // ----- my clips + rewards -----
 async function ugOpenMine(msg){if(UGM.url){try{URL.revokeObjectURL(UGM.url)}catch(e){}UGM.url=''}ugStopStream();ugShow(`<div class="ugpg"><div class="ugph"><button class="vfx" onclick="ugClose()" aria-label="ปิด">✕</button><b>คลิปของฉัน</b><button class="vfx" onclick="ugOpenCam()" aria-label="ถ่ายคลิป">＋</button></div><div class="ugmsg" id="ugmsg">${msg?esc(msg):''}</div><div id="ugmine" class="ugbody">กำลังโหลด...</div></div>`,'mine');await ugMineLoad()}
@@ -3732,7 +3838,7 @@ async function ugMineLoad(){const box=$('#ugmine');if(!box)return;let appr=UG.fi
   <div class="ugs">ระดับที่ปลดล็อก ${un}/${cf.tiers.length}${nx?` · ระดับถัดไป ${[nx.pts?'+'+fmt(nx.pts)+' คะแนน':'',nx.gold?'+'+fmt(nx.gold)+' เหรียญ':'',nx.jade?'+'+nx.jade+' หยก':''].filter(Boolean).join(' ')}`:''}</div>
   ${un>cl?`<button class="btn gold" style="width:100%;margin-top:8px" onclick="ugReward('${u.id}')">รับรางวัล ${rtxt}</button>`:''}</div>`});
  h+=`<div class="ugs" style="margin:12px 4px">คะแนนยอดนิยม = วิว×${cf.w.v} + ถูกใจ×${cf.w.l} + แชร์×${cf.w.s} + ติดตามจากคลิปนี้×${cf.w.f} (ไม่นับการกระทำของเจ้าของคลิปเอง) · หยกเขียวต้องรอแอดมินอนุมัติ</div>`;box.innerHTML=h}
-async function ugDelMine(id){if(!(await dlg('ลบคลิปนี้?','ลบ')))return;try{await db.ref('ugcv/'+id).remove();await db.ref('ugcq/'+id).remove()}catch(e){}S.myq=(S.myq||[]).filter(x=>x!==id);save();ugMineLoad()}
+async function ugDelMine(id){if(!(await dlg('ลบคลิปนี้?','ลบ')))return;try{await db.ref('ugcv/'+id).remove();await db.ref('ugcq/'+id).remove()}catch(e){}S.myq=(S.myq||[]).filter(x=>x!==id);save();myStorageUsed=null;ugMineLoad()}
 async function ugReward(rid){const cf=ugCfg(),u=UG.find(x=>x.id===rid)||(UGM.mine&&UGM.mine[rid]);if(!u)return;if(u.uid!==uid)return;const cc=UGC[rid]||{},un=ugUnl(ugScore(cc,cf),cf);S.ugr=S.ugr||{};const from=S.ugr[rid]||0;if(un<=from)return;
  let pts=0,gold=0,jade=0;for(let i=from;i<un;i++){pts+=cf.tiers[i].pts;gold+=cf.tiers[i].gold;jade+=cf.tiers[i].jade}
  if(jade>0){try{await db.ref('ugcreq/'+uid+'/'+rid+'_'+un).set({jade,clip:u.title||'',tier:un,st:'p',email:(user&&user.email)||'',ts:firebase.database.ServerValue.TIMESTAMP})}catch(e){say('ส่งคำขอหยกไม่สำเร็จ ลองใหม่');return}}
@@ -3759,7 +3865,7 @@ function ugAdminHTML(){const cf=ugCfg(),I='class="inp" style="margin-top:6px"';
 const vAdminUgc=()=>`<div id="ugadm">${ugAdminHTML()}</div>`;
 async function ugPreview(id){try{const q=UGQ.find(x=>x.id===id);if(q&&q.vurl){dlgH('<video src="'+esc(cldUrl(q.vurl))+'" controls autoplay playsinline style="width:100%;max-height:70vh;border-radius:10px;background:#000"></video>');return}const sn=await db.ref('ugcv/'+id).once('value'),u=sn.val();if(!u){say('ไม่พบไฟล์คลิป');return}dlgH('<video src="'+u+'" controls autoplay playsinline style="width:100%;max-height:70vh;border-radius:10px;background:#000"></video>')}catch(e){say('โหลดคลิปไม่สำเร็จ')}}
 async function ugApprove(id){const q=UGQ.find(x=>x.id===id);if(!q)return;const pts=Math.max(0,Math.min(100000,Math.round(+$('#ugp-'+id).value)||0)),sec=Math.max(0,Math.min(7200,Math.round(+$('#ugs-'+id).value)||0));if(pts>0&&sec<5){say('ถ้าให้คะแนนผู้ชม ต้องกำหนดเวลาดูอย่างน้อย 5 วินาที');return}
- try{await db.ref('ugc/'+id).set({uid:q.uid,name:q.name||'',title:q.title||'',thumb:q.thumb||'',pts,sec,mus:q.mus||'',mt:q.mt||'',vurl:q.vurl||'',dur:q.dur||0,ts:firebase.database.ServerValue.TIMESTAMP});ntfSend(q.uid,'a',id,q.title||'');await db.ref('ugcq/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+ try{await db.ref('ugc/'+id).set({uid:q.uid,name:q.name||'',title:q.title||'',thumb:q.thumb||'',pts,sec,mus:q.mus||'',mt:q.mt||'',vurl:q.vurl||'',dur:q.dur||0,sz:q.sz||0,ts:firebase.database.ServerValue.TIMESTAMP});ntfSend(q.uid,'a',id,q.title||'');await db.ref('ugcq/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
 async function ugReject(id){const note=($('#ugn-'+id).value||'').trim().slice(0,80);if(!(await dlg('ปฏิเสธคลิปนี้?','ปฏิเสธ')))return;try{await db.ref('ugcq/'+id).update({st:'r',note});await db.ref('ugcv/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
 async function ugEdit(id){const pts=Math.max(0,Math.min(100000,Math.round(+$('#uge-'+id).value)||0)),sec=Math.max(0,Math.min(7200,Math.round(+$('#ugf-'+id).value)||0));if(pts>0&&sec<5){say('ถ้าให้คะแนนผู้ชม ต้องกำหนดเวลาดูอย่างน้อย 5 วินาที');return}try{await db.ref('ugc/'+id).update({pts,sec});say('บันทึกแล้ว')}catch(e){say('ผิดพลาด')}}
 async function ugRemove(id){if(!(await dlg('ลบคลิปนี้ถาวร (รวมไฟล์และยอดทั้งหมด)?','ลบ')))return;try{await db.ref('ugc/'+id).remove();await db.ref('ugcv/'+id).remove();await db.ref('ugcc/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
@@ -4140,7 +4246,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachBpLevels();attachGC();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachMyStorageReq();attachBpLevels();attachGC();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll();attachStorageReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
