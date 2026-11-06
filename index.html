@@ -889,7 +889,7 @@ let lbSync='';
 function attachLeaderboard(){leaderboardRefOff=db.ref('leaderboard');
  leaderboardRefOff.on('value',snap=>{const v=snap.val()||{};leaderboard=Object.keys(v).map(id=>Object.assign({uid:id},v[id]));leaderboardErr=false;try{const me=v[uid];const sk=profTheme()+'|'+cbsMine()+'|'+(cbsShow()?1:0);if(S&&me&&(me.theme!==profTheme()||me.cbs!==cbsMine()||(me.csr!==0)!==cbsShow())&&lbSync!==sk){lbSync=sk;pushUser(true)}}catch(e){}
   if(pg==='admin'){if(adminTab==='players'){const e=$('#pllist');if(e)e.innerHTML=plList()}return}
-  if(pg==='rank')R()},e=>{leaderboardErr=true;if(pg==='rank')R()})}
+  if(pg==='rank'||pg==='user')R()},e=>{leaderboardErr=true;if(pg==='rank'||pg==='user')R()})}
 function attachShop(){shopRefOff=db.ref('shop');
  shopRefOff.on('value',snap=>{const v=snap.val()||{};shop=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(a.price||0)-(b.price||0));
   if(pg==='admin'){if(adminTab==='shop'){const e=$('#shlist');if(e)e.innerHTML=shopAdminList()}return}
