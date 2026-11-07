@@ -6,6 +6,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-database-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
 <style>
 :root{--bg:#f2f4f3;--card:#fff;--ink:#16302f;--mut:#6b7c7b;--pri:#0d5c63;--line:#e6ebe9;--ok:#e6f0e8;--okt:#2f6b3e;--wn:#fdeedd;--wnt:#8a4a12;--gr:#f1f3f2;--gold:#9a6412;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1817;--card:#182524;--ink:#e6efee;--mut:#93a5a3;--line:#263634;--ok:#1f3a29;--okt:#8fd1a1;--wn:#3d2c18;--wnt:#f0b877;--gr:#223130}}
@@ -720,6 +721,11 @@ html.gfx-c0 .jphop,html.gfx-c1 .jphop{animation:none!important}
 <script>
 const FIREBASE_CONFIG={apiKey:"AIzaSyDnd949B306VQztn-Rh41nNMyaJcB10or8",authDomain:"curov-355d1.firebaseapp.com",databaseURL:"https://curov-355d1-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"curov-355d1",storageBucket:"curov-355d1.firebasestorage.app",messagingSenderId:"811437937433",appId:"1:811437937433:web:6a2a85c02c9c17e3856b88"};
 const ADMIN_EMAIL='sakkrin611@gmail.com';
+// ---- EmailJS (ใช้ส่งรหัสยืนยัน OTP ตอนสมัครสมาชิก) ----
+// ตั้งค่า 3 ค่านี้จาก emailjs.com (Service ID, Template ID, Public Key) — ไม่ตั้งแล้วระบบส่งรหัสไม่ได้
+const EMAILJS_SERVICE_ID='service_o562xu3';
+const EMAILJS_TEMPLATE_ID='template_fa8kai6';
+const EMAILJS_PUBLIC_KEY='O0op48xCr8_GzgL-8';
 const M=[
 {id:'ci',e:'📅',n:'เช็กอินรายวัน',d:'เข้าเว็บทุกวัน · ครบ 7 วันติดต่อกันรับโบนัส 5,000',p:100,s:0,max:1},
 {id:'v1',e:'🎬',n:'ดูคลิปไฮไลต์ 30 วินาที',d:'เปิดหน้านี้ค้างไว้ให้ครบเวลา',p:5,s:30,max:10},
@@ -786,6 +792,7 @@ function applyTheme(){try{const d=document.documentElement;if(S&&themeOk('fantas
 
 let fbApp,auth,db,ready=false;
 let user=null,uid=null,isAdmin=false,authMode='in';
+let authStage='form',pendingSignup=null,otpCode='',otpExpireAt=0,otpResendAt=0,otpSuppressEnter=false,otpTick=null;
 let S=null,run=null,saveOk=null,lastSave=null,pushTimer=null;
 let content=[],pg='login',cur=null,adminTab='content';
 let announce=[],announceRefOff=null;
@@ -818,6 +825,7 @@ async function acToggle(k){ANTICHEAT=Object.assign({},ANTICHEAT,{[k]:!ANTICHEAT[
 const DISPOSABLE_DOMAINS=['mailinator.com','guerrillamail.com','guerrillamail.info','10minutemail.com','10minutemail.net','tempmail.com','temp-mail.org','throwawaymail.com','yopmail.com','trashmail.com','getnada.com','dispostable.com','fakeinbox.com','sharklasers.com','maildrop.cc','mintemail.com','moakt.com','emailondeck.com','mohmal.com','harakirimail.com','spambog.com','mailnesia.com','tempinbox.com','fakemailgenerator.com','discard.email','mailcatch.com','mailsac.com','mytemp.email','tempr.email','inboxkitten.com','33mail.com','crazymailing.com'];
 function isDisposableEmail(email){const m=/@([^@]+)$/.exec((email||'').toLowerCase().trim());return !!(m&&DISPOSABLE_DOMAINS.includes(m[1]))}
 let authFails=0,authLockUntil=0;
+function togglePw(id,btn){const i=$('#'+id);if(!i)return;i.type=i.type==='password'?'text':'password';if(btn)btn.textContent=i.type==='password'?'👁️':'🙈'}
 async function doAuth(){const email=$('#lem').value.trim(),pw=$('#lpw').value,er=$('#lerr'),bt=$('#lbtn'),hp=$('#lhp');er.textContent='';
  if(ANTICHEAT.botDetector){
   if(hp&&hp.value){er.textContent='เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';return} // honeypot tripped — likely a bot
@@ -825,23 +833,91 @@ async function doAuth(){const email=$('#lem').value.trim(),pw=$('#lpw').value,er
  }
  if(ANTICHEAT.security&&Date.now()<authLockUntil){er.textContent='ลองผิดหลายครั้งเกินไป รอ '+Math.ceil((authLockUntil-Date.now())/1000)+' วินาทีแล้วลองใหม่';return}
  if(!email||!pw){er.textContent='กรอกอีเมลและรหัสผ่าน';return}
- if(ANTICHEAT.security&&authMode==='up'&&!(pw.length>=8&&/[0-9]/.test(pw)&&/[A-Za-z]/.test(pw))){er.textContent='รหัสผ่านต้องมีอย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข';return}
- bt.disabled=true;try{if(authMode==='up')await auth.createUserWithEmailAndPassword(email,pw);else await auth.signInWithEmailAndPassword(email,pw);authFails=0}
+ bt.disabled=true;try{await auth.signInWithEmailAndPassword(email,pw);authFails=0}
  catch(e){er.textContent=fbErr(e.code);authFails++;if(ANTICHEAT.security&&authFails>=5){authLockUntil=Date.now()+30000*Math.min(6,authFails-4);authFails=0}}
  bt.disabled=false}
+async function doSignupSubmit(){const nick=$('#snick').value.trim(),email=$('#sem').value.trim(),phone=$('#sph').value.trim(),pw=$('#spw').value,pw2=$('#spw2').value,er=$('#serr'),bt=$('#sbtn'),hp=$('#shp');er.textContent='';
+ if(ANTICHEAT.botDetector){
+  if(hp&&hp.value){er.textContent='เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';return}
+  if(Date.now()-loginShownAt<900){er.textContent='กรุณากรอกข้อมูลแล้วลองอีกครั้ง';return}
+ }
+ if(ANTICHEAT.security&&Date.now()<authLockUntil){er.textContent='ลองผิดหลายครั้งเกินไป รอ '+Math.ceil((authLockUntil-Date.now())/1000)+' วินาทีแล้วลองใหม่';return}
+ if(!nick){er.textContent='กรอกชื่อเล่น';return}
+ if(!email){er.textContent='กรอกอีเมล';return}
+ if(!phone||!/^[0-9]{9,10}$/.test(phone.replace(/[-\s]/g,''))){er.textContent='กรอกเบอร์โทรศัพท์ให้ถูกต้อง';return}
+ if(ANTICHEAT.security&&!(pw.length>=8&&/[0-9]/.test(pw)&&/[A-Za-z]/.test(pw))){er.textContent='รหัสผ่านต้องมีอย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข';return}
+ if(pw!==pw2){er.textContent='รหัสผ่านทั้งสองช่องไม่ตรงกัน';return}
+ if(ANTICHEAT.fakeEmailBan&&isDisposableEmail(email)){er.textContent='ไม่รองรับอีเมลแบบใช้แล้วทิ้ง กรุณาใช้อีเมลจริง';return}
+ bt.disabled=true;
+ try{const m=await auth.fetchSignInMethodsForEmail(email);if(m&&m.length){er.textContent='อีเมลนี้ถูกใช้สมัครแล้ว';bt.disabled=false;return}}
+ catch(e){er.textContent=fbErr(e.code);bt.disabled=false;return}
+ pendingSignup={nick,email,phone,pw};
+ const ok=await sendOtpEmail();bt.disabled=false;
+ if(!ok){er.textContent='ส่งรหัสยืนยันไม่สำเร็จ เช็กอินเทอร์เน็ตแล้วลองใหม่';return}
+ authStage='otp';R()}
+async function sendOtpEmail(){const code=String(Math.floor(100000+Math.random()*900000));otpCode=code;otpExpireAt=Date.now()+10*60000;otpResendAt=Date.now()+60000;
+ try{await emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{email:pendingSignup.email,name:pendingSignup.nick,title:'รหัสยืนยัน OTP',time:'',message:'รหัสยืนยันของคุณคือ: '+code},EMAILJS_PUBLIC_KEY);return true}
+ catch(e){return false}}
+async function resendOtp(){if(!pendingSignup||Date.now()<otpResendAt)return;const b=$('#orbtn');if(b)b.disabled=true;const er=$('#oerr');
+ const ok=await sendOtpEmail();if(er)er.textContent=ok?'ส่งรหัสใหม่แล้ว เช็กอีเมล':'ส่งรหัสไม่สำเร็จ ลองใหม่อีกครั้ง';R()}
+function cancelOtp(){authStage='form';otpCode='';R()}
+async function verifyOtp(){const v=(($('#ocode')&&$('#ocode').value)||'').trim(),er=$('#oerr'),bt=$('#overbtn');er.textContent='';
+ if(!pendingSignup){authStage='form';R();return}
+ if(!v){er.textContent='กรอกรหัสยืนยัน 6 หลัก';return}
+ if(Date.now()>otpExpireAt){er.textContent='รหัสหมดอายุแล้ว กดส่งรหัสใหม่';return}
+ if(v!==otpCode){er.textContent='รหัสไม่ถูกต้อง';return}
+ bt.disabled=true;otpSuppressEnter=true;
+ try{
+  const cred=await auth.createUserWithEmailAndPassword(pendingSignup.email,pendingSignup.pw);
+  const newUid=cred.user.uid;
+  const prof={name:pendingSignup.nick,phone:pendingSignup.phone,bio:'',av:'',bg:'',pth:'default',frame:'',bgVideoOn:false};
+  await db.ref('users/'+newUid).set(Object.assign(fresh(),{prof,ts:Date.now()}));
+  await db.ref('profiles/'+newUid).set({name:pendingSignup.nick,bio:'',av:'',ts:Date.now()});
+  await auth.signOut();
+ }catch(e){otpSuppressEnter=false;bt.disabled=false;er.textContent=fbErr(e.code);return}
+ authStage='form';authMode='in';pendingSignup=null;otpCode='';
+ say('สมัครสมาชิกสำเร็จ! เข้าสู่ระบบด้วยอีเมลและรหัสผ่านที่ตั้งไว้ได้เลย')}
 async function forgotPw(){const email=($('#lem')&&$('#lem').value.trim())||'';if(!email){say('กรอกอีเมลในช่องด้านบนก่อน แล้วกดลืมรหัสผ่านอีกครั้ง');return}
  try{await auth.sendPasswordResetEmail(email);say('ส่งลิงก์รีเซ็ตรหัสผ่านไปที่ '+email+' แล้ว (เช็กเมล/ถังขยะ)')}catch(e){say(fbErr(e.code))}}
 async function logout(){if(!(await dlg('ออกจากระบบ?','ออกจากระบบ')))return;await flush();detachAll();auth.signOut()}
 let loginShownAt=0;
-function vLogin(){loginShownAt=Date.now();return `<div class="card" style="margin-top:0;text-align:center;padding:28px 18px">
+function otpStartTick(){if(otpTick)clearInterval(otpTick);otpTick=setInterval(()=>{const el=$('#orcd');if(!el){clearInterval(otpTick);otpTick=null;return}
+ const left=Math.max(0,Math.ceil((otpResendAt-Date.now())/1000));
+ if(left<=0){const b=$('#orbtn');if(b)b.disabled=false;el.textContent='';clearInterval(otpTick);otpTick=null}else el.textContent=' ('+left+' วินาที)'},500)}
+function vLogin(){if(authStage==='otp')return vOtpScreen();loginShownAt=Date.now();return authMode==='up'?vSignupForm():vLoginForm()}
+function vLoginForm(){return `<div class="card" style="margin-top:0;text-align:center;padding:28px 18px">
  <div style="font-size:44px">🎮</div><b class="n" style="display:block;margin-top:6px;font-size:19px">ROV Point Hub</b><div class="mut" style="margin-top:4px">เข้าสู่ระบบเพื่อเริ่มสะสมคะแนน · ข้อมูลจะผูกกับบัญชีนี้ถาวร</div>
  <div style="text-align:left;margin-top:18px"><label class="mut">อีเมล</label><input id="lem" type="email" autocomplete="email" class="inp" placeholder="you@example.com">
  <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><label>Website</label><input id="lhp" type="text" tabindex="-1" autocomplete="off"></div>
- <label class="mut" style="display:block;margin-top:10px">รหัสผ่าน</label><input id="lpw" type="password" autocomplete="${authMode==='up'?'new-password':'current-password'}" class="inp" placeholder="${authMode==='up'?'อย่างน้อย 8 ตัว มีตัวเลขด้วย':'อย่างน้อย 6 ตัวอักษร'}"></div>
+ <label class="mut" style="display:block;margin-top:10px">รหัสผ่าน</label>
+ <div style="position:relative"><input id="lpw" type="password" autocomplete="current-password" class="inp" placeholder="อย่างน้อย 6 ตัวอักษร" style="padding-right:42px"><button type="button" class="chip" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:2px 8px" onclick="togglePw('lpw',this)">👁️</button></div></div>
  <div style="color:#d32f2f;font-size:13px;margin-top:10px;min-height:18px" id="lerr"></div>
- <button class="btn pri" id="lbtn" style="width:100%;margin-top:4px" onclick="doAuth()">${authMode==='up'?'สมัครสมาชิก':'เข้าสู่ระบบ'}</button>
- <div class="mut" style="margin-top:14px">${authMode==='up'?'มีบัญชีแล้ว?':'ยังไม่มีบัญชี?'} <button class="chip" onclick="authMode=authMode==='up'?'in':'up';R()">${authMode==='up'?'เข้าสู่ระบบ':'สมัครสมาชิก'}</button></div>
- ${authMode==='in'?`<button class="chip" style="margin-top:10px" onclick="forgotPw()">ลืมรหัสผ่าน?</button>`:''}</div>`}
+ <button class="btn pri" id="lbtn" style="width:100%;margin-top:4px" onclick="doAuth()">เข้าสู่ระบบ</button>
+ <div class="mut" style="margin-top:14px">ยังไม่มีบัญชี? <button class="chip" onclick="authMode='up';pendingSignup=null;R()">สมัครสมาชิก</button></div>
+ <button class="chip" style="margin-top:10px" onclick="forgotPw()">ลืมรหัสผ่าน?</button></div>`}
+function vSignupForm(){const p=pendingSignup||{};return `<div class="card" style="margin-top:0;text-align:center;padding:28px 18px">
+ <div style="font-size:44px">🎮</div><b class="n" style="display:block;margin-top:6px;font-size:19px">ROV Point Hub</b><div class="mut" style="margin-top:4px">สมัครสมาชิกเพื่อเริ่มสะสมคะแนน · ข้อมูลจะผูกกับบัญชีนี้ถาวร</div>
+ <div style="text-align:left;margin-top:18px">
+ <label class="mut">ชื่อเล่น</label><input id="snick" type="text" class="inp" placeholder="ชื่อเล่นของคุณ" value="${esc(p.nick||'')}">
+ <label class="mut" style="display:block;margin-top:10px">อีเมล</label><input id="sem" type="email" autocomplete="email" class="inp" placeholder="you@example.com" value="${esc(p.email||'')}">
+ <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><label>Website</label><input id="shp" type="text" tabindex="-1" autocomplete="off"></div>
+ <label class="mut" style="display:block;margin-top:10px">เบอร์โทรศัพท์</label><input id="sph" type="tel" autocomplete="tel" class="inp" placeholder="0812345678" value="${esc(p.phone||'')}">
+ <label class="mut" style="display:block;margin-top:10px">รหัสผ่าน</label>
+ <div style="position:relative"><input id="spw" type="password" autocomplete="new-password" class="inp" placeholder="อย่างน้อย 8 ตัว มีตัวเลขด้วย" style="padding-right:42px"><button type="button" class="chip" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:2px 8px" onclick="togglePw('spw',this)">👁️</button></div>
+ <label class="mut" style="display:block;margin-top:10px">รหัสผ่านอีกครั้ง</label>
+ <div style="position:relative"><input id="spw2" type="password" autocomplete="new-password" class="inp" placeholder="กรอกรหัสผ่านอีกครั้ง" style="padding-right:42px"><button type="button" class="chip" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:2px 8px" onclick="togglePw('spw2',this)">👁️</button></div>
+ </div>
+ <div style="color:#d32f2f;font-size:13px;margin-top:10px;min-height:18px" id="serr"></div>
+ <button class="btn pri" id="sbtn" style="width:100%;margin-top:4px" onclick="doSignupSubmit()">สมัครสมาชิก</button>
+ <div class="mut" style="margin-top:14px">มีบัญชีแล้ว? <button class="chip" onclick="authMode='in';R()">เข้าสู่ระบบ</button></div></div>`}
+function vOtpScreen(){const left=Math.max(0,Math.ceil((otpResendAt-Date.now())/1000));return `<div class="card" style="margin-top:0;text-align:center;padding:28px 18px">
+ <div style="font-size:44px">📧</div><b class="n" style="display:block;margin-top:6px;font-size:19px">ยืนยันอีเมล</b>
+ <div class="mut" style="margin-top:4px">ส่งรหัสยืนยัน 6 หลักไปที่<br><b class="n">${esc((pendingSignup&&pendingSignup.email)||'')}</b></div>
+ <div style="text-align:left;margin-top:18px"><label class="mut">รหัสยืนยัน (6 หลัก)</label><input id="ocode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" class="inp" placeholder="XXXXXX" style="letter-spacing:4px;text-align:center;font-size:20px"></div>
+ <div style="color:#d32f2f;font-size:13px;margin-top:10px;min-height:18px" id="oerr"></div>
+ <button class="btn pri" id="overbtn" style="width:100%;margin-top:4px" onclick="verifyOtp()">ยืนยัน</button>
+ <div class="mut" style="margin-top:14px">ไม่ได้รับรหัส? <button class="chip" id="orbtn" ${left>0?'disabled':''} onclick="resendOtp()">ส่งรหัสอีกครั้ง</button><span id="orcd">${left>0?' ('+left+' วินาที)':''}</span></div>
+ <button class="chip" style="margin-top:10px" onclick="cancelOtp()">ยกเลิก / แก้ไขข้อมูล</button></div>`}
 
 // ---------- realtime user doc ----------
 function attachUser(){userRefOff=db.ref('users/'+uid);
@@ -3557,7 +3633,7 @@ function liveWatchHTML(){const bc=liveActive[liveWatchBcUid]||{};
 function vLive(){if(liveStage==='hostPrep')return liveHostPrepHTML();if(liveStage==='hosting')return liveHostingHTML();if(liveStage==='watch')return liveWatchHTML();return liveListHTML()}
 
 const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena,live:vLive};
-function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60);if(pg==='topup')loadMyStorageUsed()}
+function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60);if(pg==='topup')loadMyStorageUsed();if(pg==='login'&&authStage==='otp')setTimeout(otpStartTick,30)}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isBanned();roll();if(wb&&!isBanned()){R();return}if(wb){const e=$('#bnrem');if(e)e.innerHTML='<b>'+banRemain(S.ban)+'</b>';return}S.on++;S.life=(S.life||0)+1;bpEvt('sec');if(pg==='missions'&&missionsTab==='bpm'&&S.on%5===0&&!document.querySelector('#dlg .ov'))R();{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
   const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
@@ -4253,7 +4329,8 @@ function boot(){try{
   fbApp=firebase.initializeApp(FIREBASE_CONFIG);auth=firebase.auth();db=firebase.database();
  setTimeout(()=>{if(!ready&&pg!=='login'){const v=$('#v');if(v)v.innerHTML='<div class="card" style="margin-top:0;text-align:center;padding:28px 18px"><b class="n">เชื่อมต่อใช้เวลานานกว่าปกติ</b><div class="mut" style="margin:8px 0 14px">หากหน้านี้ไม่ขึ้นภายในไม่กี่วินาที ให้เปิดเว็บจริงที่ลิงก์ GitHub Pages ของคุณ (หน้าตัวอย่างในแชทอาจเชื่อมต่อ Firebase ไม่ได้) หรือกดลองใหม่</div><button class="btn pri" onclick="location.reload()">ลองใหม่</button></div>'}},12000);
   auth.onAuthStateChanged(u=>{user=u;
-   if(!u){attachedUid=null;detachAll();pg='login';ready=true;R();return}
+   if(!u){attachedUid=null;detachAll();pg='login';ready=true;otpSuppressEnter=false;R();return}
+   if(otpSuppressEnter)return; // สมัครสมาชิกใหม่ทำให้ Firebase ล็อกอินอัตโนมัติชั่วคราว ระหว่างนี้ยังไม่เข้าแอป รอเขียนโปรไฟล์แล้วจะ signOut เอง (เคลียร์ค่าที่ branch ออกจากระบบด้านบนเท่านั้น กันแข่งกันของ event ล็อกอิน/ออกจากระบบ)
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
