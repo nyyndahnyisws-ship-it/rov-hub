@@ -1309,7 +1309,7 @@ async function rejectPremium(uid2,id){const t=premiumReq.find(x=>x.uid===uid2&&x
 const GB=1073741824;
 const STORAGE_PACKS=[
  {id:'vip',baht:699,days:60,gb:10,label:'ROVHUB VIP',desc:'เพิ่มพื้นที่เก็บคลิป/วิดีโอพื้นหลังโปรไฟล์ +10GB (จาก 2GB เป็น 12GB) และเพิ่มขนาดอัปโหลดสูงสุดต่อครั้งจาก 5MB เป็น 15MB นาน 60 วัน · ชำระเงินจริงเท่านั้น ไม่รับหยกเขียว'},
- {id:'svip',baht:4899,days:150,gb:30,label:'ROVHUB SVIP',desc:'เพิ่มพื้นที่เก็บคลิป/วิดีโอพื้นหลังโปรไฟล์ +30GB และปลดล็อกอัปโหลดคลิปในคลังได้สูงสุด 200MB/ครั้ง (วิดีโอพื้นหลังโปรไฟล์สูงสุด 20MB/ครั้ง) นาน 150 วัน · ชำระเงินจริงเท่านั้น ไม่รับหยกเขียว'}];
+ {id:'svip',baht:4899,days:150,gb:30,label:'ROVHUB SVIP',desc:'เพิ่มพื้นที่เก็บคลิป/วิดีโอพื้นหลังโปรไฟล์ +30GB และปลดล็อกอัปโหลดคลิป/วิดีโอพื้นหลังโปรไฟล์ได้สูงสุด 200MB/ครั้งทั้งคู่ นาน 150 วัน · ชำระเงินจริงเท่านั้น ไม่รับหยกเขียว'}];
 let stPick=-1;
 const rovVipActive=()=>!!(S.rovVipUntil&&Date.now()<S.rovVipUntil);
 const rovSvipActive=()=>!!(S.rovSvipUntil&&Date.now()<S.rovSvipUntil);
@@ -1319,7 +1319,7 @@ let myStorageUsed=null,myStorageUsedLoading=false;
 async function computeMyStorageUsedBytes(){let used=0;
  try{const sn=await db.ref('ugc').orderByChild('uid').equalTo(uid).once('value');const v=sn.val()||{};Object.keys(v).forEach(id=>used+=(v[id]&&v[id].sz)||0)}catch(e){}
  const ids=(S.myq||[]).slice();for(const id of ids){try{const sn=await db.ref('ugcq/'+id).once('value'),q=sn.val();if(q&&q.st!=='r')used+=(q.sz||0)}catch(e){}}
- try{const sn=await db.ref('profbgvid/'+uid).once('value');const d=sn.val();if(d)used+=Math.ceil(d.length*0.75)}catch(e){}
+ try{const sn=await db.ref('profbgvidsz/'+uid).once('value');used+=sn.val()||0}catch(e){}
  return used}
 async function loadMyStorageUsed(){if(myStorageUsedLoading||!uid||myStorageUsed!==null)return;myStorageUsedLoading=true;
  try{myStorageUsed=await computeMyStorageUsedBytes()}catch(e){}
@@ -1364,7 +1364,7 @@ function storagePkHTML(){
  h+=`<div class="card" style="margin-top:0"><div class="mut">ทุกบัญชีได้พื้นที่เริ่มต้นฟรี 2GB สำหรับลงคลิปและวิดีโอพื้นหลังโปรไฟล์ (อัปโหลดสูงสุด 5MB/ครั้ง) ถ้าใช้พื้นที่เต็มจะอัปโหลด/เปลี่ยนอะไรที่กินพื้นที่ไม่ได้เลยจนกว่าจะลบของเก่าหรือซื้อพื้นที่เพิ่ม</div>
  ${storageUsageHTML()}
  ${rovVipActive()?`<div class="chip ok" style="margin-top:8px">🟢 ROVHUB VIP ใช้งานถึง ${new Date(S.rovVipUntil).toLocaleDateString('th-TH',{dateStyle:'medium'})} (อัปโหลดสูงสุด 15MB/ครั้ง)</div>`:''}
- ${rovSvipActive()?`<div class="chip ok" style="margin-top:8px">🟣 ROVHUB SVIP ใช้งานถึง ${new Date(S.rovSvipUntil).toLocaleDateString('th-TH',{dateStyle:'medium'})} (คลิปในคลังสูงสุด 200MB/ครั้ง · วิดีโอพื้นหลังโปรไฟล์สูงสุด 20MB/ครั้ง)</div>`:''}
+ ${rovSvipActive()?`<div class="chip ok" style="margin-top:8px">🟣 ROVHUB SVIP ใช้งานถึง ${new Date(S.rovSvipUntil).toLocaleDateString('th-TH',{dateStyle:'medium'})} (คลิปในคลัง/วิดีโอพื้นหลังโปรไฟล์สูงสุด 200MB/ครั้งทั้งคู่)</div>`:''}
  </div>
  <div class="grid" style="margin-top:10px">${STORAGE_PACKS.map((p,i)=>{const on=stPick===i;
   return `<button class="menu" style="text-align:center;align-items:center;border-color:${on?'var(--gold)':'var(--line)'};border-width:${on?'2px':'1px'}" onclick="stPick=${i};R()"><span class="em">${p.id==='svip'?'🟣':'🟢'}</span><b>${esc(p.label)}</b><span class="mut">+${p.gb}GB · ${fmt(p.baht)} บาท/${Math.round(p.days/30)} เดือน</span></button>`}).join('')}</div>`;
@@ -1397,28 +1397,32 @@ async function rejectStorage(uid2,id){const t=storageReq.find(x=>x.uid===uid2&&x
   await db.ref('storageReq/'+uid2+'/'+id+'/reviewedAt').set(firebase.database.ServerValue.TIMESTAMP)}
  catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
 // ---------- วิดีโอพื้นหลังโปรไฟล์ (อัปโหลดขึ้น Firebase จริง — ผู้เล่นคนอื่น/เพื่อนเห็นได้ทุกคน เหมือนรูปโปรไฟล์/พื้นหลังปกติ) ----------
-let myBgVideoData,pbgvid={}; // myBgVideoData: undefined=ยังไม่โหลด, ''|dataURI=โหลดแล้ว (ของตัวเอง) · pbgvid: แคชของผู้เล่นคนอื่นตาม uid
+let myBgVideoData,myBgVideoSz=0,pbgvid={}; // myBgVideoData: undefined=ยังไม่โหลด, ''|URL=โหลดแล้ว (ของตัวเอง, เก็บเป็นลิงก์ Cloudinary ไม่ใช่ base64 แล้ว) · pbgvid: แคชของผู้เล่นคนอื่นตาม uid
 async function loadMyBgVideo(){if(!uid||myBgVideoData!==undefined)return;
- try{const v=(await db.ref('profbgvid/'+uid).once('value')).val();myBgVideoData=v||'';if(pg==='profile')R()}catch(e){myBgVideoData=''}}
+ try{const v=(await db.ref('profbgvid/'+uid).once('value')).val();myBgVideoData=v||'';
+  try{myBgVideoSz=(await db.ref('profbgvidsz/'+uid).once('value')).val()||0}catch(e){myBgVideoSz=0}
+  if(pg==='profile')R()}catch(e){myBgVideoData=''}}
 function uploadMaxMB(){return rovSvipActive()?200:(rovVipActive()?15:5)} // ลิมิตอัปโหลดต่อครั้งตามแพ็กพื้นที่: ฟรี 5MB · ROVHUB VIP 15MB · ROVHUB SVIP 200MB
-function bgVideoMaxMB(){ // วิดีโอพื้นหลังโปรไฟล์เก็บตรงใน Firebase Realtime Database (ไม่ใช่ Cloudinary เหมือนคลิป) จึงจำกัด SVIP ไว้ที่ 20MB แทน 200MB — ไฟล์ 200MB แบบ base64 ในโหนดเดียวเสี่ยงเกินลิมิตขนาดโหนดของ Firebase และเสี่ยงมือถือค้าง/แครชตอนโหลดโปรไฟล์
- return rovSvipActive()?20:(rovVipActive()?15:5)}
+function bgVideoMaxMB(){ // อัปโหลดผ่าน Cloudinary เหมือนคลิปในคลังแล้ว (เดิมยัดเป็น base64 ลง Firebase Realtime Database โดยตรง ซึ่งไฟล์ใหญ่ๆ มักอัปโหลดไม่สำเร็จ/ค้างบนมือถือ) จึงใช้ลิมิตเดียวกับคลิปในคลังได้เลย ไม่ต้องจำกัดต่ำกว่าอีกต่อไป
+ return uploadMaxMB()}
 async function pickBgVideo(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('video/')){const e=$('#pfst');if(e)e.textContent='เลือกไฟล์วิดีโอ';return}
  const maxMB=bgVideoMaxMB();
  if(f.size>maxMB*1048576){const e=$('#pfst');if(e)e.textContent='ไฟล์วิดีโอใหญ่เกิน '+maxMB+'MB กรุณาเลือกคลิปสั้นๆ ไฟล์เล็กลง';return}
+ if(!cldOn()){const e=$('#pfst');if(e)e.textContent='ระบบอัปโหลดวิดีโอยังไม่พร้อมใช้งาน ลองใหม่ภายหลัง';return}
  const st=$('#pfst');if(st)st.textContent='กำลังตรวจสอบพื้นที่...';
- let existingSz=0;try{existingSz=myBgVideoData?Math.ceil(myBgVideoData.length*0.75):0}catch(e){}
- const chk=await storageCheckAllow(f.size-existingSz);
+ const chk=await storageCheckAllow(f.size-(myBgVideoSz||0));
  if(!chk.ok){if(st)st.textContent='พื้นที่เก็บข้อมูลเต็ม (ใช้ไป '+fmtGB(chk.used)+' จาก '+fmtGB(chk.quota)+') กรุณาลบคลิป/วิดีโอเก่า หรือซื้อพื้นที่เพิ่มที่หน้าเติมเงิน';return}
- if(st)st.textContent='กำลังอัปโหลดวิดีโอ...';
- try{const dataUri=await readB64Slip(f);
-  await db.ref('profbgvid/'+uid).set(dataUri);
-  myBgVideoData=dataUri;S.prof=S.prof||{};S.prof.bgVideoOn=true;save();myStorageUsed=null;
+ if(st)st.textContent='กำลังอัปโหลดวิดีโอ... 0%';
+ try{const up=await cldUpload(f,pct=>{if(st)st.textContent='กำลังอัปโหลดวิดีโอ... '+pct+'%'});
+  const url=cldUrl(up.url);
+  await db.ref('profbgvid/'+uid).set(url);
+  try{await db.ref('profbgvidsz/'+uid).set(up.bytes||f.size)}catch(e){}
+  myBgVideoData=url;myBgVideoSz=up.bytes||f.size;S.prof=S.prof||{};S.prof.bgVideoOn=true;save();myStorageUsed=null;
   if(st)st.textContent='✅ ตั้งวิดีโอพื้นหลังแล้ว เพื่อนและผู้เล่นคนอื่นจะเห็นวิดีโอนี้ตอนเปิดดูโปรไฟล์คุณ';
   bgVideoPreviewRefresh()}
- catch(e){if(st)st.textContent='อัปโหลดไม่สำเร็จ: '+((e&&e.code)||'ลองใหม่ หรือเลือกไฟล์ที่เล็กลง')}}
-async function clearBgVideo(){try{await db.ref('profbgvid/'+uid).remove()}catch(e){}
- myBgVideoData='';S.prof=S.prof||{};S.prof.bgVideoOn=false;save();myStorageUsed=null;bgVideoPreviewRefresh();
+ catch(e){if(st)st.textContent='อัปโหลดไม่สำเร็จ: '+((e&&e.code)||'ลองใหม่ หรือเลือกไฟล์ที่เล็กลง/เน็ตให้เสถียรกว่านี้')}}
+async function clearBgVideo(){try{await db.ref('profbgvid/'+uid).remove()}catch(e){}try{await db.ref('profbgvidsz/'+uid).remove()}catch(e){}
+ myBgVideoData='';myBgVideoSz=0;S.prof=S.prof||{};S.prof.bgVideoOn=false;save();myStorageUsed=null;bgVideoPreviewRefresh();
  const e=$('#pfst');if(e)e.textContent='ลบวิดีโอพื้นหลังแล้ว'}
 function bgVideoPreviewRefresh(){const e=$('#pfbgvprev');if(!e)return;
  if(myBgVideoData)e.innerHTML=`<video src="${myBgVideoData}" muted loop autoplay playsinline style="width:100%;height:90px;object-fit:cover;border-radius:14px;margin-top:6px"></video>`;
@@ -1838,10 +1842,15 @@ function vProfile(){const pr=S.prof||{},rk=leaderboard.slice().sort((a,b)=>(b.pt
  <div class="card"><b class="n">กิจกรรมล่าสุด</b><table class="tbl">${(S.log||[]).slice(0,10).map(x=>`<tr><td class="mut" width="80">${x.t}</td><td>${x.cur==='gold'?'🪙':x.cur==='jade'?'💎':'⭐'} ${esc(x.m)}</td><td align="right"><b style="color:${x.n<0?'#d32f2f':'var(--okt)'}">${x.n>0?'+':''}${fmt(x.n)}</b></td></tr>`).join('')||'<tr><td class="mut">ยังไม่มีกิจกรรม</td></tr>'}</table></div>`}
 async function openUser(id){if(id===uid){pfBgNew=undefined;go('profile');return}pu=id;userRel=null;go('user');loadRel();loadBg(id)}
 async function loadRel(){const t=pu;let sent=false;try{sent=(await db.ref('friendreq/'+t+'/'+uid).once('value')).exists()}catch(e){}let chat=null;try{const c=(await db.ref('chatreq/'+t+'/'+uid).once('value')).val();chat=c?c.st:null}catch(e){}userRel={friend:!!myFriends[t],incoming:!!myReq[t],sent,chat};if(pg==='user'&&pu===t)R()}
-function userRankBoxHTML(r){return `<div class="mut" style="margin:14px 4px 6px">⚔️ แรงค์</div>
+function userRankBoxHTML(r){
+ // คนที่แรงค์ขึ้นมาก่อนฟีเจอร์ "พีค" นี้จะยังไม่มีค่าพีคบันทึกไว้ (0) จนกว่าเจ้าตัวจะเปิดโปรไฟล์ตัวเองหรือชนะอีกครั้ง
+ // ถ้าปล่อยไว้คนอื่นจะเห็น "สูงสุดที่เคยได้" ต่ำกว่าแรงค์ปัจจุบันซึ่งขัดแย้งกันเอง เลยเทียบคะแนนแล้วใช้ค่าที่สูงกว่าเสมอ
+ const curScore=rankScore(r.rankMajor||0,r.rankDiv||0,r.rankStars||0),peakScore=rankScore(r.rankPeakMajor||0,r.rankPeakDiv||0,r.rankPeakStars||0);
+ const usePeak=peakScore>curScore,pm=usePeak?(r.rankPeakMajor||0):(r.rankMajor||0),pd=usePeak?(r.rankPeakDiv||0):(r.rankDiv||0),ps=usePeak?(r.rankPeakStars||0):(r.rankStars||0);
+ return `<div class="mut" style="margin:14px 4px 6px">⚔️ แรงค์</div>
  <div class="row" style="gap:10px;align-items:stretch">
   <div style="flex:1">${rankCardHTML(r.rankMajor||0,r.rankDiv||0,r.rankStars||0,{compact:true,w:110})}<div class="mut" style="text-align:center;margin-top:4px">แรงค์ปัจจุบัน</div></div>
-  <div style="flex:1">${rankCardHTML(r.rankPeakMajor||0,r.rankPeakDiv||0,r.rankPeakStars||0,{compact:true,w:110})}<div class="mut" style="text-align:center;margin-top:4px">แรงค์สูงสุดที่เคยได้</div></div>
+  <div style="flex:1">${rankCardHTML(pm,pd,ps,{compact:true,w:110})}<div class="mut" style="text-align:center;margin-top:4px">แรงค์สูงสุดที่เคยได้</div></div>
  </div>`}
 function refreshUserRankBadge(){if(pg!=='user'||!pu)return;const r=leaderboard.find(x=>x.uid===pu);if(!r)return;const box=$('#uRankBox');if(box)box.innerHTML=userRankBoxHTML(r)}
 function vUser(){const id=pu,r=leaderboard.find(x=>x.uid===id)||{},p=profs[id]||{},rk=leaderboard.slice().sort((a,b)=>(b.pts||0)-(a.pts||0)).findIndex(x=>x.uid===id)+1;
