@@ -1988,11 +1988,13 @@ function vRedeemCode(){return `<div class="card" style="margin-top:0"><b class="
 <div class="mut" id="rcst" style="margin-top:8px"></div>
 <button class="btn gold" id="rcbtn" style="width:100%;margin-top:6px" onclick="redeemCode()">ใช้โค้ด</button></div>`}
 function showCodeReward(code,data){return new Promise(res=>{
+ const rows=[['points','คะแนน',''],['gold','เหรียญทอง','🪙'],['jade','หยกเขียว','💎'],['coin','เหรียญกิจกรรม','🪂'],['tix','ตั๋วกระโดด','🎵']]
+  .filter(([k])=>data[k]>0).map(([k,label,ic])=>`<div style="margin-top:14px"><div style="font-size:30px;font-weight:800;animation:boxpop .4s ease-out">${ic?ic+' ':''}+${fmt(data[k])}</div><div style="opacity:.9">${label}</div></div>`).join('');
  $('#dlg').innerHTML=`<div class="ov" style="align-items:center;justify-content:center;background:var(--pri)"><div style="text-align:center;color:#fff;padding:20px;width:100%;max-width:340px">
  <div style="font-size:44px">🎁</div>
  <div style="font-weight:800;letter-spacing:1px;margin-top:6px">ใช้โค้ดสำเร็จ!</div>
  <div style="font-size:13px;opacity:.85;margin-top:4px">โค้ด ${esc(code)}${data.desc?' · '+esc(data.desc):''}</div>
- <div style="font-size:36px;font-weight:800;margin-top:18px;animation:boxpop .4s ease-out">+${fmt(data.points||0)}</div><div style="opacity:.9">คะแนน</div>
+ ${rows||'<div style="margin-top:14px;opacity:.85">ไม่มีรางวัล</div>'}
  <button id="crok" class="btn" style="width:220px;margin-top:22px;background:#fff;font-weight:700;color:var(--pri)">รับรางวัล</button>
  </div></div>`;
  $('#crok').onclick=()=>{$('#dlg').innerHTML='';res()};
@@ -2009,7 +2011,12 @@ async function redeemCode(){const st=$('#rcst'),bt=$('#rcbtn'),code=$('#rcin').v
   await db.ref('promocodes/'+code+'/usedBy/'+uid).set(true);
   st.textContent='';
   await showCodeReward(code,data);
-  add(data.points||0,'ใช้โค้ด '+code+(data.desc?' ('+data.desc+')':''));
+  const tag='ใช้โค้ด '+code+(data.desc?' ('+data.desc+')':'');
+  if(data.points)add(data.points,tag);
+  if(data.gold)addGold(data.gold,tag);
+  if(data.jade){S.jade=(S.jade||0)+data.jade;S.log=S.log||[];S.log.unshift({t:tstr(),m:tag,n:data.jade,cur:'jade'});S.log=S.log.slice(0,80);save()}
+  if(data.coin){S.jumpCoin=(S.jumpCoin||0)+data.coin;save()}
+  if(data.tix){S.jump=S.jump||{};S.jump.tix=(S.jump.tix||0)+data.tix;save()}
   $('#rcin').value='';R()}
  catch(e){await wait;st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
 
@@ -2104,8 +2111,62 @@ function vAdminSys(){const d=sysDraft||(sysDraft=JSON.parse(JSON.stringify(SYS||
  ${fashCfgHTML()}`}
 let rankDraft=null;
 function vAdminRankCfg(){return `${rankCfgHTML()}
+ ${heroBalHTML()}
+ ${rankBotHTML()}
  <div class="card"><b class="n">เริ่มซีซั่นใหม่</b><div class="mut" style="margin-top:4px">รีแรงค์ผู้เล่นทุกคนกลับไปเริ่มต้นที่ "${esc(RANK_MAJORS_DEF[0].name)} V 0 ดาว" เหมาะกับตอนขึ้นซีซั่นใหม่</div>
  <button class="btn" style="width:100%;margin-top:10px;border-color:#ef4444;color:#ef4444" onclick="rankSeasonReset()">⚠️ รีแรงค์ทุกคนตอนนี้</button><div class="mut" id="rkresetst" style="margin-top:6px"></div></div>`}
+// ---------- แอดมิน: บัพ/เนิฟตัวละคร ----------
+let heroBalEdit=null;
+function heroBalStart(heroId){const cur=HERO_BALANCE[heroId];
+ heroBalEdit={heroId,type:(cur&&cur.type)||'buff',atk:cur?Math.abs(cur.atk||0):0,def:cur?Math.abs(cur.def||0):0,spd:cur?Math.abs(cur.spd||0):0,note:(cur&&cur.note)||''};
+ const e=$('#herobalwrap');if(e)e.outerHTML=heroBalHTML()}
+function heroBalSetType(t){if(heroBalEdit)heroBalEdit.type=t;const e=$('#herobalwrap');if(e)e.outerHTML=heroBalHTML()}
+function heroBalCancel(){heroBalEdit=null;const e=$('#herobalwrap');if(e)e.outerHTML=heroBalHTML()}
+async function heroBalSave(){if(!heroBalEdit)return;const st=$('#herobalst');
+ const sign=heroBalEdit.type==='nerf'?-1:1;
+ const atk=Math.max(0,Math.min(50,Math.round(+heroBalEdit.atk||0)))*sign;
+ const def=Math.max(0,Math.min(50,Math.round(+heroBalEdit.def||0)))*sign;
+ const spd=Math.max(0,Math.min(50,Math.round(+heroBalEdit.spd||0)))*sign;
+ const note=(heroBalEdit.note||'').trim().slice(0,100);
+ if(!atk&&!def&&!spd){if(st)st.textContent='กรุณาใส่ค่าที่ต้องการปรับอย่างน้อย 1 ช่อง (ATK/DEF/SPD)';return}
+ const rec={type:heroBalEdit.type,atk,def,spd,note,ts:Date.now(),by:(user&&user.email)||''};
+ try{await db.ref('settings/heroBalance/'+heroBalEdit.heroId).set(rec);heroBalEdit=null;if(st)st.textContent='✅ บันทึกแล้ว มีผลกับผู้เล่นทุกคนทันที '+tstr();say('บันทึกการปรับค่าพลังตัวละครแล้ว ผู้เล่นจะเห็นเครื่องหมายที่ตัวละครทันที')}
+ catch(e){if(st)st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}}
+async function heroBalClear(heroId){if(!(await dlg('ล้างค่าบัพ/เนิฟของตัวละครนี้ กลับเป็นค่าเริ่มต้น?','ล้างเลย')))return;
+ try{await db.ref('settings/heroBalance/'+heroId).remove();if(heroBalEdit&&heroBalEdit.heroId===heroId)heroBalEdit=null;say('ล้างค่าปรับแล้ว')}catch(e){say('ลบไม่สำเร็จ')}}
+function heroBalHTML(){
+ return `<div class="card" id="herobalwrap"><b class="n">⚖️ บัพ/เนิฟตัวละคร (มีผลจริงต่อผลแพ้ชนะในแรงค์)</b>
+ <div class="mut" style="margin-top:4px">ปรับค่าพลังโจมตี/ป้องกัน/ความเร็วของตัวละครแต่ละตัว บันทึกแล้วผู้เล่นจะเห็นเครื่องหมาย <b style="color:#ef4444">▲ บัพ</b>/<b style="color:#22c55e">▼ เนิฟ</b> ที่ตัวละครทันทีพร้อมรายละเอียดที่ปรับ</div>
+ ${heroBalEdit?`<div class="card" style="margin-top:10px;background:rgba(255,255,255,.03)">
+  <b class="n">${arenaHeroById(heroBalEdit.heroId).emoji} ${esc(arenaHeroById(heroBalEdit.heroId).name)}</b>
+  <div class="row" style="gap:8px;margin-top:8px"><button class="btn ${heroBalEdit.type==='buff'?'pri':''}" style="flex:1" onclick="heroBalSetType('buff')">▲ บัพ</button><button class="btn ${heroBalEdit.type==='nerf'?'pri':''}" style="flex:1" onclick="heroBalSetType('nerf')">▼ เนิฟ</button></div>
+  <div class="row" style="gap:6px;margin-top:10px">
+   <label class="gcl" style="flex:1"><span>ATK</span><input class="inp" id="hb_atk" type="number" min="0" max="50" value="${heroBalEdit.atk}" oninput="heroBalEdit.atk=+this.value||0"></label>
+   <label class="gcl" style="flex:1"><span>DEF</span><input class="inp" id="hb_def" type="number" min="0" max="50" value="${heroBalEdit.def}" oninput="heroBalEdit.def=+this.value||0"></label>
+   <label class="gcl" style="flex:1"><span>SPD</span><input class="inp" id="hb_spd" type="number" min="0" max="50" value="${heroBalEdit.spd}" oninput="heroBalEdit.spd=+this.value||0"></label>
+  </div>
+  <input class="inp" id="hb_note" style="margin-top:8px" maxlength="100" placeholder="หมายเหตุ เช่น ลดพลังโจมตีเพราะแรงเกินไป" value="${esc(heroBalEdit.note)}" oninput="heroBalEdit.note=this.value">
+  <div class="row" style="gap:8px;margin-top:10px"><button class="btn gold" style="flex:1" onclick="heroBalSave()">💾 บันทึก มีผลทันที</button><button class="btn" onclick="heroBalCancel()">ยกเลิก</button></div>
+ </div>`:''}
+ <div class="mut" id="herobalst" style="margin-top:8px"></div>
+ <div style="display:grid;gap:8px;margin-top:10px">${ARENA_HEROES.map(h=>`<div class="card" style="margin-top:0;display:flex;align-items:center;gap:10px">
+  <div style="font-size:28px">${h.emoji}</div>
+  <div style="flex:1;min-width:0"><b class="n">${esc(h.name)}</b><div class="mut" style="font-size:11px">${arenaRoleIcon(h.role)} ${h.roleName}</div>${heroBalBadgeHTML(h.id)}</div>
+  <div style="display:flex;flex-direction:column;gap:4px;flex:none"><button class="btn" style="font-size:11px;padding:6px 10px" onclick="heroBalStart('${h.id}')">แก้ไข</button>${HERO_BALANCE[h.id]?`<button class="btn" style="font-size:11px;padding:6px 10px;color:#ef4444" onclick="heroBalClear('${h.id}')">ล้างค่า</button>`:''}</div>
+ </div>`).join('')}</div></div>`}
+// ---------- แอดมิน: อัตราแพ้ชนะบอทในแรงค์ ----------
+function rankBotHTML(){const v=RANK_BOT.winPct;
+ return `<div class="card" id="rankbotwrap"><b class="n">🤖 อัตราแพ้ชนะบอทในแรงค์ (1v1 / 3v3 / 5v5)</b>
+ <div class="mut" style="margin-top:4px">ตั้ง % โอกาสที่ "บอท" จะเป็นฝ่ายชนะเมื่อผู้เล่นดวลกับบอทในโหมดแรงค์ มีผลจริงกับผลแพ้ชนะทันที ไม่เปิดใช้ = ใช้สูตรเปรียบเทียบความไวนิ้ว+ค่าพลังตัวละครตามปกติ</div>
+ <label class="gap" style="margin-top:10px"><input type="checkbox" id="rb_on" ${v!=null?'checked':''} onchange="$('#rb_wrap').style.display=this.checked?'':'none'"> บังคับอัตราชนะของบอท</label>
+ <div id="rb_wrap" style="${v!=null?'':'display:none'};margin-top:8px">
+  <input class="inp" id="rb_pct" type="number" min="0" max="100" value="${v!=null?v:50}">
+  <div class="mut" style="margin-top:4px">% โอกาสที่บอทจะชนะ (0 = ผู้เล่นชนะบอทเสมอ, 100 = บอทชนะเสมอ, 50 = สุ่มครึ่งต่อครึ่ง)</div>
+ </div>
+ <button class="btn gold" style="width:100%;margin-top:10px" onclick="rankBotSave()">บันทึก มีผลทันที</button><div class="mut" id="rankbotst" style="margin-top:6px"></div></div>`}
+async function rankBotSave(){const st=$('#rankbotst'),on=$('#rb_on').checked;
+ const d=on?{winPct:Math.max(0,Math.min(100,Math.round(+$('#rb_pct').value||50)))}:{winPct:null};
+ try{await db.ref('settings/rankBot').set(d);if(st)st.textContent='✅ บันทึกแล้ว '+tstr();say('บันทึกอัตราแพ้ชนะบอทแล้ว มีผลกับการดวลบอทครั้งถัดไปทันที')}catch(e){if(st)st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}}
 function rankCfgHTML(){rankDraft=rankDraft||RANK_MAJORS.map(t=>({name:t.name,stars:t.stars}));
  return `<div class="card" id="rankcfgwrap" style="margin-top:0"><b class="n">10 แรงค์หลัก × 5 ขั้น (V-IV-III-II-I)</b><div class="mut" style="margin-top:4px">ตั้งชื่อและจำนวนดาวที่ต้องใช้เลื่อนขั้นของแต่ละแรงค์ได้ (เรียงจากต่ำสุดไปสูงสุด) แรงค์สุดท้ายเป็นแรงค์สูงสุด ไม่มีขั้นเลื่อนต่อ สะสมดาวเพื่อจัดอันดับอย่างเดียว · กติกา: ชนะ +1 ดาว แพ้ -1 ดาว ดาวเต็มแล้วชนะอีก = เลื่อนขั้น ดาวหมดแล้วแพ้ = ตกขั้น</div>
  <div style="margin-top:10px;display:grid;gap:8px">${rankDraft.map((t,i)=>`<div class="row" style="gap:6px;align-items:center"><b class="mut" style="width:18px;flex:none">${i+1}</b><input class="inp" style="flex:2" value="${esc(t.name)}" oninput="rankDraft[${i}].name=this.value">${i<rankDraft.length-1?`<input class="inp" style="flex:1" type="number" min="1" max="20" value="${t.stars}" oninput="rankDraft[${i}].stars=+this.value||1" title="ดาวต่อขั้น">`:`<span class="mut" style="flex:1;text-align:center;font-size:12px">สูงสุด</span>`}</div>`).join('')}</div>
@@ -2265,26 +2326,51 @@ async function delC(id){const c=content.find(x=>x.id===id);if(!c||!(await dlg('�
  try{await db.ref('content/'+id).remove();if(cmMode)await db.ref('contentMeta/'+id).remove()}catch(e){say('ลบไม่สำเร็จ: '+((e&&e.code)||'ลองใหม่'))}}
 
 function vAdminCodes(){const I="width:100%;font:15px 'Noto Sans Thai';padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);margin-top:6px";
- return `<div class="card" style="margin-top:0"><b class="n">สร้างโค้ดรับของรางวัล</b><div class="mut" style="margin-top:4px">ผู้เล่นแต่ละคนใช้โค้ดเดียวกันได้คนละ 1 ครั้ง จนกว่าจะหมดอายุ</div>
+ return `<div class="card" style="margin-top:0"><b class="n">สร้างโค้ดรับของรางวัล</b><div class="mut" style="margin-top:4px">ผู้เล่นแต่ละคนใช้โค้ดเดียวกันได้คนละ 1 ครั้ง จนกว่าจะหมดอายุ · ใส่รางวัลได้หลายอย่างพร้อมกันในโค้ดเดียว (ไม่ใส่ = ไม่แจกชนิดนั้น)</div>
  <label class="mut" style="display:block;margin-top:10px">โค้ด</label><div class="row" style="flex-wrap:nowrap;gap:8px"><input id="cdcode" class="inp" style="margin-top:0;text-transform:uppercase" placeholder="เช่น ROVLUCKY10"><button class="btn" onclick="genCode()">สุ่ม</button></div>
- <label class="mut" style="display:block;margin-top:10px">คะแนนที่ได้รับ</label><input id="cdpts" type="number" min="1" max="1000000" value="100" class="inp">
+ <button class="btn gold" style="width:100%;margin-top:10px" onclick="codeFillAll()">🎁 เติมรางวัลทั้งหมดในเกมให้อัตโนมัติ</button>
+ <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+  <label style="flex:1;min-width:120px"><span class="mut" style="font-size:12px">คะแนน</span><input id="cdpts" type="number" min="0" max="1000000" value="100" class="inp"></label>
+  <label style="flex:1;min-width:120px"><span class="mut" style="font-size:12px">🪙 เหรียญทอง</span><input id="cdgold" type="number" min="0" max="1000000" value="0" class="inp"></label>
+  <label style="flex:1;min-width:120px"><span class="mut" style="font-size:12px">💎 หยกเขียว</span><input id="cdjade" type="number" min="0" max="1000000" value="0" class="inp"></label>
+  <label style="flex:1;min-width:120px"><span class="mut" style="font-size:12px">🪂 เหรียญกิจกรรม</span><input id="cdcoin" type="number" min="0" max="1000000" value="0" class="inp"></label>
+  <label style="flex:1;min-width:120px"><span class="mut" style="font-size:12px">🎵 ตั๋วกระโดด</span><input id="cdtix" type="number" min="0" max="100000" value="0" class="inp"></label>
+ </div>
  <label class="mut" style="display:block;margin-top:10px">คำอธิบาย (ไม่บังคับ)</label><input id="cddesc" class="inp" placeholder="เช่น โค้ดฉลองเปิดตัว">
  <label class="mut" style="display:block;margin-top:10px">วันและเวลาหมดอายุ</label><input id="cdexp" type="datetime-local" class="inp">
  <button class="btn pri" id="cdbtn" style="width:100%;margin-top:12px" onclick="addCode()">สร้างโค้ด</button><div class="mut" id="cdst" style="margin-top:6px"></div></div>
  <div class="card"><b class="n">โค้ดที่สร้างไว้</b><div id="cdlist">${codesList()}</div></div>`}
 function genCode(){const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let v='';for(let i=0;i<8;i++)v+=ch[Math.floor(Math.random()*ch.length)];$('#cdcode').value=v}
+function codeFillAll(){ // ปุ่มลัด: เติมรางวัลทุกชนิดในเกมให้ในคลิกเดียว (คะแนน/เหรียญทอง/หยกเขียว/เหรียญกิจกรรม/ตั๋วกระโดด)
+ $('#cdpts').value=500;$('#cdgold').value=200;$('#cdjade').value=50;$('#cdcoin').value=300;$('#cdtix').value=10;
+ if(!$('#cddesc').value)$('#cddesc').value='โค้ดรางวัลรวมทุกอย่าง'}
+function codeReadRewards(){return {
+ points:Math.max(0,Math.round(+$('#cdpts').value||0)),
+ gold:Math.max(0,Math.round(+$('#cdgold').value||0)),
+ jade:Math.max(0,Math.round(+$('#cdjade').value||0)),
+ coin:Math.max(0,Math.round(+$('#cdcoin').value||0)),
+ tix:Math.max(0,Math.round(+$('#cdtix').value||0))}}
 async function addCode(){const st=$('#cdst'),bt=$('#cdbtn');let code=$('#cdcode').value.trim().toUpperCase().replace(/\s+/g,'');
- const pts=Math.round(+$('#cdpts').value),desc=$('#cddesc').value.trim(),exp=$('#cdexp').value;
- if(!code){st.textContent='กรอกโค้ด';return}if(!(pts>0)){st.textContent='กรอกคะแนนให้ถูกต้อง (มากกว่า 0)';return}if(!exp){st.textContent='เลือกวันและเวลาหมดอายุ';return}
+ const rw=codeReadRewards(),desc=$('#cddesc').value.trim(),exp=$('#cdexp').value;
+ if(!code){st.textContent='กรอกโค้ด';return}
+ if(!(rw.points>0||rw.gold>0||rw.jade>0||rw.coin>0||rw.tix>0)){st.textContent='ใส่รางวัลอย่างน้อย 1 ชนิด (มากกว่า 0)';return}
+ if(!exp){st.textContent='เลือกวันและเวลาหมดอายุ';return}
  const expiresAt=new Date(exp).getTime();if(isNaN(expiresAt)){st.textContent='วันที่ไม่ถูกต้อง';return}
  if(expiresAt<=Date.now()){st.textContent='เวลาหมดอายุต้องอยู่ในอนาคต';return}
  bt.disabled=true;try{const exist=await db.ref('promocodes/'+code).once('value');
   if(exist.val()){st.textContent='มีโค้ดนี้อยู่แล้ว ลองชื่ออื่น';bt.disabled=false;return}
-  await db.ref('promocodes/'+code).set({points:pts,desc,expiresAt,createdAt:firebase.database.ServerValue.TIMESTAMP});
+  await db.ref('promocodes/'+code).set(Object.assign({desc,expiresAt,createdAt:firebase.database.ServerValue.TIMESTAMP},rw));
   st.textContent='✅ สร้างโค้ด '+code+' แล้ว';$('#cdcode').value='';$('#cddesc').value='';$('#cdexp').value=''}
  catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
+function codeRewardSummary(c){const parts=[];
+ if(c.points)parts.push('+'+fmt(c.points)+' คะแนน');
+ if(c.gold)parts.push('+'+fmt(c.gold)+' 🪙');
+ if(c.jade)parts.push('+'+fmt(c.jade)+' 💎');
+ if(c.coin)parts.push('+'+fmt(c.coin)+' 🪂เหรียญกิจกรรม');
+ if(c.tix)parts.push('+'+fmt(c.tix)+' 🎵ตั๋ว');
+ return parts.join(' · ')||'ไม่มีรางวัล'}
 const codesList=()=>codes.length?`<table class="tbl">${codes.map(c=>{const used=Object.keys(c.usedBy||{}).length,exp=c.expiresAt?new Date(c.expiresAt):null,isExp=exp&&Date.now()>exp.getTime();
- return `<tr><td><span class="code">${esc(c.code)}</span><div class="mut">+${fmt(c.points||0)} คะแนน${c.desc?' · '+esc(c.desc):''}</div><div class="mut">${isExp?'<span style="color:#d32f2f">หมดอายุแล้ว</span>':exp?'หมดอายุ '+exp.toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):'ไม่มีวันหมดอายุ'} · ใช้ไปแล้ว ${used} คน</div></td><td align="right"><button class="chip" onclick="delCode('${c.code}')">ลบ</button></td></tr>`}).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มีโค้ด</div>';
+ return `<tr><td><span class="code">${esc(c.code)}</span><div class="mut">${codeRewardSummary(c)}${c.desc?' · '+esc(c.desc):''}</div><div class="mut">${isExp?'<span style="color:#d32f2f">หมดอายุแล้ว</span>':exp?'หมดอายุ '+exp.toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):'ไม่มีวันหมดอายุ'} · ใช้ไปแล้ว ${used} คน</div></td><td align="right"><button class="chip" onclick="delCode('${c.code}')">ลบ</button></td></tr>`}).join('')}</table>`:'<div class="mut" style="margin-top:6px">ยังไม่มีโค้ด</div>';
 async function delCode(code){if(!(await dlg('ลบโค้ด "'+code+'" ?','ลบ')))return;try{await db.ref('promocodes/'+code).remove()}catch(e){say('ลบไม่สำเร็จ')}}
 
 // ---------- guide ----------
@@ -2354,6 +2440,11 @@ const RANK_MAJORS_DEF=[
 let RANK_MAJORS=RANK_MAJORS_DEF.slice();
 function attachRankCfg(){try{
  db.ref('settings/rankMajors').on('value',snap=>{const v=snap.val();RANK_MAJORS=(Array.isArray(v)&&v.length===RANK_MAJORS_DEF.length)?v:RANK_MAJORS_DEF.slice();if(pg==='admin'&&adminTab==='rankcfg'){const e=$('#rankcfgwrap');if(e)e.outerHTML=rankCfgHTML()}if(pg==='rank')R();if(pg==='duel')R()},()=>{})
+ db.ref('settings/heroBalance').on('value',snap=>{HERO_BALANCE=snap.val()||{};
+  if(pg==='admin'&&adminTab==='rankcfg'){const e=$('#herobalwrap');if(e)e.outerHTML=heroBalHTML()}
+  if(pg==='arena')R()},()=>{})
+ db.ref('settings/rankBot').on('value',snap=>{RANK_BOT=Object.assign({winPct:null},snap.val()||{});
+  if(pg==='admin'&&adminTab==='rankcfg'){const e=$('#rankbotwrap');if(e)e.outerHTML=rankBotHTML()}},()=>{})
  }catch(e){}}
 function rankMaxMajor(){return RANK_MAJORS.length-1}
 function rankScore(major,div,stars){major=Math.max(0,Math.min(rankMaxMajor(),major||0));div=Math.max(0,Math.min(4,div||0));stars=Math.max(0,stars||0);
@@ -2472,7 +2563,7 @@ async function duelSubmitRounds(){
   const botHeroId=ARENA_HEROES[Math.floor(Math.random()*ARENA_HEROES.length)].id;
   const avgMe=(duelRounds.reduce((a,b)=>a+b,0)/duelRounds.length)*heroTimeFactor(arenaHeroId);
   const avgBot=(380+Math.random()*220)*heroTimeFactor(botHeroId);
-  const won=avgMe<avgBot;
+  const won=rankBotRoll(avgMe<avgBot);
   const before=rankState();rankApplyResult(won);
   const rec=arenaRecord1v1(won,false);
   duelResult={win:won,draw:false,before,after:rankState(),oppName:'คู่ต่อสู้จำลอง (บอท)',bot:true,gold:rec.gold,stats:rec.stats,heroId:arenaHeroId,oppHeroId:botHeroId};
@@ -2559,15 +2650,31 @@ const ARENA_MODES={
  '5v5':{size:5,label:'สงครามเทพ 5v5',sub:'ทีมละ 5 คน ศึกใหญ่ชี้ชะตา',icon:'🐉',gold:{win:40,lose:12}}
 };
 const arenaHeroById=id=>ARENA_HEROES.find(h=>h.id===id)||ARENA_HEROES[0];
+// ---------- บัพ/เนิฟตัวละคร (แอดมินตั้งได้ที่หน้าแอดมิน ⚔️แรงค์) ----------
+// เก็บที่ settings/heroBalance/{heroId} = {type:'buff'|'nerf', atk, def, spd (เดลต้าที่ใส่เครื่องหมายไว้แล้ว), note, ts, by}
+// ค่า atk/def/spd ที่ปรับ มีผลจริงกับ heroPowerScore ด้านล่าง (เปลี่ยนผลแพ้ชนะจริง ไม่ใช่แค่ของประดับ)
+let HERO_BALANCE={};
+function heroEffective(heroId){const h=arenaHeroById(heroId);const b=HERO_BALANCE[h.id];if(!b)return h;
+ return Object.assign({},h,{atk:Math.max(0,Math.min(100,(h.atk||0)+(b.atk||0))),def:Math.max(0,Math.min(100,(h.def||0)+(b.def||0))),spd:Math.max(0,Math.min(100,(h.spd||0)+(b.spd||0)))})}
+function heroBalBadgeHTML(heroId){const b=HERO_BALANCE[heroId];if(!b)return '';
+ const isBuff=b.type==='buff',color=isBuff?'#ef4444':'#22c55e';
+ const chg=['atk','def','spd'].filter(k=>b[k]).map(k=>({atk:'ATK',def:'DEF',spd:'SPD'}[k]+' '+(b[k]>0?'+':'')+b[k])).join(' / ');
+ return `<div style="margin-top:4px"><span class="chip" style="font-size:10px;padding:2px 7px;border-color:${color};color:${color}">${isBuff?'▲ บัพ':'▼ เนิฟ'}${chg?' · '+esc(chg):''}</span>${b.note?`<div class="mut" style="font-size:10px;margin-top:2px">${esc(b.note)}</div>`:''}</div>`}
 // ---------- ค่าพลังตัวละคร (atk/def/spd) มีผลจริงต่อผลแพ้ชนะในโหมดแรงค์ ไม่ใช่แค่ของประดับอีกต่อไป ----------
 // สูตร: ให้น้ำหนักความเร็ว(spd)มากสุดเพราะเกมวัดปฏิกิริยา รองลงมาคือพลังโจมตี(atk)และเกราะ(def)
 // แล้วเทียบกับ "พลังเฉลี่ยของตัวละครทั้งหมด" เพื่อแปลงเป็นตัวคูณเวลาปฏิกิริยา (ตัวละครพลังสูง = ตัวคูณ<1 = เวลาที่ใช้คำนวณผลเร็วขึ้นจริง)
 // ทุกฝั่งคำนวณค่านี้จากข้อมูลเดียวกันที่บันทึกไว้ใน Firebase ได้ผลเท่ากันเป๊ะ (deterministic) จึงไม่มีทางโกงได้ฝั่งเดียว
 function heroPowerScore(h){return (h.atk||0)*0.35+(h.def||0)*0.15+(h.spd||0)*0.5}
 const ARENA_AVG_POWER=ARENA_HEROES.reduce((a,h)=>a+heroPowerScore(h),0)/ARENA_HEROES.length;
-function heroTimeFactor(heroId){const h=arenaHeroById(heroId||'h1');const p=heroPowerScore(h);
- return 1-((p-ARENA_AVG_POWER)/ARENA_AVG_POWER)*0.2} // ค่าพลังสูง/ต่ำกว่าเฉลี่ยมีผลได้สูงสุด ~±20% ต่อเวลาที่ใช้คิดผล ความไวนิ้วจริงยังเป็นปัจจัยหลักเสมอ
+function heroTimeFactor(heroId){const h=heroEffective(heroId||'h1');const p=heroPowerScore(h);
+ return 1-((p-ARENA_AVG_POWER)/ARENA_AVG_POWER)*0.2} // ค่าพลังสูง/ต่ำกว่าเฉลี่ยมีผลได้สูงสุด ~±20% ต่อเวลาที่ใช้คิดผล ความไวนิ้วจริงยังเป็นปัจจัยหลักเสมอ (รวมผลบัพ/เนิฟของแอดมินด้วย)
 function heroPowerPct(heroId){const f=1-heroTimeFactor(heroId);return Math.round(f*100)} // สำหรับแสดงผล % โบนัส/ติดลบให้ผู้เล่นเห็น
+// ---------- อัตราแพ้ชนะบอทในแรงค์ (แอดมินบังคับได้ที่หน้าแอดมิน ⚔️แรงค์) ----------
+// settings/rankBot = {winPct:0-100|null}. null = ใช้สูตรความไวนิ้ว+ค่าพลังตัวละครตามปกติ (ไม่บังคับ)
+let RANK_BOT={winPct:null};
+function rankBotRoll(normalWon){ // normalWon = ผลที่คำนวณจากสูตรปกติ (ผู้เล่นชนะไหม) ใช้เป็นค่าเริ่มต้นถ้าแอดมินไม่ได้บังคับอัตรา
+ if(RANK_BOT&&RANK_BOT.winPct!=null)return (Math.random()*100)>=RANK_BOT.winPct; // winPct=โอกาสบอทชนะ → roll>=winPct แปลว่าผู้เล่นชนะ
+ return normalWon}
 function arenaWinRate(){const h=S.arenaHist||[];if(!h.length)return 0;return Math.round(h.filter(x=>x.win).length/h.length*100)}
 function arenaStat(){const h=S.arenaHist||[];return {win:h.filter(x=>x.win).length,lose:h.filter(x=>!x.win&&!x.draw).length,total:h.length}}
 // ---------- หน้าหลักสนามประลอง ----------
@@ -2577,7 +2684,7 @@ function arenaHeroWrap(h,opt){opt=opt||{};const on=arenaHeroId===h.id;const pct=
  return `<div class="card arh ${on?'on':''}" style="margin-top:0;padding:12px;text-align:center;cursor:pointer" onclick="arenaHeroId='${h.id}';R()">
  <div style="font-size:38px">${h.emoji}</div><b class="n" style="font-size:13px;display:block;margin-top:4px">${esc(h.name)}</b>
  <div class="mut" style="font-size:11px">${arenaRoleIcon(h.role)} ${h.roleName} · ${'★'.repeat(h.diff)}${'☆'.repeat(3-h.diff)}</div>
- <div style="margin-top:4px"><span class="chip ${pct>0?'ok':pct<0?'wn':''}" style="font-size:10px;padding:2px 7px">⚡ค่าพลัง ${pct>=0?'+':''}${pct}%</span></div></div>`}
+ <div style="margin-top:4px"><span class="chip ${pct>0?'ok':pct<0?'wn':''}" style="font-size:10px;padding:2px 7px">⚡ค่าพลัง ${pct>=0?'+':''}${pct}%</span></div>${heroBalBadgeHTML(h.id)}</div>`}
 function arenaRoleIcon(role){const r=ARENA_ROLES.find(x=>x[0]===role);return r?r[2]:'❔'}
 function vArena(){
  if(arenaStage==='hero')return arenaHeroHTML();
@@ -2605,17 +2712,18 @@ function arenaHomeHTML(){const st=rankState();const stat=arenaStat();
  </div>`}
 function arenaSeasonDlg(){const rows=RANK_MAJORS.map((m,i)=>`<div class="row" style="justify-content:space-between;padding:4px 0"><span>${i+1}. ${esc(m.name)}</span><span class="mut">ต้องการ ${m.stars||1} ดาว/ขั้น</span></div>`).join('');
  say(`🎁 รางวัลประจำฤดูกาล\n\nสะสมแรงค์และดาวให้สูงที่สุดก่อนจบฤดูกาล เมื่อแอดมินทำการรีเซ็ตฤดูกาล ผู้เล่นอันดับต้นจะได้รับรางวัลพิเศษตามแรงค์ที่ทำได้\n\n` )}
-function arenaHeroHTML(){const m=ARENA_MODES[arenaMode];const h=arenaHeroById(arenaHeroId);
+function arenaHeroHTML(){const m=ARENA_MODES[arenaMode];const h=arenaHeroById(arenaHeroId);const eh=heroEffective(h.id);
  return `<div class="arenaPg"><div class="row" style="align-items:center;gap:8px"><button class="btn" onclick="arenaStage='home';R()">‹ กลับ</button><b class="n">เลือกตัวละคร · ${m.label}</b></div>
  <div class="card arGlow" style="margin-top:12px;text-align:center;padding:18px">
   <div style="font-size:64px">${h.emoji}</div><b class="n" style="font-size:19px;display:block;margin-top:6px">${esc(h.name)}</b>
   <div class="mut">${arenaRoleIcon(h.role)} ${h.roleName} · ความยาก ${'★'.repeat(h.diff)}${'☆'.repeat(3-h.diff)}</div>
   <div style="margin-top:6px"><span class="chip ${heroPowerPct(h.id)>0?'ok':heroPowerPct(h.id)<0?'wn':''}">⚡ ค่าพลังรวม${heroPowerPct(h.id)>=0?'+':''}${heroPowerPct(h.id)}% ต่อผลการแข่งขัน</span></div>
+  ${heroBalBadgeHTML(h.id)}
   <div class="mut" style="margin-top:8px;font-size:12px">${esc(h.special)}</div>
   <div class="row" style="gap:6px;margin-top:12px">
-   <div style="flex:1"><div class="mut" style="font-size:11px">พลังโจมตี</div><div class="arBar"><div style="width:${h.atk}%;background:#e85d5d"></div></div></div>
-   <div style="flex:1"><div class="mut" style="font-size:11px">ค่าป้องกัน</div><div class="arBar"><div style="width:${h.def}%;background:#5d9ee8"></div></div></div>
-   <div style="flex:1"><div class="mut" style="font-size:11px">ความเร็ว</div><div class="arBar"><div style="width:${h.spd}%;background:#5de88a"></div></div></div>
+   <div style="flex:1"><div class="mut" style="font-size:11px">พลังโจมตี</div><div class="arBar"><div style="width:${eh.atk}%;background:#e85d5d"></div></div></div>
+   <div style="flex:1"><div class="mut" style="font-size:11px">ค่าป้องกัน</div><div class="arBar"><div style="width:${eh.def}%;background:#5d9ee8"></div></div></div>
+   <div style="flex:1"><div class="mut" style="font-size:11px">ความเร็ว</div><div class="arBar"><div style="width:${eh.spd}%;background:#5de88a"></div></div></div>
   </div>
   <div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:center">${h.skills.map((s,i)=>`<div class="chip" style="max-width:150px;white-space:normal;text-align:left">${['①','②','③','④'][i]} <b>${esc(s.n)}</b><br><span class="mut" style="font-size:11px">${esc(s.d)}</span></div>`).join('')}</div>
  </div>
@@ -2755,7 +2863,7 @@ async function teamSubmitRounds(){
   const avgTeam=[...effMine,...effMineBots].reduce((a,b)=>a+b,0)/(effMine.length+effMineBots.length);
   const effOppBots=(teamOpp.bots||[]).reduce((arr,b)=>arr.concat((b.rounds||[]).map(r=>r*heroTimeFactor(b.heroId))),[]);
   const avgOpp=effOppBots.reduce((a,b)=>a+b,0)/Math.max(1,effOppBots.length);
-  const won=avgTeam<avgOpp;
+  const won=rankBotRoll(avgTeam<avgOpp);
   teamFinishResult(won,false);return}
  try{await db.ref('teamMatches/'+teamId+'/rounds/'+teamMySlot).set(teamRounds)}catch(e){}
  if(teamState==='play'){teamState='waitResult';R()}
