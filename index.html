@@ -1261,6 +1261,10 @@ async function creditPremiumApproved(){if(!S||!uid)return;
     const now=Date.now();S.pkVipUntil=Math.max(S.pkVipUntil||0,now)+30*86400000;
     if(t.tier===1699)S.pkSvip=true;
     S.log=S.log||[];S.log.unshift({t:tstr(),m:(t.tier===1699?'ปลดล็อกแพ็ก SVIP ปฐมเทพสูงสุด (1699 บาท)':'ปลดล็อกแพ็กยศพิเศษ เทพผู้พิทักษ์จักรวาล (699 บาท)'),n:0,cur:'premium'});S.log=S.log.slice(0,80);
+    // เขียนสิทธิ์พิเศษ (pkVideoBanner ฯลฯ) แยกเป็น update() เฉพาะฟิลด์ทันที แทนที่จะรอ save() แบบเต็มก้อนอย่างเดียว
+    // เพราะ save() เขียนทับทั้งเอกสาร users/uid ซึ่งอาจถูกกฎ Database ปฏิเสธได้ถ้าค่าแรงค์/แต้มอื่นๆ ขยับไปมากในจังหวะเดียวกัน
+    // ทำให้ "ได้สิทธิ์แล้วในแอป" แต่เซิร์ฟเวอร์ไม่เคยได้รับค่าจริง พอจะอัปโหลดวิดีโอพื้นหลังเลยโดน PERMISSION_DENIED ค้างอยู่แบบนั้นตลอด
+    try{await db.ref('users/'+uid).update({pkVideoBanner:true,pkTitle699:true,pkVipUntil:S.pkVipUntil,pkSvip:!!S.pkSvip})}catch(e){}
     save();R();
     say(t.tier===1699?'🌟 ยินดีด้วย! คุณได้รับสถานะ SVIP "ปฐมเทพสูงสุด" ถาวร พร้อมยศ วิดีโอพื้นหลังโปรไฟล์ และสมาชิก VIP 1 เดือนแล้ว':'🌟 ยินดีด้วย! คุณได้รับยศ "เทพผู้พิทักษ์จักรวาล" วิดีโอพื้นหลังโปรไฟล์ และสมาชิก VIP 1 เดือนแล้ว')}
   }catch(e){}}}
@@ -1415,12 +1419,20 @@ async function pickBgVideo(inp){const f=inp.files&&inp.files[0];if(!f)return;if(
  if(st)st.textContent='กำลังอัปโหลดวิดีโอ... 0%';
  try{const up=await cldUpload(f,pct=>{if(st)st.textContent='กำลังอัปโหลดวิดีโอ... '+pct+'%'});
   const url=cldUrl(up.url);
-  await db.ref('profbgvid/'+uid).set(url);
+  try{await db.ref('profbgvid/'+uid).set(url)}
+  catch(e1){
+   // สิทธิ์ pkVideoBanner ในบัญชีนี้อาจยังไม่ถูกเซฟขึ้นเซิร์ฟเวอร์จริง (ติดค้างจากการ save() เต็มก้อนที่เคยถูกปฏิเสธ)
+   // ทั้งที่ในแอปแสดงว่ามีสิทธิ์แล้ว — ลองซ่อมด้วยการ update() เฉพาะฟิลด์สิทธิ์แล้วลองเซฟวิดีโอซ้ำอีกครั้งก่อนจะฟ้อง error จริง
+   if(e1&&e1.code==='PERMISSION_DENIED'&&S.pkVideoBanner){
+    try{await db.ref('users/'+uid).update({pkVideoBanner:true});await db.ref('profbgvid/'+uid).set(url)}
+    catch(e2){throw e2}
+   }else throw e1
+  }
   try{await db.ref('profbgvidsz/'+uid).set(up.bytes||f.size)}catch(e){}
   myBgVideoData=url;myBgVideoSz=up.bytes||f.size;S.prof=S.prof||{};S.prof.bgVideoOn=true;save();myStorageUsed=null;
   if(st)st.textContent='✅ ตั้งวิดีโอพื้นหลังแล้ว เพื่อนและผู้เล่นคนอื่นจะเห็นวิดีโอนี้ตอนเปิดดูโปรไฟล์คุณ';
   bgVideoPreviewRefresh()}
- catch(e){if(st)st.textContent='อัปโหลดไม่สำเร็จ: '+((e&&e.code)||'ลองใหม่ หรือเลือกไฟล์ที่เล็กลง/เน็ตให้เสถียรกว่านี้')}}
+ catch(e){if(st)st.textContent='อัปโหลดไม่สำเร็จ: '+cldFriendlyErr((e&&e.code)||'ลองใหม่ หรือเลือกไฟล์ที่เล็กลง/เน็ตให้เสถียรกว่านี้')}}
 async function clearBgVideo(){try{await db.ref('profbgvid/'+uid).remove()}catch(e){}try{await db.ref('profbgvidsz/'+uid).remove()}catch(e){}
  myBgVideoData='';myBgVideoSz=0;S.prof=S.prof||{};S.prof.bgVideoOn=false;save();myStorageUsed=null;bgVideoPreviewRefresh();
  const e=$('#pfst');if(e)e.textContent='ลบวิดีโอพื้นหลังแล้ว'}
@@ -4103,6 +4115,11 @@ function ugThumb(url){return new Promise(res=>{try{const v=document.createElemen
 // ----- Cloudinary video hosting (free plan, unsigned preset) -----
 const CLD={cloud:'iy0s2bou',preset:'rovclips'};
 const cldOn=()=>!!(CLD.cloud&&CLD.preset);
+// Cloudinary (ผู้ให้บริการอัปโหลดวิดีโอ/รูปภาพของเว็บ) บางครั้งปิดการอัปโหลดของทั้งบัญชีเอง (โควตาเต็ม/บัญชีโดนระงับ/พรีเซ็ตถูกปิด unsigned)
+// ซึ่งไม่ใช่บัคของตัวเว็บ แต่เป็นเรื่องฝั่งบัญชี Cloudinary ที่ผู้ดูแลต้องเข้าไปเช็ก — แปลง error ดิบให้ผู้เล่น/แอดมินเข้าใจง่ายขึ้น
+function cldFriendlyErr(msg){msg=String(msg||'');
+ if(/disabled/i.test(msg))return 'ระบบอัปโหลดวิดีโอ/รูปภาพของเว็บถูกปิดใช้งานจากฝั่งผู้ให้บริการ (Cloudinary บัญชี "'+CLD.cloud+'") ไม่ใช่ปัญหาที่ตัวเครื่องผู้เล่น — แจ้งแอดมินให้เข้าไปตรวจสอบบัญชี Cloudinary ว่าโควตาเต็ม/บัญชีโดนระงับ/ปิด unsigned upload preset หรือไม่';
+ return msg}
 const ugMaxMB=()=>cldOn()?uploadMaxMB():((UGCFG&&+UGCFG.maxMB)||UG_DEF.maxMB);
 function cldUrl(u){u=String(u||'');if(/\/video\/upload\//.test(u)&&/\.webm(\?|$)/i.test(u))return u.replace('/video/upload/','/video/upload/f_mp4,vc_h264/').replace(/\.webm(\?|$)/i,'.mp4$1');return u}
 function cldUpload(blob,on){return new Promise((res,rej)=>{const x=new XMLHttpRequest(),fd=new FormData(),er=m=>{const e=new Error(m);e.code=m;rej(e)};fd.append('file',blob);fd.append('upload_preset',CLD.preset);
@@ -4126,7 +4143,7 @@ async function ugPost(){const st=$('#ugpst'),bt=$('#ugpost'),title=($('#ugttl').
   await db.ref('ugcq/'+id).set(Object.assign({uid,name:ugName(),title,thumb:th,st:'p',sz:UGM.blob.size,mus:UGM.mus?UGM.mus.id:'',mt:UGM.mus?UGM.mus.title:'',ts:firebase.database.ServerValue.TIMESTAMP},vurl?{vurl,dur}:{}));
   if(!vurl){try{await db.ref('ugcv/'+id).set(data)}catch(e){try{await db.ref('ugcq/'+id).remove()}catch(e2){}throw e}}
   S.myq=[id].concat(S.myq||[]).slice(0,60);save();dqEvt('p');UGM.blob=null;myStorageUsed=null;ugOpenMine('ส่งคลิปแล้ว รอแอดมินตรวจและกำหนดคะแนนให้')}
- catch(e){st.textContent='ส่งไม่สำเร็จ ('+((e&&e.code)||'ไฟล์ใหญ่หรือเครือข่ายมีปัญหา')+') ลองใหม่';bt.disabled=false}}
+ catch(e){st.textContent='ส่งไม่สำเร็จ: '+cldFriendlyErr((e&&e.code)||'ไฟล์ใหญ่หรือเครือข่ายมีปัญหา')+' ลองใหม่';bt.disabled=false}}
 // ----- my clips + rewards -----
 async function ugOpenMine(msg){if(UGM.url){try{URL.revokeObjectURL(UGM.url)}catch(e){}UGM.url=''}ugStopStream();ugShow(`<div class="ugpg"><div class="ugph"><button class="vfx" onclick="ugClose()" aria-label="ปิด">✕</button><b>คลิปของฉัน</b><button class="vfx" onclick="ugOpenCam()" aria-label="ถ่ายคลิป">＋</button></div><div class="ugmsg" id="ugmsg">${msg?esc(msg):''}</div><div id="ugmine" class="ugbody">กำลังโหลด...</div></div>`,'mine');await ugMineLoad()}
 async function ugMineLoad(){const box=$('#ugmine');if(!box)return;let appr=UG.filter(u=>u.uid===uid);try{const sn=await db.ref('ugc').orderByChild('uid').equalTo(uid).once('value'),v=sn.val()||{};const m={};appr.forEach(u=>m[u.id]=u);Object.keys(v).forEach(id=>{if(v[id]&&v[id].uid===uid)m[id]=Object.assign({id},v[id])});appr=Object.values(m)}catch(e){}
@@ -4268,7 +4285,13 @@ async function ugMusPrev(id){const u=await musUrl(id);if(!u)return;UGM.paud=UGM.
 function ugMusSet(id){const m=sndList().find(x=>x.id===id);ugMusClose();if(!m){UGM.mus=null;if(UGM.maud)UGM.maud.pause();ugMusUI();ugPrevMute();return}UGM.mus={id:m.id,title:String(m.t||'เสียงเพลง').slice(0,60)};
  UGM.maud=UGM.maud||new Audio();UGM.maud.loop=true;musUrl(id).then(u=>{if(u&&UGM.mus&&UGM.mus.id===id){UGM.maud.src=u;UGM.maud.load()}});ugMusUI();ugPrevMute()}
 function ugMusUI(){const t=$('#ugmus');if(t)t.textContent=UGM.mus?UGM.mus.title:'เพิ่มเสียง';const d=$('#ug .mdk');if(d)d.classList.toggle('on',!!UGM.mus)}
-function ugPrevMute(){const pv=$('#ugpr');if(!pv)return;pv.muted=!!UGM.mus;pv.onplay=()=>{if(UGM.mus&&UGM.maud&&UGM.maud.src){UGM.maud.currentTime=0;UGM.maud.play().catch(()=>{})}};pv.onpause=()=>{if(UGM.maud)UGM.maud.pause()};pv.ontimeupdate=()=>{if(UGM.mus&&UGM.maud&&pv.currentTime<(pv._pt||0)-.5)UGM.maud.currentTime=0;pv._pt=pv.currentTime};if(UGM.mus&&!pv.paused)pv.onplay()}
+function ugPrevMute(){const pv=$('#ugpr');if(!pv)return;pv.muted=!!UGM.mus;
+ // เบราว์เซอร์บางตัว (โดยเฉพาะ Safari บน iPhone) จะ "เงียบๆ" ไม่เล่นวิดีโออัตโนมัติเลยถ้าวิดีโอมีเสียงและไม่ได้ปิดเสียงไว้
+ // (ค้างอยู่เฟรมแรกเฉยๆ เหมือนวิดีโอพัง) โดยเฉพาะเพราะโค้ดฝั่งนี้เพิ่งเรนเดอร์วิดีโอหลัง await จึงไม่นับเป็นการแตะหน้าจอโดยตรงแล้ว
+ // แก้โดยลองเล่นแบบมีเสียงก่อน ถ้าเบราว์เซอร์ปฏิเสธ (p.catch) ให้ปิดเสียงชั่วคราวแล้วลองเล่นใหม่ทันทีเพื่อให้วิดีโออย่างน้อยขยับได้
+ // ผู้เล่นเปิดเสียงเองได้ผ่านปุ่มเสียงในแถบควบคุมวิดีโอ (controls) ซึ่งนับเป็นการแตะโดยตรง เบราว์เซอร์จะอนุญาต
+ const p=pv.play();if(p&&p.catch)p.catch(()=>{pv.muted=true;pv.dataset.autoMuted='1';pv.play().catch(()=>{})});
+ pv.onplay=()=>{if(UGM.mus&&UGM.maud&&UGM.maud.src){UGM.maud.currentTime=0;UGM.maud.play().catch(()=>{})}};pv.onpause=()=>{if(UGM.maud)UGM.maud.pause()};pv.ontimeupdate=()=>{if(UGM.mus&&UGM.maud&&pv.currentTime<(pv._pt||0)-.5)UGM.maud.currentTime=0;pv._pt=pv.currentTime};if(UGM.mus&&!pv.paused)pv.onplay()}
 // ----- admin: music library -----
 function vAdminMus(){const I='class="inp" style="margin-top:6px"';return `<div class="card" style="margin-top:0"><b class="n">เพลงเสริม (ไม่บังคับ)</b><div class="mut" style="margin-top:4px">ปกติไม่ต้องเพิ่มอะไร เพราะทุกคลิปมีแผ่นเสียงของตัวเอง ผู้เล่นกดแผ่นเสียงที่มุมขวาล่างของคลิปเพื่อใช้เสียงนั้นได้เลย ส่วนนี้ใช้เพิ่มเพลงกลางไว้ให้เลือกในกล้อง ไฟล์ไม่เกิน 3 MB (mp3, m4a, wav) ควรใช้เพลงที่คุณมีสิทธิ์ใช้งาน</div>
  <input id="mu_t" ${I} maxlength="60" placeholder="ชื่อเพลง"><input id="mu_a" ${I} maxlength="60" placeholder="ศิลปิน (ไม่บังคับ)"><input id="mu_f" type="file" accept="audio/*" ${I}>
