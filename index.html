@@ -1702,7 +1702,7 @@ function vRank(){if(leaderboardErr)return '<div class="card"><div class="mut">�
  const list=rankTab==='pts'?byPts:rankTab==='fash'?byFash:rankTab==='rp'?byRp:byLife;
  return `<div class="rklist">${rankInner(list)}</div>`}
 function rankInner(list){return `<div class="tabs"><button class="tab ${rankTab==='pts'?'on':''}" onclick="rankTab='pts';R()">🏅 อันดับเหรียญ</button><button class="tab ${rankTab==='fash'?'on':''}" onclick="rankTab='fash';R()">👗 อันดับแฟชั่น</button><button class="tab ${rankTab==='rp'?'on':''}" onclick="rankTab='rp';R()">⚔️ อันดับแรงค์</button><button class="tab ${rankTab==='life'?'on':''}" onclick="rankTab='life';R()">⏱️ อันดับออนไลน์</button></div>
- ${rankTab==='rp'?`<div class="card" style="margin-top:0">${rankCardHTML(S&&S.rankMajor||0,S&&S.rankDiv||0,S&&S.rankStars||0,{compact:true,w:130})}<button class="btn gold" style="width:100%;margin-top:10px" onclick="goArena()">⚔️ เข้าสู่สนามประลอง</button></div>`:''}
+ ${rankTab==='rp'?`<div class="card" style="margin-top:0">${rankCardHTML(S&&S.rankMajor||0,S&&S.rankDiv||0,S&&S.rankStars||0,{compact:true,w:130})}<button class="btn gold" style="width:100%;margin-top:10px" onclick="goArena()">⚔️ เข้าสู่สนามประลอง</button>${RANK_SEASON_END?`<div class="mut" id="rkcountdown" style="text-align:center;margin-top:10px">${rankCountdownText()}</div>`:''}</div>`:''}
  <div class="card"><div class="mut" style="margin-bottom:4px">${rankTab==='pts'?'เรียงตามคะแนนสะสมทั้งหมด':rankTab==='fash'?'เรียงตามคะแนนแฟชั่น (รวมความแรร์ของกรอบ/ป้ายชื่อ/ธีม/ยศที่ปลดล็อกทั้งหมด)':rankTab==='rp'?'เรียงตามแรงค์ (ขั้น/ดาว) จากการดวลกับผู้เล่นอื่น':'เรียงตามเวลาออนไลน์สะสมทั้งหมดบนเว็บนี้'} · แสดงผู้เล่นทุกคนที่เคยสมัคร (${list.length} คน)</div></div>
  ${list.length?list.map((r,i)=>rankRow(r,i,rankTab==='pts'?fmt(r.pts||0)+' คะแนน':rankTab==='fash'?fmt(r.fash||0)+' แต้ม':rankTab==='rp'?rankValHTML(r):fmtDur(r.life))).join(''):'<div class="card"><div class="mut">ยังไม่มีข้อมูล</div></div>'}`}
 function rankValHTML(r){const ri=rankInfo(r.rankMajor||0,r.rankDiv||0,r.rankStars||0);return `${ri.img?`<img src="${ri.img}" alt="" style="width:22px;height:22px;object-fit:contain;vertical-align:-6px;margin-right:3px">`:''}${ri.name} · ⭐${r.rankStars||0}`}
@@ -2113,32 +2113,58 @@ let rankDraft=null;
 function vAdminRankCfg(){return `${rankCfgHTML()}
  ${heroBalHTML()}
  ${rankBotHTML()}
+ ${rankSeasonCdHTML()}
  <div class="card"><b class="n">เริ่มซีซั่นใหม่</b><div class="mut" style="margin-top:4px">รีแรงค์ผู้เล่นทุกคนกลับไปเริ่มต้นที่ "${esc(RANK_MAJORS_DEF[0].name)} V 0 ดาว" เหมาะกับตอนขึ้นซีซั่นใหม่</div>
  <button class="btn" style="width:100%;margin-top:10px;border-color:#ef4444;color:#ef4444" onclick="rankSeasonReset()">⚠️ รีแรงค์ทุกคนตอนนี้</button><div class="mut" id="rkresetst" style="margin-top:6px"></div></div>`}
+// ---------- แอดมิน: ตั้งเวลารีซีซั่นแรงค์ถัดไป (แสดงนับถอยหลังให้ผู้เล่นเห็นที่หน้าแรงค์) ----------
+function rankSeasonCdHTML(){const v=RANK_SEASON_END;
+ const localVal=v?new Date(v-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
+ return `<div class="card" id="rkseasonwrap"><b class="n">⏳ เวลารีซีซั่นแรงค์ถัดไป</b>
+ <div class="mut" style="margin-top:4px">ตั้งวันเวลาที่จะรีซีซั่นครั้งถัดไป ผู้เล่นจะเห็นตัวนับถอยหลัง (วัน/ชม./นาที/วิ) ที่หน้าอันดับแรงค์แบบเรียลไทม์ ไม่ได้รีแรงค์ให้อัตโนมัติ ต้องกดปุ่ม "รีแรงค์ทุกคนตอนนี้" ด้านล่างเองตอนถึงเวลา</div>
+ <input class="inp" id="rkseasondt" type="datetime-local" value="${localVal}" style="margin-top:8px">
+ <div class="row" style="gap:8px;margin-top:10px"><button class="btn gold" style="flex:1" onclick="rankSeasonCdSave()">บันทึก</button>${v?`<button class="btn" onclick="rankSeasonCdClear()">ล้างตัวนับ</button>`:''}</div>
+ ${v?`<div class="mut" style="margin-top:8px" id="rkcountdown">${rankCountdownText()}</div>`:''}
+ <div class="mut" id="rkseasoncdst" style="margin-top:6px"></div></div>`}
+async function rankSeasonCdSave(){const st=$('#rkseasoncdst'),v=$('#rkseasondt').value;
+ if(!v){st.textContent='เลือกวันและเวลา';return}
+ const t=new Date(v).getTime();if(isNaN(t)){st.textContent='วันที่ไม่ถูกต้อง';return}
+ try{await db.ref('settings/rankSeasonEndAt').set(t);st.textContent='✅ บันทึกแล้ว '+tstr();say('ตั้งเวลารีซีซั่นแรงค์แล้ว ผู้เล่นจะเห็นตัวนับถอยหลังทันที')}
+ catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}}
+async function rankSeasonCdClear(){try{await db.ref('settings/rankSeasonEndAt').remove();say('ล้างตัวนับถอยหลังแล้ว')}catch(e){say('ลบไม่สำเร็จ')}}
 // ---------- แอดมิน: บัพ/เนิฟตัวละคร ----------
 let heroBalEdit=null;
-function heroBalStart(heroId){const cur=HERO_BALANCE[heroId];
- heroBalEdit={heroId,type:(cur&&cur.type)||'buff',atk:cur?Math.abs(cur.atk||0):0,def:cur?Math.abs(cur.def||0):0,spd:cur?Math.abs(cur.spd||0):0,note:(cur&&cur.note)||''};
+// การปรับแต่ละครั้งเป็นการ "บวกเพิ่ม" จากค่าที่เคยปรับไว้ก่อนหน้าเสมอ (ไม่เขียนทับ) จึงเริ่มฟอร์มที่ 0 ทุกครั้ง
+// ไม่ใช่ค่าที่เคยปรับไว้ — ค่าที่เคยปรับไว้แสดงอยู่ในป้ายใต้ตัวละครแต่ละตัวอยู่แล้ว
+function heroBalStart(heroId){heroBalEdit={heroId,type:'buff',atk:0,def:0,spd:0,note:''};
  const e=$('#herobalwrap');if(e)e.outerHTML=heroBalHTML()}
 function heroBalSetType(t){if(heroBalEdit)heroBalEdit.type=t;const e=$('#herobalwrap');if(e)e.outerHTML=heroBalHTML()}
 function heroBalCancel(){heroBalEdit=null;const e=$('#herobalwrap');if(e)e.outerHTML=heroBalHTML()}
 async function heroBalSave(){if(!heroBalEdit)return;const st=$('#herobalst');
  const sign=heroBalEdit.type==='nerf'?-1:1;
- const atk=Math.max(0,Math.min(50,Math.round(+heroBalEdit.atk||0)))*sign;
- const def=Math.max(0,Math.min(50,Math.round(+heroBalEdit.def||0)))*sign;
- const spd=Math.max(0,Math.min(50,Math.round(+heroBalEdit.spd||0)))*sign;
+ const dAtk=Math.max(0,Math.min(50,Math.round(+heroBalEdit.atk||0)))*sign;
+ const dDef=Math.max(0,Math.min(50,Math.round(+heroBalEdit.def||0)))*sign;
+ const dSpd=Math.max(0,Math.min(50,Math.round(+heroBalEdit.spd||0)))*sign;
  const note=(heroBalEdit.note||'').trim().slice(0,100);
- if(!atk&&!def&&!spd){if(st)st.textContent='กรุณาใส่ค่าที่ต้องการปรับอย่างน้อย 1 ช่อง (ATK/DEF/SPD)';return}
- const rec={type:heroBalEdit.type,atk,def,spd,note,ts:Date.now(),by:(user&&user.email)||''};
- try{await db.ref('settings/heroBalance/'+heroBalEdit.heroId).set(rec);heroBalEdit=null;if(st)st.textContent='✅ บันทึกแล้ว มีผลกับผู้เล่นทุกคนทันที '+tstr();say('บันทึกการปรับค่าพลังตัวละครแล้ว ผู้เล่นจะเห็นเครื่องหมายที่ตัวละครทันที')}
+ if(!dAtk&&!dDef&&!dSpd){if(st)st.textContent='กรุณาใส่ค่าที่ต้องการปรับอย่างน้อย 1 ช่อง (ATK/DEF/SPD)';return}
+ const cur=HERO_BALANCE[heroBalEdit.heroId]||{atk:0,def:0,spd:0,history:[]};
+ const newPatch=(HERO_BAL_PATCH||0)+1; // ทุกครั้งที่บันทึกการปรับสมดุล จะขยับเป็น "แพตช์" ใหม่ทันที (เลขเดียวกันทั้งระบบ)
+ const histEntry={patch:newPatch,type:heroBalEdit.type,atk:dAtk,def:dDef,spd:dSpd,note,ts:Date.now(),by:(user&&user.email)||''};
+ const hist=(cur.history||[]).concat([histEntry]).slice(-10);
+ // ค่าพลังที่ปรับ "ทบไปเรื่อยๆ" ยึดของเดิมที่เคยปรับมาก่อน (บวกเดลต้ารอบใหม่เข้ากับค่าสะสมเดิม ไม่เขียนทับ)
+ const rec={atk:Math.max(-95,Math.min(95,(cur.atk||0)+dAtk)),def:Math.max(-95,Math.min(95,(cur.def||0)+dDef)),spd:Math.max(-95,Math.min(95,(cur.spd||0)+dSpd)),note,patch:newPatch,ts:Date.now(),by:(user&&user.email)||'',history:hist};
+ try{await db.ref('settings/heroBalPatch').set(newPatch);await db.ref('settings/heroBalance/'+heroBalEdit.heroId).set(rec);heroBalEdit=null;
+  if(st)st.textContent='✅ บันทึกแล้ว (แพตช์ #'+newPatch+') มีผลกับผู้เล่นทุกคนทันที '+tstr();
+  say('บันทึกการปรับค่าพลังตัวละครแล้ว (แพตช์ #'+newPatch+') ผู้เล่นจะเห็นเครื่องหมายที่ตัวละครทันที')}
  catch(e){if(st)st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}}
-async function heroBalClear(heroId){if(!(await dlg('ล้างค่าบัพ/เนิฟของตัวละครนี้ กลับเป็นค่าเริ่มต้น?','ล้างเลย')))return;
+async function heroBalClear(heroId){if(!(await dlg('ล้างค่าบัพ/เนิฟสะสมทั้งหมดของตัวละครนี้ กลับเป็นค่าเริ่มต้น? (ล้างประวัติทุกแพตช์ของตัวละครนี้ด้วย)','ล้างเลย')))return;
  try{await db.ref('settings/heroBalance/'+heroId).remove();if(heroBalEdit&&heroBalEdit.heroId===heroId)heroBalEdit=null;say('ล้างค่าปรับแล้ว')}catch(e){say('ลบไม่สำเร็จ')}}
 function heroBalHTML(){
- return `<div class="card" id="herobalwrap"><b class="n">⚖️ บัพ/เนิฟตัวละคร (มีผลจริงต่อผลแพ้ชนะในแรงค์)</b>
- <div class="mut" style="margin-top:4px">ปรับค่าพลังโจมตี/ป้องกัน/ความเร็วของตัวละครแต่ละตัว บันทึกแล้วผู้เล่นจะเห็นเครื่องหมาย <b style="color:#ef4444">▲ บัพ</b>/<b style="color:#22c55e">▼ เนิฟ</b> ที่ตัวละครทันทีพร้อมรายละเอียดที่ปรับ</div>
+ return `<div class="card" id="herobalwrap"><div class="row" style="align-items:center;justify-content:space-between"><b class="n">⚖️ บัพ/เนิฟตัวละคร (มีผลจริงต่อผลแพ้ชนะในแรงค์)</b><span class="chip" style="font-size:11px;white-space:nowrap">แพตช์ปัจจุบัน #${HERO_BAL_PATCH||0}</span></div>
+ <div class="mut" style="margin-top:4px">ปรับค่าพลังโจมตี/ป้องกัน/ความเร็วของตัวละครแต่ละตัว ทุกครั้งที่บันทึกจะขยับเป็นแพตช์ใหม่ทันที และค่าที่ปรับจะ<b>ทบกับค่าที่เคยปรับไว้ก่อนหน้า</b>เสมอ (ไม่เขียนทับของเก่า) บันทึกแล้วผู้เล่นจะเห็นเครื่องหมาย <b style="color:#ef4444">▲ บัพ</b>/<b style="color:#22c55e">▼ เนิฟ</b> ที่ตัวละครทันทีพร้อมรายละเอียดที่ปรับ</div>
  ${heroBalEdit?`<div class="card" style="margin-top:10px;background:rgba(255,255,255,.03)">
   <b class="n">${arenaHeroById(heroBalEdit.heroId).emoji} ${esc(arenaHeroById(heroBalEdit.heroId).name)}</b>
+  ${HERO_BALANCE[heroBalEdit.heroId]?`<div class="mut" style="font-size:11px;margin-top:4px">ค่าพลังสะสมปัจจุบัน: ATK ${fmtSigned(HERO_BALANCE[heroBalEdit.heroId].atk)} / DEF ${fmtSigned(HERO_BALANCE[heroBalEdit.heroId].def)} / SPD ${fmtSigned(HERO_BALANCE[heroBalEdit.heroId].spd)} (แพตช์ #${HERO_BALANCE[heroBalEdit.heroId].patch||0})</div>`:''}
+  <div class="mut" style="font-size:11px;margin-top:6px">ค่าด้านล่างนี้คือ "ส่วนที่จะปรับเพิ่ม" รอบนี้ จะถูกบวก/ลบเข้ากับค่าสะสมเดิมด้านบน</div>
   <div class="row" style="gap:8px;margin-top:8px"><button class="btn ${heroBalEdit.type==='buff'?'pri':''}" style="flex:1" onclick="heroBalSetType('buff')">▲ บัพ</button><button class="btn ${heroBalEdit.type==='nerf'?'pri':''}" style="flex:1" onclick="heroBalSetType('nerf')">▼ เนิฟ</button></div>
   <div class="row" style="gap:6px;margin-top:10px">
    <label class="gcl" style="flex:1"><span>ATK</span><input class="inp" id="hb_atk" type="number" min="0" max="50" value="${heroBalEdit.atk}" oninput="heroBalEdit.atk=+this.value||0"></label>
@@ -2146,7 +2172,7 @@ function heroBalHTML(){
    <label class="gcl" style="flex:1"><span>SPD</span><input class="inp" id="hb_spd" type="number" min="0" max="50" value="${heroBalEdit.spd}" oninput="heroBalEdit.spd=+this.value||0"></label>
   </div>
   <input class="inp" id="hb_note" style="margin-top:8px" maxlength="100" placeholder="หมายเหตุ เช่น ลดพลังโจมตีเพราะแรงเกินไป" value="${esc(heroBalEdit.note)}" oninput="heroBalEdit.note=this.value">
-  <div class="row" style="gap:8px;margin-top:10px"><button class="btn gold" style="flex:1" onclick="heroBalSave()">💾 บันทึก มีผลทันที</button><button class="btn" onclick="heroBalCancel()">ยกเลิก</button></div>
+  <div class="row" style="gap:8px;margin-top:10px"><button class="btn gold" style="flex:1" onclick="heroBalSave()">💾 บันทึก (ขึ้นแพตช์ใหม่ทันที)</button><button class="btn" onclick="heroBalCancel()">ยกเลิก</button></div>
  </div>`:''}
  <div class="mut" id="herobalst" style="margin-top:8px"></div>
  <div style="display:grid;gap:8px;margin-top:10px">${ARENA_HEROES.map(h=>`<div class="card" style="margin-top:0;display:flex;align-items:center;gap:10px">
@@ -2443,8 +2469,13 @@ function attachRankCfg(){try{
  db.ref('settings/heroBalance').on('value',snap=>{HERO_BALANCE=snap.val()||{};
   if(pg==='admin'&&adminTab==='rankcfg'){const e=$('#herobalwrap');if(e)e.outerHTML=heroBalHTML()}
   if(pg==='arena')R()},()=>{})
+ db.ref('settings/heroBalPatch').on('value',snap=>{HERO_BAL_PATCH=snap.val()||0;
+  if(pg==='admin'&&adminTab==='rankcfg'){const e=$('#herobalwrap');if(e)e.outerHTML=heroBalHTML()}},()=>{})
  db.ref('settings/rankBot').on('value',snap=>{RANK_BOT=Object.assign({winPct:null},snap.val()||{});
   if(pg==='admin'&&adminTab==='rankcfg'){const e=$('#rankbotwrap');if(e)e.outerHTML=rankBotHTML()}},()=>{})
+ db.ref('settings/rankSeasonEndAt').on('value',snap=>{RANK_SEASON_END=snap.val()||null;
+  if(pg==='admin'&&adminTab==='rankcfg'){const e=$('#rkseasonwrap');if(e)e.outerHTML=rankSeasonCdHTML()}
+  if(pg==='rank'&&rankTab==='rp')R()},()=>{})
  }catch(e){}}
 function rankMaxMajor(){return RANK_MAJORS.length-1}
 function rankScore(major,div,stars){major=Math.max(0,Math.min(rankMaxMajor(),major||0));div=Math.max(0,Math.min(4,div||0));stars=Math.max(0,stars||0);
@@ -2458,7 +2489,9 @@ function rankApplyResult(won){const st=rankState(),maxMajor=rankMaxMajor();
  if(st.major===maxMajor){st.stars=won?st.stars+1:Math.max(0,st.stars-1)}
  else{const need=RANK_MAJORS[st.major].stars||1;
   if(won){if(st.stars<need){st.stars++}else{if(st.div<4){st.div++;st.stars=0}else if(st.major<maxMajor){st.major++;st.div=0;st.stars=0}}}
-  else{if(st.stars>0){st.stars--}else{if(st.div>0){st.div--;st.stars=0}else if(st.major>0){st.major--;st.div=4;st.stars=0}}}}
+  // ตกแรงค์: เมื่อดาวเป็น 0 แล้วแพ้อีก ให้ "ร่วง" ลงไปขั้น/แรงค์ที่ต่ำกว่าแบบดาวเกือบเต็ม (เหลือดาวเท่ากับค่า stars ของแรงค์นั้นๆ)
+  // แทนที่จะดาวหายรวบเหลือ 0 ดาว ตามหลักเกมแรงค์ทั่วไปที่มีการ "กันตก" ให้โอกาสไต่กลับได้ง่ายขึ้น
+  else{if(st.stars>0){st.stars--}else{if(st.div>0){st.div--;st.stars=RANK_MAJORS[st.major].stars||1}else if(st.major>0){st.major--;st.div=4;st.stars=RANK_MAJORS[st.major].stars||1}}}}
  S.rankMajor=st.major;S.rankDiv=st.div;S.rankStars=st.stars;S.rp=rankScore(st.major,st.div,st.stars);
  if(S.rp>(S.rankPeakScore||0)){S.rankPeakScore=S.rp;S.rankPeakMajor=st.major;S.rankPeakDiv=st.div;S.rankPeakStars=st.stars}
  return rankInfo(st.major,st.div,st.stars)}
@@ -2650,16 +2683,27 @@ const ARENA_MODES={
  '5v5':{size:5,label:'สงครามเทพ 5v5',sub:'ทีมละ 5 คน ศึกใหญ่ชี้ชะตา',icon:'🐉',gold:{win:40,lose:12}}
 };
 const arenaHeroById=id=>ARENA_HEROES.find(h=>h.id===id)||ARENA_HEROES[0];
+const fmtSigned=n=>{n=n||0;return (n>0?'+':'')+n};
 // ---------- บัพ/เนิฟตัวละคร (แอดมินตั้งได้ที่หน้าแอดมิน ⚔️แรงค์) ----------
-// เก็บที่ settings/heroBalance/{heroId} = {type:'buff'|'nerf', atk, def, spd (เดลต้าที่ใส่เครื่องหมายไว้แล้ว), note, ts, by}
-// ค่า atk/def/spd ที่ปรับ มีผลจริงกับ heroPowerScore ด้านล่าง (เปลี่ยนผลแพ้ชนะจริง ไม่ใช่แค่ของประดับ)
-let HERO_BALANCE={};
+// เก็บที่ settings/heroBalance/{heroId} = {atk,def,spd (ค่าสะสมรวมทุกแพตช์ที่เคยปรับมา มีเครื่องหมายในตัว), note, patch, ts, by, history:[...]}
+// settings/heroBalPatch = เลขแพตช์ปัจจุบันของทั้งระบบ (เพิ่มขึ้น 1 ทุกครั้งที่มีการบันทึกบัพ/เนิฟตัวละครตัวใดก็ตาม)
+// ค่าสะสม atk/def/spd ที่ปรับ มีผลจริงกับ heroPowerScore ด้านล่าง (เปลี่ยนผลแพ้ชนะจริง ไม่ใช่แค่ของประดับ) และ "ทบ" กันไปเรื่อยๆ ไม่เขียนทับของเดิม
+let HERO_BALANCE={},HERO_BAL_PATCH=0;
+// ---------- ตัวนับถอยหลังรีซีซั่นแรงค์ (แอดมินตั้งวันเวลาได้ที่หน้าแอดมิน ⚔️แรงค์) ----------
+let RANK_SEASON_END=null,rankCdTick=null; // settings/rankSeasonEndAt = epoch ms หรือ null ถ้ายังไม่ตั้ง
+function rankCountdownText(){if(!RANK_SEASON_END)return '';
+ let left=RANK_SEASON_END-Date.now();if(left<=0)return '⏳ ถึงกำหนดรีซีซั่นแล้ว รอแอดมินกดรีแรงค์รอบใหม่';
+ const d=Math.floor(left/86400000),h=Math.floor(left%86400000/3600000),m=Math.floor(left%3600000/60000),s=Math.floor(left%60000/1000);
+ return `⏳ รีซีซั่นถัดไปในอีก ${d} วัน ${h} ชม. ${m} นาที ${s} วิ`}
+function rankCountdownStartTick(){if(rankCdTick)clearInterval(rankCdTick);rankCdTick=setInterval(()=>{const el=$('#rkcountdown');if(!el){clearInterval(rankCdTick);rankCdTick=null;return}const t=rankCountdownText();if(t)el.textContent=t},1000)}
 function heroEffective(heroId){const h=arenaHeroById(heroId);const b=HERO_BALANCE[h.id];if(!b)return h;
  return Object.assign({},h,{atk:Math.max(0,Math.min(100,(h.atk||0)+(b.atk||0))),def:Math.max(0,Math.min(100,(h.def||0)+(b.def||0))),spd:Math.max(0,Math.min(100,(h.spd||0)+(b.spd||0)))})}
 function heroBalBadgeHTML(heroId){const b=HERO_BALANCE[heroId];if(!b)return '';
- const isBuff=b.type==='buff',color=isBuff?'#ef4444':'#22c55e';
- const chg=['atk','def','spd'].filter(k=>b[k]).map(k=>({atk:'ATK',def:'DEF',spd:'SPD'}[k]+' '+(b[k]>0?'+':'')+b[k])).join(' / ');
- return `<div style="margin-top:4px"><span class="chip" style="font-size:10px;padding:2px 7px;border-color:${color};color:${color}">${isBuff?'▲ บัพ':'▼ เนิฟ'}${chg?' · '+esc(chg):''}</span>${b.note?`<div class="mut" style="font-size:10px;margin-top:2px">${esc(b.note)}</div>`:''}</div>`}
+ // แสดงเครื่องหมายแยกตามแต่ละสเตตัส เพราะค่าสะสมแต่ละอันอาจบวก(บัพ)หรือลบ(เนิฟ)ไม่เหมือนกันได้ (ปรับคนละแพตช์คนละทิศทาง)
+ const parts=['atk','def','spd'].filter(k=>b[k]).map(k=>{const v=b[k],up=v>0,color=up?'#ef4444':'#22c55e',arrow=up?'▲':'▼',label={atk:'ATK',def:'DEF',spd:'SPD'}[k];
+  return `<span style="color:${color};font-weight:700">${arrow} ${label} ${fmtSigned(v)}</span>`});
+ if(!parts.length)return '';
+ return `<div style="margin-top:4px;display:flex;gap:7px;flex-wrap:wrap;font-size:11px">${parts.join('')}</div>${b.note?`<div class="mut" style="font-size:10px;margin-top:2px">${esc(b.note)} · แพตช์ #${b.patch||0}</div>`:''}`}
 // ---------- ค่าพลังตัวละคร (atk/def/spd) มีผลจริงต่อผลแพ้ชนะในโหมดแรงค์ ไม่ใช่แค่ของประดับอีกต่อไป ----------
 // สูตร: ให้น้ำหนักความเร็ว(spd)มากสุดเพราะเกมวัดปฏิกิริยา รองลงมาคือพลังโจมตี(atk)และเกราะ(def)
 // แล้วเทียบกับ "พลังเฉลี่ยของตัวละครทั้งหมด" เพื่อแปลงเป็นตัวคูณเวลาปฏิกิริยา (ตัวละครพลังสูง = ตัวคูณ<1 = เวลาที่ใช้คำนวณผลเร็วขึ้นจริง)
@@ -3752,7 +3796,7 @@ function liveWatchHTML(){const bc=liveActive[liveWatchBcUid]||{};
 function vLive(){if(liveStage==='hostPrep')return liveHostPrepHTML();if(liveStage==='hosting')return liveHostingHTML();if(liveStage==='watch')return liveWatchHTML();return liveListHTML()}
 
 const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena,live:vLive};
-function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60);if(pg==='topup')loadMyStorageUsed();if(pg==='login'&&authStage==='otp')setTimeout(otpStartTick,30)}
+function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60);if(pg==='topup')loadMyStorageUsed();if(pg==='login'&&authStage==='otp')setTimeout(otpStartTick,30);if(pg==='rank'&&rankTab==='rp')setTimeout(rankCountdownStartTick,30)}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isBanned();roll();if(wb&&!isBanned()){R();return}if(wb){const e=$('#bnrem');if(e)e.innerHTML='<b>'+banRemain(S.ban)+'</b>';return}S.on++;S.life=(S.life||0)+1;bpEvt('sec');if(pg==='missions'&&missionsTab==='bpm'&&S.on%5===0&&!document.querySelector('#dlg .ov'))R();{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
   const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
