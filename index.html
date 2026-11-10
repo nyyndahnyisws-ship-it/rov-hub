@@ -3881,7 +3881,7 @@ setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isB
 // ---------- TikTok-style video feed ----------
 const VF={open:false,cur:null,muted:false,vid:null,io:null,hint:true,P:{}};
 function abN(n){n=+n||0;if(n<1000)return String(n);if(n<1e6){const k=n/1e3;return (k<10?k.toFixed(1):String(Math.round(k))).replace(/\.0$/,'')+'K'}return (n/1e6).toFixed(1).replace(/\.0$/,'')+'M'}
-function ugAsItem(u){return {id:'u_'+u.id,rid:u.id,uid:u.uid,type:'video',title:u.title||'',body:'',pts:+u.pts||0,sec:+u.sec||0,thumb:u.thumb||'',hasUrl:true,vurl:u.vurl||'',ts:u.ts||0,ugc:true,author:u.name||'ผู้เล่น',mus:u.mus||'',mt:u.mt||''}}
+function ugAsItem(u){return {id:'u_'+u.id,rid:u.id,uid:u.uid,type:'video',title:u.title||'',body:'',pts:+u.pts||0,sec:+u.sec||0,thumb:u.thumb||'',hasUrl:true,vurl:u.vurl||'',tk:u.tk||'',ts:u.ts||0,ugc:true,author:u.name||'ผู้เล่น',mus:u.mus||'',mt:u.mt||''}}
 const vfList=()=>content.filter(c=>c.type==='video').concat(UG.map(ugAsItem)).sort((a,b)=>(b.ts||0)-(a.ts||0));
 const vfFind=id=>(VF.items||[]).find(x=>x.id===id)||vfList().find(x=>x.id===id);
 function vfUrl(c){if(c.url)return Promise.resolve(c.url);if(c.vurl)return Promise.resolve(cldUrl(c.vurl));const pth=c.ugc?'ugcv/'+c.rid:'content/'+c.id+'/url';if(CU[c.id]!==undefined)return Promise.resolve(CU[c.id]);if(!VF.P[c.id])VF.P[c.id]=db.ref(pth).once('value').then(sn=>{CU[c.id]=sn.val()||'';return CU[c.id]}).catch(()=>{delete VF.P[c.id];return ''});return VF.P[c.id]}
@@ -3892,14 +3892,15 @@ const VF_IC={cmt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12.500h5"/></svg>',
  vol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.500 9a4 4 0 010 6M19 6.500a8 8 0 010 11"/></svg>',
  mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>'};
-function vfItem(c,i,n){const L=!!(S.vl&&S.vl[c.id]),B=!!(S.vs&&S.vs[c.id]),id=c.id,g=c.ugc,cc=g?(UGC[c.rid]||{}):{},f=g?(S.ugf&&S.ugf[c.rid])||{}:{},own=g&&c.uid===uid,coin=c.pts>0&&c.sec>0&&!own;
+function vfItem(c,i,n){const L=!!(S.vl&&S.vl[c.id]),B=!!(S.vs&&S.vs[c.id]),id=c.id,g=c.ugc,cc=g?(UGC[c.rid]||{}):{},f=g?(S.ugf&&S.ugf[c.rid])||{}:{},own=g&&c.uid===uid,coin=c.pts>0&&c.sec>0&&!own&&!c.tk;
  const lk=g?!!f.lk:L,who=g?c.uid:'admin',fw=!!(S.fl&&S.fl[who]),AV=g?vAv(c.uid,50,c.author):'<span class="avs ini vfadm" style="width:50px;height:50px;font-size:15px">ROV</span>',plus=!own?`<span class="vffl${fw?' on':''}" id="vffl-${id}" onclick="event.stopPropagation();ugFollow('${id}')">+</span>`:'';
- return `<section class="vfi" data-id="${id}" data-i="${i}"><div class="vfbg"${c.thumb?` style="background-image:url('${c.thumb}')"`:''}></div><div class="vfmedia"></div><div class="vftap" onclick="vfTap('${id}')"></div><div class="vfplay" id="vfp-${id}">${SV('<path d="M8 5l12 7-12 7z" fill="currentColor"/>')}</div>
+ // คลิปที่ฝังจาก TikTok (c.tk) ต้องไม่ให้ชั้น .vftap ของเราดักแตะ เพราะจะบังผู้เล่นไม่ให้แตะควบคุมตัวเล่น TikTok เองได้ (ปุ่มเล่น/หยุด/เสียงของ TikTok เองอยู่ในกรอบนั้น)
+ return `<section class="vfi" data-id="${id}" data-i="${i}"><div class="vfbg"${c.thumb?` style="background-image:url('${c.thumb}')"`:''}></div><div class="vfmedia"></div><div class="vftap"${c.tk?' style="pointer-events:none"':''} onclick="vfTap('${id}')"></div><div class="vfplay" id="vfp-${id}">${SV('<path d="M8 5l12 7-12 7z" fill="currentColor"/>')}</div>
  <div class="vfrail"><div class="vfav${g?' vv':(AV.indexOf('avfr')>-1?' hasfr':'')}" role="button" onclick="ugProfile('${who}')">${AV}${plus}</div>${coin?`<button class="vfcoin" id="vfc-${id}" onclick="vfClaim('${id}')" aria-label="รับคะแนน"><svg class="ring" viewBox="0 0 66 66"><circle class="rb" cx="33" cy="33" r="29"/><circle class="rf" id="vfr-${id}" cx="33" cy="33" r="29" stroke-dasharray="182.2" stroke-dashoffset="182.2"/></svg><span class="disc" id="vfd-${id}">${VF_COIN}</span><em id="vfv-${id}"></em><small id="vft-${id}"></small></button>`:''}
  <button class="vfb heart${lk?' on':''}" id="vfl-${id}" onclick="vfLike('${id}')" aria-label="ถูกใจ">${VF_IC.heart}<span id="vfln-${id}">${g?abN(cc.l||0):'ถูกใจ'}</span></button>
  ${g?`<button class="vfb" onclick="cmOpen('${id}')" aria-label="ความคิดเห็น">${VF_IC.cmt}<span>คอมเมนต์</span></button>`:''} <button class="vfb" onclick="vfShare('${id}')" aria-label="แชร์">${VF_IC.share}<span id="vfsn-${id}">${g?abN(cc.s||0):'แชร์'}</span></button>
  <button class="vfdisc" onclick="vfSound('${id}')" aria-label="เสียงของคลิปนี้"><i class="vdk"><b${c.thumb?` style="background-image:url('${c.thumb}')"`:''}>${c.thumb?'':'♪'}</b></i></button></div>
- <div class="vfinfo"><div class="vfau" onclick="ugProfile('${who}')"><span>@${esc(g?vName(c.uid,c.author):'ROV Point Hub')}</span></div><b>${esc(c.title)}</b><div class="vfmus">♪ ${esc(sndTitle(c))}</div><div class="m">${g?`<span id="vfvn-${id}">${abN(cc.v||0)}</span> วิว`:''}${coin?`${g?' · ':''}+${fmt(c.pts)} คะแนน · ดู ${mm(c.sec)}`:(g?'':`+${fmt(c.pts)} คะแนน · ดู ${mm(c.sec)}`)}</div>${c.body?`<div class="d">${esc(c.body)}</div>`:''}</div><div class="vfbar"><i id="vfb-${id}"></i></div></section>`}
+ <div class="vfinfo"><div class="vfau" onclick="ugProfile('${who}')"><span>@${esc(g?vName(c.uid,c.author):'ROV Point Hub')}</span></div><b>${esc(c.title)}</b><div class="vfmus">♪ ${esc(sndTitle(c))}</div><div class="m">${g?`<span id="vfvn-${id}">${abN(cc.v||0)}</span> วิว`:''}${coin?`${g?' · ':''}+${fmt(c.pts)} คะแนน · ดู ${mm(c.sec)}`:c.tk?`${g?' · ':''}🎵 TikTok${c.pts>0&&!own?(S.seen[id]?' · ✓ รับคะแนนแล้ว':' · +'+fmt(c.pts)+' คะแนนเมื่อเปิดดู'):''}`:(g?'':`+${fmt(c.pts)} คะแนน · ดู ${mm(c.sec)}`)}</div>${c.body?`<div class="d">${esc(c.body)}</div>`:''}</div><div class="vfbar"><i id="vfb-${id}"></i></div></section>`}
 function openVF(id,fu,fs,ff){let L=vfList();if(fu)L=L.filter(c=>(c.uid||'admin')===fu);if(fs)L=L.filter(c=>sndOf(c)===fs);if(ff)L=L.filter(c=>S.fl&&S.fl[c.uid||'admin']);if(!L.length){say(ff?'ยังไม่มีคลิปจากคนที่คุณติดตาม':'ยังไม่มีวิดีโอ');return}VF.ff=!!ff;if(!id){const u=L.find(c=>!S.seen[c.id]&&c.pts>0&&c.uid!==uid);id=(u||L[0]).id}
  let i=L.findIndex(c=>c.id===id);if(i<0)i=0;VF.items=L;VF.vs={};VF.open=true;if(!VF.aud){VF.aud=new Audio();VF.aud.loop=true}try{VF.aud.src=SILENT_WAV;VF.aud.dataset.id='';VF.aud.play().catch(()=>{})}catch(e){}VF.cur=null;VF.vid=null;const dl0=$('#dlg');if(dl0)dl0.innerHTML='';const el=$('#vf');
  el.innerHTML=`<div class="vfs" id="vfs">${L.map((c,k)=>vfItem(c,k,L.length)).join('')}</div><div class="vftop"><button class="vfx" onclick="closeVF()" aria-label="ปิด">✕</button><span class="vfttl">คลังวิดีโอ</span><span class="vfcnt" id="vfcnt"></span><span style="width:40px"></span></div><div class="vfmsg" id="vfmsg"></div>${VF.hint&&L.length>1?'<div class="vfhint">เลื่อนขึ้นเพื่อดูคลิปถัดไป</div>':''}`;VF.hint=false;
@@ -3911,14 +3912,24 @@ function closeVF(){if(VF.aud)try{VF.aud.pause()}catch(e){}VF.open=false;VF.cur=n
 function vfSet(el){if(!el||!VF.open)return;const id=el.dataset.id,i=+el.dataset.i;if(VF.cur===id)return;VF.cur=id;VF.vid=null;dqWatch(id);
  const all=document.querySelectorAll('#vf .vfi');const cn=$('#vfcnt');if(cn)cn.textContent=(i+1)+'/'+all.length;
  all.forEach(x=>{const k=+x.dataset.i;if(Math.abs(k-i)<=1)vfMount(x);else vfUnmount(x);if(x!==el){const v=x.querySelector('video');if(v)v.pause();const pp=$('#vfp-'+x.dataset.id);if(pp)pp.classList.remove('on')}});
- vfPlay(el);const c=vfFind(id);if(c){vfRing(c);vfMusic(c)}}
+ vfPlay(el);const c=vfFind(id);if(c){vfRing(c);vfMusic(c);
+  if(c.tk){ // คลิปฝัง TikTok คุมเล่น/หยุด/จับเวลาดูไม่ได้ (เป็น iframe ข้ามโดเมน) เลยนับวิวและให้คะแนนทันทีตอนเปิดดู แทนแบบจับเวลาดูของคลิปทั่วไป
+   if(c.ugc)try{ugView(c)}catch(e){}
+   if(c.pts>0&&c.uid!==uid&&!S.seen[id]){S.seen[id]=true;bpEvt('content');add(c.pts,'คลิปผู้เล่น: '+c.title);save();vfMsg('ได้รับ +'+fmt(c.pts)+' คะแนน');R()}
+  }
+ }}
 function vfMusic(c){const a=VF.aud;if(!a)return;if(!c.mus){a.pause();a.dataset.id='';return}musUrl(c.mus).then(u=>{if(VF.cur!==c.id||!u)return;if(a.dataset.id!==c.mus){a.src=u;a.dataset.id=c.mus}a.currentTime=0;a.muted=VF.muted;if(VF.vid&&!VF.vid.paused)a.play().catch(()=>{})})}
-async function vfMount(el){const id=el.dataset.id,c=vfFind(id);if(!c||el.dataset.m)return;el.dataset.m='1';const u=await vfUrl(c);if(!u||!VF.open||!el.isConnected){el.dataset.m='';return}
+async function vfMount(el){const id=el.dataset.id,c=vfFind(id);if(!c||el.dataset.m)return;el.dataset.m='1';
+ if(c.tk){ // คลิปฝัง TikTok: ใส่ iframe ตัวเล่นทางการของ TikTok แทน <video> ของเราเอง ไม่ต้องขอ url จาก vfUrl()
+  if(!VF.open||!el.isConnected){el.dataset.m='';return}
+  const ifr=document.createElement('iframe');ifr.src='https://www.tiktok.com/embed/v2/'+c.tk;ifr.style.cssText='position:absolute;inset:0;width:100%;height:100%;border:0';ifr.allow='autoplay; encrypted-media; picture-in-picture';ifr.allowFullscreen=true;ifr.loading='lazy';
+  const mediaEl=el.querySelector('.vfmedia');if(mediaEl)mediaEl.appendChild(ifr);return}
+ const u=await vfUrl(c);if(!u||!VF.open||!el.isConnected){el.dataset.m='';return}
  const v=document.createElement('video');v.src=u;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.preload=c.vurl?'metadata':'auto';v.dataset.mus=c.mus?'1':'';v.muted=VF.muted||!!c.mus;if(c.thumb)v.poster=c.thumb;
  v.addEventListener('timeupdate',()=>{const b=$('#vfb-'+id);if(b&&v.duration)b.style.width=(v.currentTime/v.duration*100)+'%';if(c.mus&&VF.cur===id&&VF.aud&&v.currentTime<(v._pt||0)-.5)VF.aud.currentTime=0;v._pt=v.currentTime});
  v.addEventListener('play',()=>{vfRing(c);const pp=$('#vfp-'+id);if(pp)pp.classList.remove('on');if(c.mus&&VF.cur===id&&VF.aud&&VF.aud.dataset.id===c.mus)VF.aud.play().catch(()=>{})});v.addEventListener('pause',()=>{vfRing(c);if(c.mus&&VF.cur===id&&VF.aud)VF.aud.pause()});
  el.querySelector('.vfmedia').appendChild(v);if(VF.cur===id)vfPlay(el)}
-function vfUnmount(el){const v=el.querySelector('video');if(v){try{v.pause();v.removeAttribute('src');v.load()}catch(e){}v.remove()}el.dataset.m=''}
+function vfUnmount(el){const v=el.querySelector('video');if(v){try{v.pause();v.removeAttribute('src');v.load()}catch(e){}v.remove()}const ifr=el.querySelector('iframe');if(ifr)ifr.remove();el.dataset.m=''}
 function vfPlay(el){const v=el.querySelector('video');if(!v)return;VF.vid=v;v.muted=VF.muted||!!v.dataset.mus;const p=v.play();
  if(p&&p.catch)p.catch(()=>{ // เบราว์เซอร์บล็อกเล่นเสียงอัตโนมัติ (ไม่ใช่ผู้เล่นสั่งปิดเสียงเอง) — ปิดเสียงไว้ชั่วคราวเฉพาะคลิปนี้เพื่อให้เล่นต่อได้ แต่ "ไม่" เปลี่ยนค่าเสียงโดยรวมถาวร (เดิมบั๊กนี้ทำให้ปิดเสียงค้างทุกคลิปที่เหลือ)
   v.muted=true;v.dataset.autoMuted='1';v.play().catch(()=>{})})}
@@ -4080,26 +4091,31 @@ function ugTikTokPrompt(){const e=$('#dlg');e.innerHTML=`<div class="ov" style="
  <input id="ugttlink" class="inp" style="margin-top:12px" placeholder="https://www.tiktok.com/@.../video/...">
  <div class="row" style="margin-top:14px;gap:8px"><button class="btn" style="flex:1" onclick="$('#dlg').innerHTML=''">ยกเลิก</button><button class="btn gold" style="flex:1" id="ugttbtn" onclick="ugTikTokGo()">ดึงคลิป</button></div>
  <div class="mut" id="ugttlerr" style="margin-top:8px;color:#d32f2f"></div></div></div>`}
+// ฝัง TikTok ด้วยตัวเล่นทางการของ TikTok เอง (iframe) แทนการดาวน์โหลดไฟล์วิดีโอเต็มมาอัปโหลดขึ้น Cloudinary ของเรา
+// (วิธีเดิมเป็นสาเหตุของปัญหาวิดีโอค้าง/เล่นไม่ขึ้นที่เจอบ่อย เพราะไฟล์ที่ดาวน์โหลดมาบางไฟล์ไม่รองรับการเล่นแบบ blob ในเบราว์เซอร์)
+// ข้อเสีย: คุมการเล่น/หยุด/จับเวลาดูไม่ได้เหมือนคลิปของเราเอง เลยให้คะแนนทันทีตอนเปิดดูครั้งแรกแทนแบบจับเวลา (ดู vfSet)
 async function ugTikTokGo(){const v=$('#ugttlink'),er=$('#ugttlerr'),bt=$('#ugttbtn'),url=((v&&v.value)||'').trim();
  if(!isTikTokLink(url)){if(er)er.textContent='ลิงก์นี้ไม่ใช่ลิงก์ TikTok กรุณาคัดลอกลิงก์จากปุ่มแชร์ในแอป TikTok';return}
- if(bt)bt.disabled=true;if(er)er.textContent='กำลังดึงคลิปจาก TikTok...';
+ if(bt)bt.disabled=true;if(er)er.textContent='กำลังดึงข้อมูลคลิปจาก TikTok...';
  try{
   const r=await fetch(TIKWM_API+'?url='+encodeURIComponent(url));
   const j=await r.json();
-  if(!j||j.code!==0||!j.data)throw new Error('resolve-failed');
-  let vurl=j.data.hdplay||j.data.play;
-  if(!vurl)throw new Error('no-url');
-  if(vurl.startsWith('/'))vurl='https://www.tikwm.com'+vurl;
-  if(er)er.textContent='กำลังโหลดไฟล์คลิป...';
-  const vr=await fetch(vurl);
-  if(!vr.ok)throw new Error('download-failed');
-  const blob=await vr.blob();
-  if(!blob||!blob.size)throw new Error('empty-blob');
+  if(!j||j.code!==0||!j.data||!j.data.id)throw new Error('resolve-failed');
   $('#dlg').innerHTML='';ugStopStream();
-  ugGotBlob(new File([blob],'tiktok.mp4',{type:blob.type||'video/mp4'}));
+  ugTikTokConfirm({tk:String(j.data.id),thumb:j.data.cover||j.data.origin_cover||'',title:(j.data.title||'').slice(0,80)});
  }catch(e){
-  if(er)er.textContent='ดึงคลิปไม่สำเร็จ (คลิปอาจเป็นส่วนตัว ลิงก์ผิด หรือบริการขัดข้องชั่วคราว) ลองใหม่อีกครั้ง หรืออัปโหลดไฟล์แทน';
+  if(er)er.textContent='ดึงข้อมูลคลิปไม่สำเร็จ (คลิปอาจเป็นส่วนตัว ลิงก์ผิด หรือบริการขัดข้องชั่วคราว) ลองใหม่อีกครั้ง หรืออัปโหลดไฟล์แทน';
   if(bt)bt.disabled=false}}
+function ugTikTokConfirm(info){UGM.tk=info.tk;UGM.tkThumb=info.thumb;
+ ugShow(`<div class="ugcam"><div style="position:absolute;inset:0;background:#000"><iframe src="https://www.tiktok.com/embed/v2/${esc(info.tk)}" style="width:100%;height:100%;border:0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
+ <div class="vftop"><button class="vfx" onclick="ugRetake()" aria-label="กลับ">‹</button><span class="ugpill">🎵 ฝัง TikTok</span></div>
+ <div class="ugbot ugform"><input id="ugttl" class="inp" maxlength="80" placeholder="ใส่ชื่อ/คำบรรยายคลิป" value="${esc(info.title||'')}"><div class="ugnote" style="margin:8px 0">คลิปจะขึ้นฟีดหลังแอดมินตรวจและกำหนดคะแนนให้ ผู้ลงกำหนดคะแนนเองไม่ได้ — คลิปนี้เล่นผ่านตัวเล่น TikTok โดยตรง ไม่ได้อัปโหลดไฟล์ขึ้นเว็บเรา</div><div class="ugnote" style="margin:0 0 8px;color:#ff8a8a">⚠️ ห้ามเนื้อหาทางเพศ/โป๊เปลือย เด็กในทางที่ไม่ดี คำหยาบ/พาดพิงผู้อื่น และเนื้อหาไม่เหมาะสมอื่นๆ <b>ฝ่าฝืนแบนทันที</b> — <a href="javascript:void(0)" onclick="openContentRules()" style="color:#fff;text-decoration:underline">ดูกฎทั้งหมด</a></div><div class="ugrow"><button class="btn" onclick="ugRetake()">ยกเลิก</button><button class="btn gold" id="ugpost" onclick="ugTikTokPost()">ลงคลิป</button></div><div class="ugnote" id="ugpst"></div></div></div>`,'prev')}
+async function ugTikTokPost(){const st=$('#ugpst'),bt=$('#ugpost'),title=($('#ugttl').value||'').trim().slice(0,80);if(!UGM.tk)return;if(!title){st.textContent='ใส่ชื่อคลิปก่อน';return}
+ bt.disabled=true;st.textContent='กำลังส่ง...';const id='g'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+ try{
+  await db.ref('ugcq/'+id).set({uid,name:ugName(),title,thumb:UGM.tkThumb||'',st:'p',tk:UGM.tk,ts:firebase.database.ServerValue.TIMESTAMP});
+  S.myq=[id].concat(S.myq||[]).slice(0,60);save();dqEvt('p');UGM.tk='';UGM.tkThumb='';ugOpenMine('ส่งคลิปแล้ว รอแอดมินตรวจและกำหนดคะแนนให้')}
+ catch(e){st.textContent='ส่งไม่สำเร็จ: '+((e&&e.code)||'เครือข่ายมีปัญหา')+' ลองใหม่';bt.disabled=false}}
 function ugFile(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;const er=$('#ugerr');if(!f.type.startsWith('video/')){if(er)er.textContent='เลือกไฟล์วิดีโอเท่านั้น';return}
  const mx=ugMaxMB();if(f.size>mx*1048576){if(er)er.textContent='ไฟล์เกิน '+mx+' MB (ไฟล์ของคุณ '+(f.size/1048576).toFixed(1)+' MB) ลองตัดให้สั้นลงก่อน';return}ugStopStream();ugGotBlob(f)}
 async function ugGotBlob(b){const mx=ugMaxMB();if(b.size>mx*1048576){ugCamUI();ugCamStart();const er=$('#ugerr');if(er)er.textContent='คลิปใหญ่เกิน '+mx+' MB ลองถ่ายให้สั้นลง';return}
@@ -4109,7 +4125,7 @@ async function ugGotBlob(b){const mx=ugMaxMB();if(b.size>mx*1048576){ugCamUI();u
  UGM.blob=b;if(UGM.url)URL.revokeObjectURL(UGM.url);UGM.url=URL.createObjectURL(b);
  ugShow(`<div class="ugcam"><video id="ugpr" src="${UGM.url}" playsinline loop controls autoplay></video><div class="vftop"><button class="vfx" onclick="ugRetake()" aria-label="กลับ">‹</button><button class="ugpill ugsnd" onclick="ugMusicPick()"><i class="mdk${UGM.mus?' on':''}"></i><span id="ugmus">${UGM.mus?esc(UGM.mus.title):'เพิ่มเสียง'}</span></button><span class="vfcnt">${(b.size/1048576).toFixed(1)} MB</span></div>
  <div class="ugbot ugform"><input id="ugttl" class="inp" maxlength="80" placeholder="ใส่ชื่อ/คำบรรยายคลิป"><div class="ugnote" style="margin:8px 0">คลิปจะขึ้นฟีดหลังแอดมินตรวจและกำหนดคะแนนให้ ผู้ลงกำหนดคะแนนเองไม่ได้</div><div class="ugnote" style="margin:0 0 8px;color:#ff8a8a">⚠️ ห้ามเนื้อหาทางเพศ/โป๊เปลือย เด็กในทางที่ไม่ดี คำหยาบ/พาดพิงผู้อื่น และเนื้อหาไม่เหมาะสมอื่นๆ <b>ฝ่าฝืนแบนทันที</b> — <a href="javascript:void(0)" onclick="openContentRules()" style="color:#fff;text-decoration:underline">ดูกฎทั้งหมด</a></div><div class="ugrow"><button class="btn" onclick="ugRetake()">ถ่ายใหม่</button><button class="btn gold" id="ugpost" onclick="ugPost()">ลงคลิป</button></div><div class="ugnote" id="ugpst"></div></div></div>`,'prev');ugPrevMute()}
-function ugRetake(){UGM.blob=null;ugCamUI();ugCamStart()}
+function ugRetake(){UGM.blob=null;UGM.tk='';UGM.tkThumb='';ugCamUI();ugCamStart()}
 function ugThumb(url){return new Promise(res=>{try{const v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';v.src=url;let done=false;const fin=x=>{if(!done){done=true;res(x||'')}};setTimeout(()=>fin(''),9000);v.onerror=()=>fin('');v.onloadeddata=()=>{try{v.currentTime=Math.min(0.5,(v.duration||1)/2)}catch(e){fin('')}};
  v.onseeked=()=>{try{const k=Math.min(1,220/(v.videoWidth||220)),c=document.createElement('canvas');c.width=Math.round((v.videoWidth||220)*k);c.height=Math.round((v.videoHeight||390)*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);fin(c.toDataURL('image/jpeg',.6))}catch(e){fin('')}}}catch(e){res('')}})}
 // ----- Cloudinary video hosting (free plan, unsigned preset) -----
@@ -4173,8 +4189,8 @@ function ugAdminHTML(){const cf=ugCfg(),I='class="inp" style="margin-top:6px"';
  const pend=UGQ.filter(q=>q.st!=='r');
  const req=[];Object.keys(UGREQA||{}).forEach(u=>Object.keys(UGREQA[u]||{}).forEach(r=>{const q=UGREQA[u][r];if(q&&q.st==='p')req.push(Object.assign({u,r},q))}));
  let h=`<div class="card" style="margin-top:0"><b class="n">คลิปรอตรวจ (${pend.length})</b><div class="mut" style="margin-top:4px">ตรวจคลิป แล้วกำหนดคะแนนที่ผู้ชมจะได้ (0 = ไม่ให้คะแนนผู้ชม) ก่อนกดอนุมัติ คลิปจะยังไม่ขึ้นฟีด</div>`;
- h+=pend.length?pend.map(q=>`<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><div class="gap">${q.thumb?`<img src="${q.thumb}" style="width:64px;height:88px;object-fit:cover;border-radius:8px">`:''}<div style="min-width:0"><b class="n">${esc(q.title||'')}</b><div class="mut">โดย ${esc(q.name||q.uid)} · ${(q.sz/1048576||0).toFixed(1)} MB</div><button class="chip" onclick="ugPreview('${q.id}')">ดูคลิป</button></div></div>
- <div class="row" style="gap:8px"><input id="ugp-${q.id}" type="number" min="0" max="100000" value="0" ${I} placeholder="คะแนนผู้ชม"><input id="ugs-${q.id}" type="number" min="0" max="7200" value="10" ${I} placeholder="วินาทีที่ต้องดู"></div>
+ h+=pend.length?pend.map(q=>`<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><div class="gap">${q.thumb?`<img src="${q.thumb}" style="width:64px;height:88px;object-fit:cover;border-radius:8px">`:''}<div style="min-width:0"><b class="n">${esc(q.title||'')}</b><div class="mut">โดย ${esc(q.name||q.uid)} · ${q.tk?'🎵 ฝัง TikTok (ไม่ได้อัปโหลดไฟล์)':(q.sz/1048576||0).toFixed(1)+' MB'}</div><button class="chip" onclick="ugPreview('${q.id}')">ดูคลิป</button></div></div>
+ <div class="row" style="gap:8px"><input id="ugp-${q.id}" type="number" min="0" max="100000" value="0" ${I} placeholder="คะแนนผู้ชม">${q.tk?'<input type="hidden" id="ugs-'+q.id+'" value="0">':'<input id="ugs-'+q.id+'" type="number" min="0" max="7200" value="10" '+I+' placeholder="วินาทีที่ต้องดู">'}</div>${q.tk?'<div class="mut" style="margin-top:4px">คลิปนี้ฝังจาก TikTok โดยตรง คุมเวลาดูไม่ได้ — ถ้าให้คะแนน ผู้เล่นจะได้รับทันทีตอนเปิดดูครั้งแรก</div>':''}
  <div class="mut" style="margin-top:6px">♪ เสียงที่ผู้ส่งเลือก: ${q.mus?esc(q.mt||'เสียงเพลง'):'เสียงต้นฉบับของคลิป'}</div><input type="hidden" id="ugm-${q.id}" value="${esc(q.mus||'')}"><input id="ugn-${q.id}" ${I} maxlength="80" placeholder="เหตุผล (กรณีปฏิเสธ)"><div class="row" style="gap:8px;margin-top:8px"><button class="btn gold" style="flex:1" onclick="ugApprove('${q.id}')">อนุมัติ</button><button class="btn" style="flex:1" onclick="ugReject('${q.id}')">ปฏิเสธ</button></div></div>`).join(''):'<div class="mut" style="margin-top:8px">ไม่มีคลิปรอตรวจ</div>';
  h+=`</div><div class="card"><b class="n">คำขอหยกเขียวจากรางวัลคลิป (${req.length})</b><div class="mut" style="margin-top:4px">หยกเป็นสกุลที่ผู้เล่นซื้อด้วยเงินจริง จึงให้แอดมินยืนยันทุกครั้งก่อนเข้าบัญชี</div>`;
  h+=req.length?req.map(q=>`<div class="row" style="margin-top:10px;gap:8px"><div style="min-width:0"><b class="n">+${q.jade} หยก · ระดับ ${q.tier}</b><div class="mut">${esc(q.email||q.u)} · ${esc(q.clip||'')}</div></div><div class="gap"><button class="chip ok" onclick="ugReq('${q.u}','${q.r}',1)">อนุมัติ</button><button class="chip" onclick="ugReq('${q.u}','${q.r}',0)">ปฏิเสธ</button></div></div>`).join(''):'<div class="mut" style="margin-top:8px">ไม่มีคำขอ</div>';
@@ -4187,9 +4203,11 @@ function ugAdminHTML(){const cf=ugCfg(),I='class="inp" style="margin-top:6px"';
  <div class="mut" style="margin-top:10px">ขนาดไฟล์คลิปสูงสุด (MB, 1-6) ใช้เมื่อไม่ได้เชื่อม Cloudinary</div><input id="ugmax" type="number" min="1" max="6" value="${(UGCFG&&UGCFG.maxMB)||UG_DEF.maxMB}" ${I}>
  <button class="btn gold" style="width:100%;margin-top:12px" onclick="ugSaveCfg()">บันทึกการตั้งค่า</button><div class="mut" id="ugcst" style="margin-top:6px"></div></div>`;return h}
 const vAdminUgc=()=>`<div id="ugadm">${ugAdminHTML()}</div>`;
-async function ugPreview(id){try{const q=UGQ.find(x=>x.id===id);if(q&&q.vurl){dlgH('<video src="'+esc(cldUrl(q.vurl))+'" controls autoplay playsinline style="width:100%;max-height:70vh;border-radius:10px;background:#000"></video>');return}const sn=await db.ref('ugcv/'+id).once('value'),u=sn.val();if(!u){say('ไม่พบไฟล์คลิป');return}dlgH('<video src="'+u+'" controls autoplay playsinline style="width:100%;max-height:70vh;border-radius:10px;background:#000"></video>')}catch(e){say('โหลดคลิปไม่สำเร็จ')}}
-async function ugApprove(id){const q=UGQ.find(x=>x.id===id);if(!q)return;const pts=Math.max(0,Math.min(100000,Math.round(+$('#ugp-'+id).value)||0)),sec=Math.max(0,Math.min(7200,Math.round(+$('#ugs-'+id).value)||0));if(pts>0&&sec<5){say('ถ้าให้คะแนนผู้ชม ต้องกำหนดเวลาดูอย่างน้อย 5 วินาที');return}
- try{await db.ref('ugc/'+id).set({uid:q.uid,name:q.name||'',title:q.title||'',thumb:q.thumb||'',pts,sec,mus:q.mus||'',mt:q.mt||'',vurl:q.vurl||'',dur:q.dur||0,sz:q.sz||0,ts:firebase.database.ServerValue.TIMESTAMP});ntfSend(q.uid,'a',id,q.title||'');await db.ref('ugcq/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
+async function ugPreview(id){try{const q=UGQ.find(x=>x.id===id);if(q&&q.tk){dlgH('<iframe src="https://www.tiktok.com/embed/v2/'+esc(q.tk)+'" style="width:100%;height:70vh;border:0;border-radius:10px;background:#000" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>');return}if(q&&q.vurl){dlgH('<video src="'+esc(cldUrl(q.vurl))+'" controls autoplay playsinline style="width:100%;max-height:70vh;border-radius:10px;background:#000"></video>');return}const sn=await db.ref('ugcv/'+id).once('value'),u=sn.val();if(!u){say('ไม่พบไฟล์คลิป');return}dlgH('<video src="'+u+'" controls autoplay playsinline style="width:100%;max-height:70vh;border-radius:10px;background:#000"></video>')}catch(e){say('โหลดคลิปไม่สำเร็จ')}}
+async function ugApprove(id){const q=UGQ.find(x=>x.id===id);if(!q)return;const pts=Math.max(0,Math.min(100000,Math.round(+$('#ugp-'+id).value)||0)),sec=Math.max(0,Math.min(7200,Math.round(+$('#ugs-'+id).value)||0));
+ // คลิปที่ฝังจาก TikTok คุมเวลาดูไม่ได้ (ไม่มี <video> ของเราเองให้จับเวลา) เลยไม่บังคับกรอกวินาทีขั้นต่ำ — ให้คะแนนทันทีตอนเปิดดูครั้งแรกแทน
+ if(pts>0&&sec<5&&!q.tk){say('ถ้าให้คะแนนผู้ชม ต้องกำหนดเวลาดูอย่างน้อย 5 วินาที');return}
+ try{await db.ref('ugc/'+id).set({uid:q.uid,name:q.name||'',title:q.title||'',thumb:q.thumb||'',pts,sec:q.tk?0:sec,mus:q.mus||'',mt:q.mt||'',vurl:q.vurl||'',tk:q.tk||'',dur:q.dur||0,sz:q.sz||0,ts:firebase.database.ServerValue.TIMESTAMP});ntfSend(q.uid,'a',id,q.title||'');await db.ref('ugcq/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
 async function ugReject(id){const note=($('#ugn-'+id).value||'').trim().slice(0,80);if(!(await dlg('ปฏิเสธคลิปนี้?','ปฏิเสธ')))return;try{await db.ref('ugcq/'+id).update({st:'r',note});await db.ref('ugcv/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
 async function ugEdit(id){const pts=Math.max(0,Math.min(100000,Math.round(+$('#uge-'+id).value)||0)),sec=Math.max(0,Math.min(7200,Math.round(+$('#ugf-'+id).value)||0));if(pts>0&&sec<5){say('ถ้าให้คะแนนผู้ชม ต้องกำหนดเวลาดูอย่างน้อย 5 วินาที');return}try{await db.ref('ugc/'+id).update({pts,sec});say('บันทึกแล้ว')}catch(e){say('ผิดพลาด')}}
 async function ugRemove(id){if(!(await dlg('ลบคลิปนี้ถาวร (รวมไฟล์และยอดทั้งหมด)?','ลบ')))return;try{await db.ref('ugc/'+id).remove();await db.ref('ugcv/'+id).remove();await db.ref('ugcc/'+id).remove()}catch(e){say('ผิดพลาด: '+((e&&e.code)||'ลองใหม่'))}}
