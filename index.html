@@ -4208,7 +4208,7 @@ function ugRetake(){UGM.blob=null;ugCamUI();ugCamStart()}
 function ugThumb(url){return new Promise(res=>{try{const v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';v.src=url;let done=false;const fin=x=>{if(!done){done=true;res(x||'')}};setTimeout(()=>fin(''),9000);v.onerror=()=>fin('');v.onloadeddata=()=>{try{v.currentTime=Math.min(0.5,(v.duration||1)/2)}catch(e){fin('')}};
  v.onseeked=()=>{try{const k=Math.min(1,220/(v.videoWidth||220)),c=document.createElement('canvas');c.width=Math.round((v.videoWidth||220)*k);c.height=Math.round((v.videoHeight||390)*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);fin(c.toDataURL('image/jpeg',.6))}catch(e){fin('')}}}catch(e){res('')}})}
 // ----- Cloudinary video hosting (free plan, unsigned preset) -----
-const CLD={cloud:'xadwog5t',preset:'rovclips',presetCompress:'rovclips_sm'};
+const CLD={cloud:'cltk5hqf',preset:'rovclips',presetCompress:'rovclips_sm'};
 const cldOn=()=>!!(CLD.cloud&&CLD.preset);
 // บีบอัดไฟล์อัตโนมัติแบบพอดีๆ (ไม่บีบเยอะ) เฉพาะไฟล์ที่ใหญ่เกินเกณฑ์ของแต่ละแพ็ก:
 // แพ็กที่เพดานอัปโหลดเกิน 50MB (ROVHUB SVIP) ใช้เกณฑ์ 50MB ส่วนแพ็กอื่น (ฟรี/ROVHUB VIP) ใช้เกณฑ์ 25MB
