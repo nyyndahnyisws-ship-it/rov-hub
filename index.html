@@ -1235,6 +1235,21 @@ const PACKS=[
 {jade:9,bonus:0,baht:10},{jade:49,bonus:0,baht:69},{jade:109,bonus:0,baht:119},{jade:209,bonus:0,baht:220},
 {jade:499,bonus:15,baht:549},{jade:899,bonus:25,baht:999},{jade:1499,bonus:50,baht:1520},
 {jade:4799,bonus:100,baht:4900},{jade:7899,bonus:150,baht:8000}];
+// ---------- โปรโมชั่น 11.11 (ส่วนลดอัตโนมัติตามระดับสมาชิกขณะซื้อ ใช้ได้กับเติมหยกเขียวและซื้อพื้นที่ ROVHUB VIP/SVIP เฉพาะช่วง 11-13 พ.ย. 2026 เวลาไทย) ----------
+const PROMO1111_START=new Date('2026-11-11T00:00:00+07:00').getTime();
+const PROMO1111_END=new Date('2026-11-13T23:59:59+07:00').getTime();
+const promo1111Active=()=>{const n=Date.now();return n>=PROMO1111_START&&n<=PROMO1111_END};
+function promo1111Pct(){if(!promo1111Active())return 0;return rovSvipActive()?35:(rovVipActive()?25:10)}
+function promo1111Banner(){if(!promo1111Active())return '';
+ const pct=promo1111Pct(),tier=rovSvipActive()?'SVIP':(rovVipActive()?'VIP':'สมาชิกธรรมดา');
+ return `<div class="card" style="margin-top:0;border-color:var(--gold);border-width:2px"><b class="n">🎉 โปรโมชั่น 11.11</b>
+ <div class="mut" style="margin-top:4px">ลดราคาเติมหยกเขียวและซื้อพื้นที่ ROVHUB VIP/SVIP อัตโนมัติ ถึงเที่ยงคืนวันที่ 13 พ.ย. นี้เท่านั้น</div>
+ <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+ <span class="chip${tier==='สมาชิกธรรมดา'?' ok':''}">ธรรมดา -10%</span>
+ <span class="chip${tier==='VIP'?' ok':''}">VIP -25%</span>
+ <span class="chip${tier==='SVIP'?' ok':''}">SVIP -35%</span>
+ </div>
+ <div class="mut" style="margin-top:6px">ระดับของคุณตอนนี้ (${esc(tier)}) ได้ส่วนลด <b>-${pct}%</b> ใส่ให้อัตโนมัติ ไม่ต้องกรอกโค้ด</div></div>`}
 let tuPick=-1,tuUseDisc=false;
 function readB64Slip(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
 const stChip=st=>st==='approved'?'<span class="chip ok">✅ อนุมัติแล้ว</span>':st==='rejected'?'<span class="chip wn">❌ ไม่ผ่าน</span>':'<span class="chip">⏳ รอตรวจสอบ</span>';
@@ -1355,9 +1370,10 @@ async function creditStorageApproved(){if(!S||!uid)return;
   }catch(e){}}}
 async function submitStorageReq(){if(stPick<0)return;const st=$('#stst'),bt=$('#stbtn'),f=$('#stslip').files[0],p=STORAGE_PACKS[stPick];
  if(!f){st.textContent='แนบสลิปก่อน';return}if(f.size>2*1048576){st.textContent='ไฟล์สลิปเกิน 2MB';return}
+ const effPct=promo1111Pct(),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
  bt.disabled=true;st.textContent='กำลังส่ง...';try{const slip=await readB64Slip(f);
   const id='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  await db.ref('storageReq/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',pack:p.id,baht:p.baht,slip,status:'pending',ts:firebase.database.ServerValue.TIMESTAMP});
+  await db.ref('storageReq/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',pack:p.id,baht:payBaht,disc:effPct,slip,status:'pending',ts:firebase.database.ServerValue.TIMESTAMP});
   st.textContent='✅ ส่งแล้ว รอแอดมินตรวจสอบ';stPick=-1;$('#stslip').value='';R()}
  catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
 function storageUsageHTML(){const quota=storageQuotaBytes();
@@ -1373,9 +1389,9 @@ function storagePkHTML(){
  </div>
  <div class="grid" style="margin-top:10px">${STORAGE_PACKS.map((p,i)=>{const on=stPick===i;
   return `<button class="menu" style="text-align:center;align-items:center;border-color:${on?'var(--gold)':'var(--line)'};border-width:${on?'2px':'1px'}" onclick="stPick=${i};R()"><span class="em">${p.id==='svip'?'🟣':'🟢'}</span><b>${esc(p.label)}</b><span class="mut">+${p.gb}GB · ${fmt(p.baht)} บาท/${Math.round(p.days/30)} เดือน</span></button>`}).join('')}</div>`;
- if(stPick>=0){const p=STORAGE_PACKS[stPick];
+ if(stPick>=0){const p=STORAGE_PACKS[stPick],effPct=promo1111Pct(),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
   h+=`<div class="card"><b class="n">สแกนจ่ายเงิน</b><div class="mut" style="margin-top:4px">${esc(p.desc)}</div>
-  <div class="mut" style="margin-top:8px">โอน <b>${fmt(p.baht)} บาท</b> ตามคิวอาร์โค้ดด้านล่าง แล้วแนบสลิปส่งให้แอดมินตรวจสอบ</div>
+  <div class="mut" style="margin-top:8px">โอน <b>${fmt(payBaht)} บาท</b>${effPct?` <span class="mut" style="text-decoration:line-through">${fmt(p.baht)} บาท</span> <span class="chip ok">-${effPct}%</span>`:''} ตามคิวอาร์โค้ดด้านล่าง แล้วแนบสลิปส่งให้แอดมินตรวจสอบ</div>
   ${qrImage?`<img src="${qrImage}" style="width:100%;max-width:280px;display:block;margin:12px auto;border-radius:14px">`:'<div class="mut" style="margin-top:10px">แอดมินยังไม่ได้แนบคิวอาร์โค้ด — รอแอดมินอัปโหลดก่อน</div>'}
   <label class="mut" style="display:block;margin-top:10px">แนบสลิปการโอนเงิน</label><input id="stslip" type="file" accept="image/png,image/jpeg,image/webp" class="inp">
   <div class="mut" id="stst" style="margin-top:8px"></div>
@@ -1448,12 +1464,13 @@ async function tryPlayCoverVideo(){const v=document.getElementById('pcovervid');
 function pcoverUnmute(){const v=document.getElementById('pcovervid');if(!v)return;v.muted=false;v.play().catch(()=>{});const b=document.getElementById('pcovervidunmute');if(b)b.style.display='none'}
 function vTopup(){const j=S.jade||0;
  let h=`<div class="card" style="margin-top:0"><div class="row"><div><div class="mut">หยกเขียวของคุณ</div><div class="big" id="jadebal">💎 ${fmt(j)}</div></div></div><div class="mut" style="margin-top:4px">ใช้ปลดล็อกเวอร์พาสพรีเมียม · เติมด้วยเงินจริงผ่านการโอนและแนบสลิป แอดมินตรวจสอบก่อนเครดิตให้</div></div>`;
+ h+=promo1111Banner();
  h+='<div class="card"><b class="n">เลือกแพ็กเกจ</b><div class="mut" style="margin-top:2px">แตะเลือก 1 แพ็กเกจ</div><div class="grid">'+PACKS.map((p,i)=>{const total=p.jade+p.bonus,on=tuPick===i;
   return `<button class="menu" style="text-align:center;align-items:center;border-color:${on?'var(--gold)':'var(--line)'};border-width:${on?'2px':'1px'}" onclick="tuPick=${i};R()"><span class="em">💎</span><b>${fmt(total)} หยก${p.bonus?` <span class="mut">(+${fmt(p.bonus)} โบนัส)</span>`:''}</b><span class="mut">${fmt(p.baht)} บาท</span></button>`}).join('')+'</div></div>';
- if(tuPick>=0){const p=PACKS[tuPick],hasDisc=(S.jadeDisc||0)>0,useDisc=hasDisc&&tuUseDisc,payBaht=useDisc?Math.round(p.baht*0.85):p.baht;
+ if(tuPick>=0){const p=PACKS[tuPick],promoPct=promo1111Pct(),hasDisc=(S.jadeDisc||0)>0,couponHelps=hasDisc&&15>promoPct,useDisc=couponHelps&&tuUseDisc,effPct=Math.max(promoPct,useDisc?15:0),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
   h+=`<div class="card"><b class="n">สแกนจ่ายเงิน</b>
-  ${hasDisc?`<label class="row" style="margin-top:8px;cursor:pointer"><input type="checkbox" ${useDisc?'checked':''} onchange="tuUseDisc=this.checked;R()"><span class="mut">ใช้คูปองส่วนลดเติมหยกเขียว 15% (มี ${S.jadeDisc} ใบ) — จากกิจกรรมโดดดึ๋ง</span></label>`:''}
-  <div class="mut" style="margin-top:4px">โอน <b>${fmt(payBaht)} บาท</b>${useDisc?` <span class="mut" style="text-decoration:line-through">${fmt(p.baht)} บาท</span> <span class="chip ok">-15%</span>`:''} ตามคิวอาร์โค้ดด้านล่าง แล้วแนบสลิปโอนเงินส่งให้แอดมินตรวจสอบ</div>
+  ${couponHelps?`<label class="row" style="margin-top:8px;cursor:pointer"><input type="checkbox" ${useDisc?'checked':''} onchange="tuUseDisc=this.checked;R()"><span class="mut">ใช้คูปองส่วนลดเติมหยกเขียว 15% (มี ${S.jadeDisc} ใบ) — จากกิจกรรมโดดดึ๋ง</span></label>`:''}
+  <div class="mut" style="margin-top:4px">โอน <b>${fmt(payBaht)} บาท</b>${effPct?` <span class="mut" style="text-decoration:line-through">${fmt(p.baht)} บาท</span> <span class="chip ok">-${effPct}%</span>`:''} ตามคิวอาร์โค้ดด้านล่าง แล้วแนบสลิปโอนเงินส่งให้แอดมินตรวจสอบ</div>
   ${qrImage?`<img src="${qrImage}" style="width:100%;max-width:280px;display:block;margin:12px auto;border-radius:14px">`:'<div class="mut" style="margin-top:10px">แอดมินยังไม่ได้แนบคิวอาร์โค้ด — รอแอดมินอัปโหลดก่อน</div>'}
   <label class="mut" style="display:block;margin-top:10px">แนบสลิปการโอนเงิน</label><input id="tuslip" type="file" accept="image/png,image/jpeg,image/webp" class="inp">
   <div class="mut" id="tust" style="margin-top:8px"></div>
@@ -1464,10 +1481,10 @@ function vTopup(){const j=S.jade||0;
  return h}
 async function submitTopup(){if(tuPick<0)return;const st=$('#tust'),bt=$('#tubtn'),f=$('#tuslip').files[0],p=PACKS[tuPick];
  if(!f){st.textContent='แนบสลิปก่อน';return}if(f.size>2*1048576){st.textContent='ไฟล์สลิปเกิน 2MB';return}
- const useDisc=tuUseDisc&&(S.jadeDisc||0)>0,payBaht=useDisc?Math.round(p.baht*0.85):p.baht;
+ const promoPct=promo1111Pct(),hasDisc=(S.jadeDisc||0)>0,couponHelps=hasDisc&&15>promoPct,useDisc=couponHelps&&tuUseDisc,effPct=Math.max(promoPct,useDisc?15:0),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
  bt.disabled=true;st.textContent='กำลังส่ง...';try{const slip=await readB64Slip(f);
   const id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  await db.ref('topups/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',jade:p.jade,bonus:p.bonus,baht:payBaht,disc:useDisc?15:0,status:'pending',ts:firebase.database.ServerValue.TIMESTAMP});
+  await db.ref('topups/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',jade:p.jade,bonus:p.bonus,baht:payBaht,disc:effPct,status:'pending',ts:firebase.database.ServerValue.TIMESTAMP});
   if(useDisc){S.jadeDisc=Math.max(0,(S.jadeDisc||0)-1);save()}
   st.textContent='✅ ส่งแล้ว รอแอดมินตรวจสอบ';tuPick=-1;tuUseDisc=false;$('#tuslip').value='';R()}
  catch(e){st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}bt.disabled=false}
