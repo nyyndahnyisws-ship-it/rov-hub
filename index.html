@@ -3960,8 +3960,15 @@ function liveWatchHTML(){const bc=liveActive[liveWatchBcUid]||{};
  <div style="margin-top:10px"><b class="n">${esc(bc.name||'ผู้เล่น')}</b><div class="mut">${esc(bc.title||'')}</div></div></div>`}
 function vLive(){if(liveStage==='hostPrep')return liveHostPrepHTML();if(liveStage==='hosting')return liveHostingHTML();if(liveStage==='watch')return liveWatchHTML();return liveListHTML()}
 
-// ---------- โพสต์รูปภาพ (ฟีดโซเชียลแยกต่างหาก คล้าย IG: โพสต์หลายรูป/ถูกใจ/คอมเมนต์/รีโพสต์ — ไม่มีคะแนน เป็นแค่โซเชียล) ----------
-let PH=[],PHOff=null,PHCOMP=[];
+// ---------- คลังเพลง (เก็บเพลงประกอบจากคลิป TikTok ที่คนดึงเข้ามาในเว็บ ไว้ให้เลือกใส่โพสต์รูปภาพได้อิสระ) ----------
+let SONGS=[],SONGSOff=null,phPickedSong=null,phSongQ='';
+function songsAttach(){if(SONGSOff)return;SONGSOff=db.ref('songs').orderByChild('ts').limitToLast(150);SONGSOff.on('value',sn=>{const v=sn.val()||{};SONGS=Object.keys(v).map(k=>Object.assign({id:k},v[k])).sort((a,b)=>(b.ts||0)-(a.ts||0));if(pg==='photos'&&$('#phmusicwrap'))$('#dlg').innerHTML=phMusicPickerHTML()},()=>{})}
+function songLibraryAdd(url,title,author){if(!url||typeof url!=='string')return;songsAttach();
+ if(SONGS.some(s=>s.url===url))return; // มีเพลงนี้ในคลังแล้ว ไม่ต้องเพิ่มซ้ำ
+ const id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+ db.ref('songs/'+id).set({url,title:(title||'เพลงไม่ทราบชื่อ').slice(0,80),author:(author||'').slice(0,60),ts:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{})}
+// ---------- โพสต์รูปภาพ (ฟีดโซเชียลแยกต่างหาก คล้าย IG: โพสต์หลายรูป/ถูกใจ/คอมเมนต์/รีโพสต์/ใส่เพลง — ไม่มีคะแนน เป็นแค่โซเชียล) ----------
+let PH=[],PHOff=null,PHCOMP=[],phCapDraft='',phAudioEl=null,phAudioPlayingId=null;
 function cldUploadImage(blob,on){return new Promise((res,rej)=>{const x=new XMLHttpRequest(),fd=new FormData(),er=m=>{const e=new Error(m);e.code=m;rej(e)};fd.append('file',blob);fd.append('upload_preset',cldPresetFor(blob&&blob.size||0));
  x.open('POST','https://api.cloudinary.com/v1_1/'+CLD.cloud+'/image/upload');
  x.upload.onprogress=e=>{if(e.lengthComputable&&on)on(Math.round(e.loaded/e.total*100))};
@@ -3969,42 +3976,86 @@ function cldUploadImage(blob,on){return new Promise((res,rej)=>{const x=new XMLH
  x.onerror=()=>er('เครือข่ายมีปัญหา');x.ontimeout=x.onerror;x.send(fd)})}
 const phInc=(id,k,d)=>db.ref('photos/'+id+'/'+k).transaction(n=>{n=(n||0)+d;return n<0?0:n}).catch(()=>{});
 function phAttach(){if(PHOff)return;PHOff=db.ref('photos').orderByChild('ts').limitToLast(80);PHOff.on('value',sn=>{const v=sn.val()||{};PH=Object.keys(v).map(k=>Object.assign({id:k},v[k])).sort((a,b)=>(b.ts||0)-(a.ts||0));if(pg==='photos')R()},()=>{})}
-function phDetach(){if(PHOff){try{PHOff.off()}catch(e){}PHOff=null}}
+function phDetach(){if(PHOff){try{PHOff.off()}catch(e){}PHOff=null}if(phAudioEl){try{phAudioEl.pause()}catch(e){}phAudioEl=null;phAudioPlayingId=null}}
 function vPhotos(){phAttach();
  return `<div class="card" style="margin-top:0;display:flex;justify-content:space-between;align-items:center;gap:10px"><b class="n">📸 โพสต์รูปภาพ</b><button class="btn pri" onclick="phComposerOpen()">+ โพสต์ใหม่</button></div>`
  +(PH.length?PH.map(phPostHTML).join(''):'<div class="card" style="text-align:center;padding:30px 16px"><div class="mut">ยังไม่มีใครโพสต์รูปภาพเลย เป็นคนแรกเลยสิ!</div></div>')}
-function phPostHTML(p){const own=p.uid===uid,liked=!!(S.ph&&S.ph[p.id]),reposted=!!(S.phr&&S.phr[p.id]);
+function phRepostersHTML(p){const rs=p.reposters||{},keys=Object.keys(rs);if(!keys.length)return '';
+ const show=keys.slice(0,3);
+ return `<div style="position:absolute;left:10px;bottom:10px;display:flex;align-items:center;background:rgba(0,0,0,.55);border-radius:20px;padding:3px 10px 3px 3px;backdrop-filter:blur(4px)">
+ <div style="display:flex">${show.map((k,i)=>`<span style="margin-left:${i?-10:0}px;border:2px solid rgba(20,20,20,.7);border-radius:50%;display:block;line-height:0">${avHTML(k,{name:rs[k]&&rs[k].name},24)}</span>`).join('')}</div>
+ <span style="color:#fff;font-size:12px;margin-left:6px">🔁 ${fmt(keys.length)}</span></div>`}
+function phMusicPillHTML(p){const playing=phAudioPlayingId===p.id;
+ return `<div style="padding:8px 14px 0"><button class="chip${playing?' on':''}" onclick="phToggleMusic('${p.id}',${JSON.stringify(p.musicUrl||'')})">${playing?'⏸️':'🎵'} ${esc((p.musicTitle||'เพลง').slice(0,30))}${p.musicAuthor?' - '+esc(p.musicAuthor.slice(0,20)):''}</button></div>`}
+function phToggleMusic(id,url){if(!url)return;
+ if(phAudioPlayingId===id){if(phAudioEl)phAudioEl.pause();phAudioPlayingId=null;R();return}
+ if(phAudioEl){try{phAudioEl.pause()}catch(e){}}
+ try{phAudioEl=new Audio(url);phAudioEl.loop=true;phAudioEl.volume=0.8;phAudioEl.play().catch(()=>{});phAudioPlayingId=id;phAudioEl.onended=()=>{phAudioPlayingId=null;R()}}catch(e){}
+ R()}
+function phPostHTML(p){const own=p.uid===uid,liked=!!(S.ph&&S.ph[p.id]),reposted=!!(S.phr&&S.phr[p.id]),rpCount=Object.keys(p.reposters||{}).length;
  const imgs=Array.isArray(p.imgs)?p.imgs:Object.values(p.imgs||{});
  const slides=imgs.map(u=>`<img src="${esc(u)}" loading="lazy" style="width:100%;flex:0 0 100%;scroll-snap-align:center;object-fit:cover;max-height:460px;background:#111">`).join('');
  const dots=imgs.length>1?`<div style="display:flex;gap:4px;justify-content:center;margin-top:6px">${imgs.map(()=>'<span style="width:5px;height:5px;border-radius:50%;background:var(--line)"></span>').join('')}</div>`:'';
  return `<div class="card" style="margin-top:12px;padding:0;overflow:hidden">
- ${p.origId?`<div class="mut" style="padding:10px 14px 0;font-size:12px">🔁 ${esc(p.name||'ผู้เล่น')} ได้รีโพสต์จาก ${esc(p.origName||'ผู้เล่น')}</div>`:''}
  <div class="row" style="padding:12px 14px 8px"><div class="gap" style="min-width:0">${avHTML(p.uid,{name:p.name},40)}<div style="min-width:0"><b class="n">${esc(p.name||'ผู้เล่น')}</b><div class="mut" style="font-size:11px">${ntfAgo(p.ts)}</div></div></div>${(own||isAdmin)?`<button class="chip" onclick="phDelete('${p.id}')">ลบ</button>`:''}</div>
- <div style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory">${slides}</div>${dots}
+ <div style="position:relative;display:flex;overflow-x:auto;scroll-snap-type:x mandatory">${slides}${phRepostersHTML(p)}</div>${dots}
+ ${p.musicUrl?phMusicPillHTML(p):''}
  ${p.caption?`<div style="padding:10px 14px 0">${esc(p.caption)}</div>`:''}
  <div class="row" style="padding:10px 14px 14px;gap:10px">
  <button class="chip${liked?' on':''}" onclick="phLike('${p.id}')">❤️ <span id="phl-${p.id}">${fmt(p.l||0)}</span></button>
  <button class="chip" onclick="cmOpenFor('${p.id}','${p.uid}','${esc((p.caption||'').slice(0,40)).replace(/'/g,'')}')">💬 คอมเมนต์</button>
- <button class="chip${reposted?' on':''}" onclick="phRepost('${p.id}')">🔁 <span id="phr-${p.id}">${fmt(p.rp||0)}</span></button>
+ <button class="chip${reposted?' on':''}" onclick="phRepost('${p.id}')">🔁 <span id="phr-${p.id}">${fmt(rpCount)}</span></button>
  </div></div>`}
-function phComposerOpen(){PHCOMP=[];$('#dlg').innerHTML=phComposerHTML()}
+function phComposerOpen(){PHCOMP=[];phCapDraft='';phPickedSong=null;$('#dlg').innerHTML=phComposerHTML()}
 function phComposerHTML(){return `<div class="ov" style="align-items:flex-end;padding:0" onclick="if(event.target===this)phComposerClose()"><div class="gb" style="border-radius:22px 22px 0 0;max-width:480px;margin:0 auto;width:100%;max-height:90vh;overflow:auto;padding:18px" onclick="event.stopPropagation()">
  <div class="row"><b class="n" style="font-size:17px">โพสต์รูปภาพใหม่</b><button class="chip" onclick="phComposerClose()">ปิด</button></div>
  <div class="mut" style="margin:10px 0;font-size:12px">เลือกได้สูงสุด 10 รูป รูปละไม่เกิน 15MB</div>
  <input id="phfile" type="file" accept="image/*" multiple style="display:none" onchange="phPick(this)">
  <button class="btn" style="width:100%" onclick="$('#phfile').click()">🖼️ เลือกรูปภาพ</button>
  <div id="phprev" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div>
- <textarea id="phcap" maxlength="500" placeholder="เขียนแคปชั่น..." style="width:100%;margin-top:10px;min-height:70px;border-radius:12px;padding:10px"></textarea>
+ <textarea id="phcap" maxlength="500" placeholder="เขียนแคปชั่น..." oninput="phCapDraft=this.value" style="width:100%;margin-top:10px;min-height:70px;border-radius:12px;padding:10px">${esc(phCapDraft||'')}</textarea>
+ <button class="btn" style="width:100%;margin-top:10px" onclick="phMusicPicker()">${phPickedSong?('🎵 '+esc((phPickedSong.title||'').slice(0,30))+' (เปลี่ยนเพลง)'):'🎵 เพิ่มเพลง (ไม่บังคับ)'}</button>
+ ${phPickedSong?`<button class="chip" style="margin-top:6px" onclick="phPickedSong=null;$('#dlg').innerHTML=phComposerHTML();phPrevRefresh()">เอาเพลงออก</button>`:''}
  <div class="mut" style="margin:8px 0;font-size:11px">⚠️ ห้ามเนื้อหาทางเพศ/โป๊เปลือย เด็กในทางที่ไม่ดี คำหยาบ/พาดพิงผู้อื่น และเนื้อหาไม่เหมาะสมอื่นๆ <b>ฝ่าฝืนแบนทันที</b> — <a href="javascript:void(0)" onclick="openContentRules()">ดูกฎทั้งหมด</a></div>
  <button class="btn pri" id="phpostbtn" style="width:100%" onclick="phSubmit()">โพสต์</button>
  <div class="mut" id="phst" style="margin-top:8px;text-align:center"></div>
  </div></div>`}
-function phComposerClose(){PHCOMP=[];$('#dlg').innerHTML=''}
+function phComposerClose(){PHCOMP=[];phCapDraft='';phPickedSong=null;$('#dlg').innerHTML=''}
 function phPick(inp){const files=Array.from(inp.files||[]).slice(0,10-PHCOMP.length);
  for(const f of files){if(!f.type||!f.type.startsWith('image/'))continue;if(f.size>15*1048576){say('ไฟล์ '+f.name+' ใหญ่เกิน 15MB ข้ามไฟล์นี้');continue}PHCOMP.push(f)}
  inp.value='';phPrevRefresh()}
 function phPrevRefresh(){const w=$('#phprev');if(!w)return;w.innerHTML=PHCOMP.map((f,i)=>`<div style="position:relative"><img src="${URL.createObjectURL(f)}" style="width:72px;height:72px;object-fit:cover;border-radius:10px"><button onclick="phRemove(${i})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#000;color:#fff;border:0">✕</button></div>`).join('')}
 function phRemove(i){PHCOMP.splice(i,1);phPrevRefresh()}
+function phMusicPicker(){songsAttach();$('#dlg').innerHTML=phMusicPickerHTML()}
+function phMusicPickerHTML(){const q=(phSongQ||'').trim().toLowerCase();
+ const list=SONGS.filter(s=>!q||((s.title||'').toLowerCase().includes(q)||(s.author||'').toLowerCase().includes(q)));
+ return `<div class="ov" style="align-items:center;padding:16px" onclick="if(event.target===this)phMusicPickerClose()"><div id="phmusicwrap" class="gb" style="border-radius:20px;max-width:420px;max-height:80vh;overflow:auto;padding:16px" onclick="event.stopPropagation()">
+ <div class="row"><b class="n">🎵 เลือกเพลง</b><button class="chip" onclick="phMusicPickerClose()">ปิด</button></div>
+ <div class="mut" style="margin:8px 0;font-size:12px">คลังเพลงนี้มาจากคลิป TikTok ที่คนในเว็บดึงเข้ามาแล้ว หรือแปะลิงก์คลิป TikTok ด้านล่างเพื่อดึงเพลงใหม่เข้าคลัง</div>
+ <input class="inp" placeholder="ค้นหาเพลง/ศิลปิน..." value="${esc(phSongQ||'')}" oninput="phSongQ=this.value;$('#dlg').innerHTML=phMusicPickerHTML()">
+ <div style="margin-top:10px;max-height:220px;overflow:auto">${list.length?list.map(s=>`<button class="menu" style="width:100%;text-align:left;margin-top:6px" onclick="phPickSong('${s.id}')"><b class="n">${esc((s.title||'').slice(0,40))}</b><div class="mut" style="font-size:11px">${esc((s.author||'').slice(0,30))}</div></button>`).join(''):'<div class="mut" style="padding:10px 0">ยังไม่มีเพลงในคลัง ลองแปะลิงก์ TikTok ด้านล่างเพื่อดึงเพลงแรกเข้ามา</div>'}</div>
+ <div class="mut" style="margin-top:12px;font-size:12px">แปะลิงก์คลิป TikTok เพื่อดึงเพลงประกอบของคลิปนั้นเข้าคลัง</div>
+ <input id="phmlink" class="inp" placeholder="วางลิงก์ TikTok ที่นี่" style="margin-top:6px">
+ <button class="btn" id="phmbtn" style="width:100%;margin-top:8px" onclick="phMusicFromTikTok()">ดึงเพลงจากลิงก์</button>
+ <div class="mut" id="phmst" style="margin-top:6px"></div>
+ </div></div>`}
+function phMusicPickerClose(){$('#dlg').innerHTML=phComposerHTML();phPrevRefresh()}
+function phPickSong(id){const s=SONGS.find(x=>x.id===id);if(!s)return;phPickedSong=s;$('#dlg').innerHTML=phComposerHTML();phPrevRefresh()}
+async function phMusicFromTikTok(){const v=$('#phmlink'),er=$('#phmst'),bt=$('#phmbtn'),url=((v&&v.value)||'').trim();
+ if(!isTikTokLink(url)){if(er)er.textContent='ลิงก์นี้ไม่ใช่ลิงก์ TikTok';return}
+ if(bt)bt.disabled=true;if(er)er.textContent='กำลังดึงเพลงจากคลิป...';
+ try{
+  const r=await fetch(TIKWM_API+'?url='+encodeURIComponent(url));
+  const j=await r.json();
+  if(!j||j.code!==0||!j.data)throw new Error('resolve-failed');
+  const d=j.data,musicUrl=d.music||(d.music_info&&d.music_info.play)||'';
+  const musicTitle=((d.music_info&&d.music_info.title)||d.music_title||d.title||'เพลงจาก TikTok').slice(0,80);
+  const musicAuthor=((d.music_info&&d.music_info.author)||d.music_author||'').slice(0,60);
+  if(!musicUrl)throw new Error('no-music');
+  songLibraryAdd(musicUrl,musicTitle,musicAuthor);
+  phPickedSong={url:musicUrl,title:musicTitle,author:musicAuthor};
+  if(v)v.value='';$('#dlg').innerHTML=phComposerHTML();phPrevRefresh();
+ }catch(e){if(er)er.textContent='ดึงเพลงไม่สำเร็จ คลิปนี้อาจไม่มีเพลงประกอบ เป็นคลิปส่วนตัว หรือบริการขัดข้องชั่วคราว ลองคลิปอื่น';if(bt)bt.disabled=false}}
 async function phSubmit(){const st=$('#phst'),bt=$('#phpostbtn'),cap=(($('#phcap')&&$('#phcap').value)||'').trim().slice(0,500);
  if(!PHCOMP.length){st.textContent='เลือกรูปภาพอย่างน้อย 1 รูป';return}
  const totalBytes=PHCOMP.reduce((s,f)=>s+f.size,0);
@@ -4014,21 +4065,21 @@ async function phSubmit(){const st=$('#phst'),bt=$('#phpostbtn'),cap=(($('#phcap
  try{
   for(let i=0;i<PHCOMP.length;i++){st.textContent='กำลังอัปโหลด '+(i+1)+'/'+PHCOMP.length+'...';const up=await cldUploadImage(PHCOMP[i]);urls.push(up.url);sz+=up.bytes||PHCOMP[i].size||0}
   const id='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  await db.ref('photos/'+id).set({uid,name:ugName(),caption:cap,imgs:urls,sz,ts:firebase.database.ServerValue.TIMESTAMP,l:0,rp:0});
+  const rec={uid,name:ugName(),caption:cap,imgs:urls,sz,ts:firebase.database.ServerValue.TIMESTAMP,l:0};
+  if(phPickedSong&&phPickedSong.url){rec.musicUrl=phPickedSong.url;rec.musicTitle=phPickedSong.title||'';rec.musicAuthor=phPickedSong.author||''}
+  await db.ref('photos/'+id).set(rec);
   myStorageUsed=null;phComposerClose();say('โพสต์รูปภาพแล้ว')
  }catch(e){st.textContent='โพสต์ไม่สำเร็จ: '+((e&&e.code)||'ลองใหม่');bt.disabled=false}}
 function phLike(id){S.ph=S.ph||{};const on=!S.ph[id];if(on)S.ph[id]=1;else delete S.ph[id];phInc(id,'l',on?1:-1);
  const sp=$('#phl-'+id);if(sp&&sp.parentElement)sp.parentElement.classList.toggle('on',on);save()}
+// รีโพสต์ไม่สร้างโพสต์ใหม่แยกต่างหากในฟีดอีกต่อไป — แค่ติ๊ก/ถอดชื่อตัวเองใน photos/{id}/reposters
+// แล้วโพสต์เดิมจะแสดงวงกลมรูปโปรไฟล์คนที่รีโพสต์ซ้อนกัน + ตัวเลขจำนวนคนรีโพสต์ (ดู phRepostersHTML)
 async function phRepost(id){S.phr=S.phr||{};
- if(S.phr[id]){const newId=S.phr[id];delete S.phr[id];save();
-  try{await db.ref('photos/'+newId).remove();await db.ref('photoreposts/'+id+'/'+uid).remove();phInc(id,'rp',-1)}catch(e){}
-  return}
- const p=PH.find(x=>x.id===id);if(!p)return;
- const newId='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+ const did=!!S.phr[id];
  try{
-  await db.ref('photos/'+newId).set({uid,name:ugName(),caption:p.caption||'',imgs:p.imgs,sz:0,ts:firebase.database.ServerValue.TIMESTAMP,l:0,rp:0,origId:id,origUid:p.uid,origName:p.name||'ผู้เล่น'});
-  await db.ref('photoreposts/'+id+'/'+uid).set(newId);
-  S.phr[id]=newId;save();phInc(id,'rp',1)
+  if(did){await db.ref('photos/'+id+'/reposters/'+uid).remove();delete S.phr[id]}
+  else{await db.ref('photos/'+id+'/reposters/'+uid).set({name:ugName(),ts:firebase.database.ServerValue.TIMESTAMP});S.phr[id]=1}
+  save()
  }catch(e){say('รีโพสต์ไม่สำเร็จ')}}
 async function phDelete(id){if(!(await dlg('ลบโพสต์นี้?','ลบ')))return;try{await db.ref('photos/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
 const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena,live:vLive,photos:vPhotos};
@@ -4258,6 +4309,10 @@ async function ugTikTokGo(){const v=$('#ugttlink'),er=$('#ugttlerr'),bt=$('#ugtt
   const r=await fetch(TIKWM_API+'?url='+encodeURIComponent(url));
   const j=await r.json();
   if(!j||j.code!==0||!j.data||!(j.data.play||j.data.hdplay))throw new Error('resolve-failed');
+  // คลิป TikTok ที่ดึงมาแต่ละคลิปมักจะมีเพลงประกอบติดมาด้วย (music/music_info จาก tikwm) — เก็บเข้า "คลังเพลง"
+  // กลางของเว็บไว้อัตโนมัติ เพื่อให้คนอื่นหยิบไปใส่โพสต์รูปภาพได้ (ไม่ต้องรอใครอัปโหลดเพลงเอง)
+  try{const d=j.data,mUrl=d.music||(d.music_info&&d.music_info.play)||'',mTitle=(d.music_info&&d.music_info.title)||d.music_title||'',mAuthor=(d.music_info&&d.music_info.author)||d.music_author||'';
+   if(mUrl)songLibraryAdd(mUrl,mTitle||d.title||'เพลงจาก TikTok',mAuthor)}catch(e){}
   if(er)er.textContent='กำลังดาวน์โหลดคลิป...';
   const vr=await fetch(j.data.hdplay||j.data.play);
   if(!vr.ok)throw new Error('download-failed');
@@ -4766,7 +4821,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachMyStorageReq();attachBpLevels();attachGC();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();attachPromoCfg();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll();attachStorageReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachMyStorageReq();attachBpLevels();attachGC();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();attachPromoCfg();songsAttach();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll();attachStorageReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
