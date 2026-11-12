@@ -992,7 +992,12 @@ function attachMyTopups(){myTopupsRefOff=db.ref('topups/'+uid);
 async function creditApproved(){if(!S||!uid)return;
  for(const t of myTopups.slice()){if(t.status!=='approved'||t.credited)continue;
   try{const r=await db.ref('topups/'+uid+'/'+t.id+'/credited').transaction(c=>c?undefined:true);
-   if(r&&r.committed){const n=(t.jade||0)+(t.bonus||0);S.jade=(S.jade||0)+n;S.log=S.log||[];S.log.unshift({t:tstr(),m:'เติมหยกเขียว '+fmt(t.baht||0)+' บาท',n:n,cur:'jade'});S.log=S.log.slice(0,80);save();R();say('💎 ได้รับหยกเขียว +'+fmt(n))}}catch(e){}}}
+   if(r&&r.committed){const n=(t.jade||0)+(t.bonus||0);
+    // เขียนหยกเขียว (รวมโบนัส) ตรงไปที่ users/{uid}/jade แบบ transaction แยกต่างหากก่อนเสมอ
+    // กัน: ถ้า save() แบบเขียนทับทั้งเอกสารพร้อมกันดันชนเพดานเดลต้าของฟิลด์อื่น (เช่น pts/gold)
+    // จน Firebase ปฏิเสธการเขียนทั้งก้อน หยกเขียว+โบนัสที่เพิ่งได้จะได้ไม่หายไปเงียบๆ
+    try{await db.ref('users/'+uid+'/jade').transaction(c=>(c||0)+n)}catch(e){}
+    S.jade=(S.jade||0)+n;S.log=S.log||[];S.log.unshift({t:tstr(),m:'เติมหยกเขียว '+fmt(t.baht||0)+' บาท',n:n,cur:'jade'});S.log=S.log.slice(0,80);save();R();say('💎 ได้รับหยกเขียว +'+fmt(n))}}catch(e){}}}
 function attachCodes(){codesRefOff=db.ref('promocodes');
  codesRefOff.on('value',snap=>{const v=snap.val()||{};codes=Object.keys(v).map(id=>Object.assign({code:id},v[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   if(pg==='admin'&&adminTab==='codes'){const e=$('#cdlist');if(e)e.innerHTML=codesList()}},()=>{})}
@@ -1209,10 +1214,10 @@ function vDecor(){const owned=!!S.ownLbNameFx,eq=!!(S.prof&&S.prof.namefx);
  <div class="card"><div class="row"><div class="gap"><img src="${LB_NAMEFX_BOX}" alt="" style="width:72px;height:62px;object-fit:cover;border-radius:12px;flex:none"><div style="min-width:0"><b class="n">ป้ายชื่อเคลื่อนไหว ม่านดาราจักร</b><div class="mut" style="margin-top:2px">${rtChip(5)}</div>${owned?'<div class="mut" style="margin-top:4px"><span class="chip ok">มีแล้ว</span></div>':''}</div></div></div>
  <div class="mut" style="margin-top:10px">ฉากหลังกาแล็กซี/ออโรร่าเคลื่อนไหวต่อเนื่องหลังชื่อคุณ — โชว์ในหน้าอันดับ โปรไฟล์ และช่องแชท</div>
  ${owned?`<button class="btn ${eq?'pri':''}" style="width:100%;margin-top:14px" onclick="lbEquip('namefx',${eq?'false':'true'})">${eq?'ถอด':'สวมใส่'}</button>`
- :`<div style="display:flex;gap:8px;margin-top:14px"><button class="btn pri" style="flex:1" onclick="decorBuy('gold')">🪙 ซื้อ ${fmt(DECORP.gold)}</button><button class="btn" style="flex:1" onclick="decorBuy('jade')">💎 ซื้อ ${fmt(DECORP.jade)}</button></div>`}
+ :(()=>{const jp=promoJadePct(),dj=promoJadePrice(DECORP.jade);return `<div style="display:flex;gap:8px;margin-top:14px"><button class="btn pri" style="flex:1" onclick="decorBuy('gold')">🪙 ซื้อ ${fmt(DECORP.gold)}</button><button class="btn" style="flex:1" onclick="decorBuy('jade')">💎 ซื้อ ${fmt(dj)}${jp?` <span style="text-decoration:line-through">${fmt(DECORP.jade)}</span>`:''}</button></div>`})()}
  </div>`}
 async function decorBuy(cur){if(isBanned()||S.ownLbNameFx)return;
- const price=DECORP[cur],label=cur==='gold'?'เหรียญทอง':'หยกเขียว',icon=cur==='gold'?'🪙':'💎';
+ const price=cur==='jade'?promoJadePrice(DECORP.jade):DECORP[cur],label=cur==='gold'?'เหรียญทอง':'หยกเขียว',icon=cur==='gold'?'🪙':'💎';
  if((S[cur]||0)<price){if(cur==='jade'){if(await dlg(label+'ไม่พอ ไปเติมหยกเขียวเลยไหม?','ไปเติม'))go('topup')}else say(label+'ไม่พอ');return}
  if(!(await dlg('ใช้ '+icon+' '+fmt(price)+' '+label+' ซื้อ "ป้ายชื่อเคลื่อนไหว ม่านดาราจักร"?\nไอเทมตกแต่ง ไม่มีผลพิเศษในเกม','ซื้อเลย')))return;
  if((S[cur]||0)<price||S.ownLbNameFx)return;
@@ -1235,21 +1240,56 @@ const PACKS=[
 {jade:9,bonus:0,baht:10},{jade:49,bonus:0,baht:69},{jade:109,bonus:0,baht:119},{jade:209,bonus:0,baht:220},
 {jade:499,bonus:15,baht:549},{jade:899,bonus:25,baht:999},{jade:1499,bonus:50,baht:1520},
 {jade:4799,bonus:100,baht:4900},{jade:7899,bonus:150,baht:8000}];
-// ---------- โปรโมชั่น 11.11 (ส่วนลดอัตโนมัติตามระดับสมาชิกขณะซื้อ ใช้ได้กับเติมหยกเขียวและซื้อพื้นที่ ROVHUB VIP/SVIP เฉพาะช่วง 11-13 พ.ย. 2026 เวลาไทย) ----------
-const PROMO1111_START=new Date('2026-11-11T00:00:00+07:00').getTime();
-const PROMO1111_END=new Date('2026-11-13T23:59:59+07:00').getTime();
-const promo1111Active=()=>{const n=Date.now();return n>=PROMO1111_START&&n<=PROMO1111_END};
-function promo1111Pct(){if(!promo1111Active())return 0;return rovSvipActive()?35:(rovVipActive()?25:10)}
-function promo1111Banner(){if(!promo1111Active())return '';
- const pct=promo1111Pct(),tier=rovSvipActive()?'SVIP':(rovVipActive()?'VIP':'สมาชิกธรรมดา');
- return `<div class="card" style="margin-top:0;border-color:var(--gold);border-width:2px"><b class="n">🎉 โปรโมชั่น 11.11</b>
- <div class="mut" style="margin-top:4px">ลดราคาเติมหยกเขียวและซื้อพื้นที่ ROVHUB VIP/SVIP อัตโนมัติ ถึงเที่ยงคืนวันที่ 13 พ.ย. นี้เท่านั้น</div>
+// ---------- โปรโมชั่นส่วนลด (ตั้งค่าได้จากหลังบ้านแอดมิน — วันที่เริ่ม/สิ้นสุด, % ส่วนลดตามระดับสมาชิก 0-99%, และเลือกได้ว่าจะลดของที่ซื้อด้วยหยกเขียวด้วยหรือไม่ บันทึกแล้วผู้เล่นเห็นผลทันทีผ่าน Firebase) ----------
+const PROMO_DEF={active:false,start:0,end:0,pctNormal:0,pctVip:0,pctSvip:0,jadeItems:false};
+let PROMO=Object.assign({},PROMO_DEF),promoRefOff=null;
+function attachPromoCfg(){try{promoRefOff=db.ref('promo/cfg');promoRefOff.on('value',snap=>{PROMO=Object.assign({},PROMO_DEF,snap.val()||{});
+  if(pg==='topup')R();if(pg==='bp')R();if(pg==='gacha')R();if(pg==='decor')R();
+  if(pg==='admin'&&adminTab==='promo'){const e=$('#promowrap');if(e)e.outerHTML=vAdminPromo()}},()=>{})}catch(e){}}
+const promoActive=()=>{const n=Date.now();return !!(PROMO.active&&PROMO.start&&PROMO.end&&n>=PROMO.start&&n<=PROMO.end)};
+function promoPct(){if(!promoActive())return 0;return rovSvipActive()?(PROMO.pctSvip||0):(rovVipActive()?(PROMO.pctVip||0):(PROMO.pctNormal||0))}
+const promoJadeActive=()=>promoActive()&&!!PROMO.jadeItems;
+function promoJadePct(){return promoJadeActive()?promoPct():0}
+function promoJadePrice(base){const pct=promoJadePct();return pct?Math.max(0,Math.round(base*(1-pct/100))):base}
+function promoBanner(){if(!promoActive())return '';
+ const pct=promoPct(),tier=rovSvipActive()?'SVIP':(rovVipActive()?'VIP':'สมาชิกธรรมดา');
+ return `<div class="card" style="margin-top:0;border-color:var(--gold);border-width:2px"><b class="n">🎉 โปรโมชั่นพิเศษ</b>
+ <div class="mut" style="margin-top:4px">ลดราคาเติมหยกเขียวและซื้อพื้นที่ ROVHUB VIP/SVIP อัตโนมัติ${promoJadeActive()?' รวมถึงของที่ซื้อด้วยหยกเขียวด้วย':''} ถึง ${new Date(PROMO.end).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}</div>
  <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
- <span class="chip${tier==='สมาชิกธรรมดา'?' ok':''}">ธรรมดา -10%</span>
- <span class="chip${tier==='VIP'?' ok':''}">VIP -25%</span>
- <span class="chip${tier==='SVIP'?' ok':''}">SVIP -35%</span>
+ <span class="chip${tier==='สมาชิกธรรมดา'?' ok':''}">ธรรมดา -${PROMO.pctNormal||0}%</span>
+ <span class="chip${tier==='VIP'?' ok':''}">VIP -${PROMO.pctVip||0}%</span>
+ <span class="chip${tier==='SVIP'?' ok':''}">SVIP -${PROMO.pctSvip||0}%</span>
  </div>
  <div class="mut" style="margin-top:6px">ระดับของคุณตอนนี้ (${esc(tier)}) ได้ส่วนลด <b>-${pct}%</b> ใส่ให้อัตโนมัติ ไม่ต้องกรอกโค้ด</div></div>`}
+let promoDraft=null;
+function promoEditInit(){promoDraft=Object.assign({},PROMO_DEF,PROMO)}
+function promoDtLocal(ms){if(!ms)return '';const d=new Date(ms-d_tzOff());return d.toISOString().slice(0,16)}
+function d_tzOff(){return new Date().getTimezoneOffset()*60000}
+function vAdminPromo(){if(!promoDraft)promoEditInit();const d=promoDraft;
+ const clampPct=v=>Math.max(0,Math.min(99,parseInt(v,10)||0));
+ return `<div id="promowrap"><div class="card" style="margin-top:0"><b class="n">🎉 โปรโมชั่นส่วนลด</b>
+ <div class="mut" style="margin-top:4px">ตั้งช่วงเวลาและ % ส่วนลดตามระดับสมาชิก (สูงสุด 99%) กดบันทึกแล้วผู้เล่นเห็นผลทันที ไม่ต้องอัปเดตแอป</div>
+ ${PROMO.active&&promoActive()?'<div class="chip ok" style="margin-top:8px">🟢 กำลังทำงานอยู่ตอนนี้</div>':PROMO.active?'<div class="chip" style="margin-top:8px">⏸️ เปิดใช้งานไว้ แต่อยู่นอกช่วงเวลา</div>':'<div class="chip" style="margin-top:8px">⚪ ปิดอยู่</div>'}
+ <label class="row" style="margin-top:12px;cursor:pointer"><input type="checkbox" ${d.active?'checked':''} onchange="promoDraft.active=this.checked"><span class="mut">เปิดใช้งานโปรโมชั่น</span></label>
+ <label class="mut" style="display:block;margin-top:10px">วันเวลาเริ่ม</label><input class="inp" type="datetime-local" value="${promoDtLocal(d.start)}" onchange="promoDraft.start=this.value?new Date(this.value).getTime():0">
+ <label class="mut" style="display:block;margin-top:10px">วันเวลาสิ้นสุด</label><input class="inp" type="datetime-local" value="${promoDtLocal(d.end)}" onchange="promoDraft.end=this.value?new Date(this.value).getTime():0">
+ <div class="grid" style="margin-top:12px;grid-template-columns:1fr 1fr 1fr">
+ <label><span class="mut" style="display:block">ธรรมดา %</span><input class="inp" type="number" min="0" max="99" value="${d.pctNormal||0}" onchange="promoDraft.pctNormal=clampPromoPct(this.value,this)"></label>
+ <label><span class="mut" style="display:block">VIP %</span><input class="inp" type="number" min="0" max="99" value="${d.pctVip||0}" onchange="promoDraft.pctVip=clampPromoPct(this.value,this)"></label>
+ <label><span class="mut" style="display:block">SVIP %</span><input class="inp" type="number" min="0" max="99" value="${d.pctSvip||0}" onchange="promoDraft.pctSvip=clampPromoPct(this.value,this)"></label>
+ </div>
+ <label class="row" style="margin-top:12px;cursor:pointer"><input type="checkbox" ${d.jadeItems?'checked':''} onchange="promoDraft.jadeItems=this.checked"><span class="mut">ลดราคาของที่ซื้อด้วยหยกเขียวด้วย (เวอร์พาสพรีเมียม, บัตรสุ่มฮาโลวีน, ไอเทมตกแต่ง/ร้านค้า ฯลฯ)</span></label>
+ <div class="mut" id="promost" style="margin-top:8px"></div>
+ <button class="btn gold" style="width:100%;margin-top:10px" onclick="savePromoCfg()">💾 บันทึก</button>
+ </div></div>`}
+function clampPromoPct(v,el){const n=Math.max(0,Math.min(99,parseInt(v,10)||0));if(el)el.value=n;return n}
+async function savePromoCfg(){if(!promoDraft)return;const st=$('#promost');
+ if(promoDraft.active&&(!promoDraft.start||!promoDraft.end)){if(st)st.textContent='กรุณาตั้งวันเวลาเริ่ม-สิ้นสุดก่อน';return}
+ if(promoDraft.active&&promoDraft.start>=promoDraft.end){if(st)st.textContent='วันเวลาเริ่มต้องมาก่อนวันเวลาสิ้นสุด';return}
+ if(st)st.textContent='กำลังบันทึก...';
+ try{await db.ref('promo/cfg').set({active:!!promoDraft.active,start:promoDraft.start||0,end:promoDraft.end||0,pctNormal:clampPromoPct(promoDraft.pctNormal),pctVip:clampPromoPct(promoDraft.pctVip),pctSvip:clampPromoPct(promoDraft.pctSvip),jadeItems:!!promoDraft.jadeItems});
+  if(st)st.textContent='✅ บันทึกแล้ว ผู้เล่นเห็นผลทันที'}
+ catch(e){if(st)st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}}
 let tuPick=-1,tuUseDisc=false;
 function readB64Slip(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
 const stChip=st=>st==='approved'?'<span class="chip ok">✅ อนุมัติแล้ว</span>':st==='rejected'?'<span class="chip wn">❌ ไม่ผ่าน</span>':'<span class="chip">⏳ รอตรวจสอบ</span>';
@@ -1370,7 +1410,7 @@ async function creditStorageApproved(){if(!S||!uid)return;
   }catch(e){}}}
 async function submitStorageReq(){if(stPick<0)return;const st=$('#stst'),bt=$('#stbtn'),f=$('#stslip').files[0],p=STORAGE_PACKS[stPick];
  if(!f){st.textContent='แนบสลิปก่อน';return}if(f.size>2*1048576){st.textContent='ไฟล์สลิปเกิน 2MB';return}
- const effPct=promo1111Pct(),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
+ const effPct=promoPct(),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
  bt.disabled=true;st.textContent='กำลังส่ง...';try{const slip=await readB64Slip(f);
   const id='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   await db.ref('storageReq/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',pack:p.id,baht:payBaht,disc:effPct,slip,status:'pending',ts:firebase.database.ServerValue.TIMESTAMP});
@@ -1389,7 +1429,7 @@ function storagePkHTML(){
  </div>
  <div class="grid" style="margin-top:10px">${STORAGE_PACKS.map((p,i)=>{const on=stPick===i;
   return `<button class="menu" style="text-align:center;align-items:center;border-color:${on?'var(--gold)':'var(--line)'};border-width:${on?'2px':'1px'}" onclick="stPick=${i};R()"><span class="em">${p.id==='svip'?'🟣':'🟢'}</span><b>${esc(p.label)}</b><span class="mut">+${p.gb}GB · ${fmt(p.baht)} บาท/${Math.round(p.days/30)} เดือน</span></button>`}).join('')}</div>`;
- if(stPick>=0){const p=STORAGE_PACKS[stPick],effPct=promo1111Pct(),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
+ if(stPick>=0){const p=STORAGE_PACKS[stPick],effPct=promoPct(),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
   h+=`<div class="card"><b class="n">สแกนจ่ายเงิน</b><div class="mut" style="margin-top:4px">${esc(p.desc)}</div>
   <div class="mut" style="margin-top:8px">โอน <b>${fmt(payBaht)} บาท</b>${effPct?` <span class="mut" style="text-decoration:line-through">${fmt(p.baht)} บาท</span> <span class="chip ok">-${effPct}%</span>`:''} ตามคิวอาร์โค้ดด้านล่าง แล้วแนบสลิปส่งให้แอดมินตรวจสอบ</div>
   ${qrImage?`<img src="${qrImage}" style="width:100%;max-width:280px;display:block;margin:12px auto;border-radius:14px">`:'<div class="mut" style="margin-top:10px">แอดมินยังไม่ได้แนบคิวอาร์โค้ด — รอแอดมินอัปโหลดก่อน</div>'}
@@ -1464,10 +1504,10 @@ async function tryPlayCoverVideo(){const v=document.getElementById('pcovervid');
 function pcoverUnmute(){const v=document.getElementById('pcovervid');if(!v)return;v.muted=false;v.play().catch(()=>{});const b=document.getElementById('pcovervidunmute');if(b)b.style.display='none'}
 function vTopup(){const j=S.jade||0;
  let h=`<div class="card" style="margin-top:0"><div class="row"><div><div class="mut">หยกเขียวของคุณ</div><div class="big" id="jadebal">💎 ${fmt(j)}</div></div></div><div class="mut" style="margin-top:4px">ใช้ปลดล็อกเวอร์พาสพรีเมียม · เติมด้วยเงินจริงผ่านการโอนและแนบสลิป แอดมินตรวจสอบก่อนเครดิตให้</div></div>`;
- h+=promo1111Banner();
+ h+=promoBanner();
  h+='<div class="card"><b class="n">เลือกแพ็กเกจ</b><div class="mut" style="margin-top:2px">แตะเลือก 1 แพ็กเกจ</div><div class="grid">'+PACKS.map((p,i)=>{const total=p.jade+p.bonus,on=tuPick===i;
   return `<button class="menu" style="text-align:center;align-items:center;border-color:${on?'var(--gold)':'var(--line)'};border-width:${on?'2px':'1px'}" onclick="tuPick=${i};R()"><span class="em">💎</span><b>${fmt(total)} หยก${p.bonus?` <span class="mut">(+${fmt(p.bonus)} โบนัส)</span>`:''}</b><span class="mut">${fmt(p.baht)} บาท</span></button>`}).join('')+'</div></div>';
- if(tuPick>=0){const p=PACKS[tuPick],promoPct=promo1111Pct(),hasDisc=(S.jadeDisc||0)>0,couponHelps=hasDisc&&15>promoPct,useDisc=couponHelps&&tuUseDisc,effPct=Math.max(promoPct,useDisc?15:0),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
+ if(tuPick>=0){const p=PACKS[tuPick],pPct=promoPct(),hasDisc=(S.jadeDisc||0)>0,couponHelps=hasDisc&&15>pPct,useDisc=couponHelps&&tuUseDisc,effPct=Math.max(pPct,useDisc?15:0),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
   h+=`<div class="card"><b class="n">สแกนจ่ายเงิน</b>
   ${couponHelps?`<label class="row" style="margin-top:8px;cursor:pointer"><input type="checkbox" ${useDisc?'checked':''} onchange="tuUseDisc=this.checked;R()"><span class="mut">ใช้คูปองส่วนลดเติมหยกเขียว 15% (มี ${S.jadeDisc} ใบ) — จากกิจกรรมโดดดึ๋ง</span></label>`:''}
   <div class="mut" style="margin-top:4px">โอน <b>${fmt(payBaht)} บาท</b>${effPct?` <span class="mut" style="text-decoration:line-through">${fmt(p.baht)} บาท</span> <span class="chip ok">-${effPct}%</span>`:''} ตามคิวอาร์โค้ดด้านล่าง แล้วแนบสลิปโอนเงินส่งให้แอดมินตรวจสอบ</div>
@@ -1481,7 +1521,7 @@ function vTopup(){const j=S.jade||0;
  return h}
 async function submitTopup(){if(tuPick<0)return;const st=$('#tust'),bt=$('#tubtn'),f=$('#tuslip').files[0],p=PACKS[tuPick];
  if(!f){st.textContent='แนบสลิปก่อน';return}if(f.size>2*1048576){st.textContent='ไฟล์สลิปเกิน 2MB';return}
- const promoPct=promo1111Pct(),hasDisc=(S.jadeDisc||0)>0,couponHelps=hasDisc&&15>promoPct,useDisc=couponHelps&&tuUseDisc,effPct=Math.max(promoPct,useDisc?15:0),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
+ const pPct=promoPct(),hasDisc=(S.jadeDisc||0)>0,couponHelps=hasDisc&&15>pPct,useDisc=couponHelps&&tuUseDisc,effPct=Math.max(pPct,useDisc?15:0),payBaht=effPct?Math.round(p.baht*(1-effPct/100)):p.baht;
  bt.disabled=true;st.textContent='กำลังส่ง...';try{const slip=await readB64Slip(f);
   const id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   await db.ref('topups/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',jade:p.jade,bonus:p.bonus,baht:payBaht,disc:effPct,status:'pending',ts:firebase.database.ServerValue.TIMESTAMP});
@@ -1536,16 +1576,17 @@ function vBP(){const lv=bpLevel(),xpIn=((S.bpXP||0)%BP_XP_PER_LV),prem=!!S.bpPre
  <div class="bar" style="background:rgba(255,255,255,.25)"><i style="width:${lv>=BP_MAX_LV?100:xpIn/BP_XP_PER_LV*100}%;background:#fff"></i></div><div class="mut" style="color:rgba(255,255,255,.75);margin-top:6px">${lv>=BP_MAX_LV?'ถึงเลเวลสูงสุดแล้ว':xpIn+' / '+BP_XP_PER_LV+' XP สู่เลเวลถัดไป'}</div></div>`;
  if(!prem&&S.hw&&S.hw.pass>0)h+=`<button class="btn gold" style="width:100%;margin-top:12px" onclick="hwUsePass()">ใช้บัตรปลดล็อกเวอร์พาส (มี ${S.hw.pass} ใบ)</button>`;
  h+=`<button class="btn pri" style="width:100%;margin-top:12px" onclick="bpmOpen()">ภารกิจเวอร์พาส${bpmCount()?' ('+bpmCount()+' รับได้)':''}</button>`;
- if(!prem)h+=`<div class="card"><b class="n">ปลดล็อกเวอร์พาสพรีเมียม</b><div class="mut" style="margin-top:4px">รับรางวัลฝั่งพรีเมียมของทุกเลเวลที่ถึงแล้วและเลเวลถัดไป ใช้หยกเขียวเท่านั้น</div>
- <div class="grid"><button class="menu" style="text-align:center;align-items:center" onclick="buyBpPremium(399,0)"><span class="em">⭐</span><b>ปลดล็อกพรีเมียม</b><span class="mut">💎 399</span></button>
- <button class="menu" style="text-align:center;align-items:center;border-color:var(--gold)" onclick="buyBpPremium(899,50)"><span class="em">🚀</span><b>ปลดล็อก + เลเวล 50 ทันที</b><span class="mut">💎 899</span></button></div></div>`;
+ if(!prem){const jp=promoJadePct(),p1=promoJadePrice(399),p2=promoJadePrice(899);
+  h+=`<div class="card"><b class="n">ปลดล็อกเวอร์พาสพรีเมียม</b><div class="mut" style="margin-top:4px">รับรางวัลฝั่งพรีเมียมของทุกเลเวลที่ถึงแล้วและเลเวลถัดไป ใช้หยกเขียวเท่านั้น</div>
+ <div class="grid"><button class="menu" style="text-align:center;align-items:center" onclick="buyBpPremium(399,0)"><span class="em">⭐</span><b>ปลดล็อกพรีเมียม</b><span class="mut">💎 ${fmt(p1)}${jp?` <span style="text-decoration:line-through">399</span> <span class="chip ok">-${jp}%</span>`:''}</span></button>
+ <button class="menu" style="text-align:center;align-items:center;border-color:var(--gold)" onclick="buyBpPremium(899,50)"><span class="em">🚀</span><b>ปลดล็อก + เลเวล 50 ทันที</b><span class="mut">💎 ${fmt(p2)}${jp?` <span style="text-decoration:line-through">899</span> <span class="chip ok">-${jp}%</span>`:''}</span></button></div></div>`}
  h+='<div class="mut" style="margin:18px 4px 8px">รางวัลแต่ละเลเวล</div>';
  for(let n=1;n<=BP_MAX_LV;n++){const reached=n<=lv||!!isAdmin,fr=bpReward(n,'free'),pr=bpReward(n,'premium'),fc=(S.bpClaimedFree||{})[n],pc=(S.bpClaimedPremium||{})[n];
   const st=(c,done,track)=>done?'<span class="chip ok">รับแล้ว</span>':(track==='premium'&&!prem)?'<span class="chip wn">ต้องพรีเมียม</span>':reached?`<button class="chip" style="background:${track==='free'?'var(--gold)':'var(--pri)'};color:#fff" onclick="claimBpReward(${n},'${track}')">รับ</button>`:'<span class="chip wn">ยังไม่ถึง</span>';
   const slot=(tag,c,done,track)=>c?`<div class="slot ${track}${done?' got':''}"><span class="stag">${tag}</span><span class="rwi">${rwIcon(c)}</span><span class="rwt">${rwText(c)}</span><span class="sbtn">${st(c,done,track)}</span></div>`:(track==='free'?`<div class="slot free none"><span class="stag">${tag}</span><span class="rwt mut">—</span></div>`:'');
   h+=`<div class="card bprow${reached?' reached':''}"><div class="bplv"><b class="n">Lv.${n}</b></div><div class="bpslots">${slot('ฟรี',fr,fc,'free')}${slot('พรีเมียม',pr,pc,'premium')}</div></div>`}
  return h}
-async function buyBpPremium(cost,jumpLevel){if(S.bpPremium)return;if((S.jade||0)<cost)return;
+async function buyBpPremium(baseCost,jumpLevel){if(S.bpPremium)return;const cost=promoJadePrice(baseCost);if((S.jade||0)<cost)return;
  if(!(await dlg('ใช้ 💎 '+fmt(cost)+' หยกเขียว ปลดล็อกเวอร์พาสพรีเมียม'+(jumpLevel?' พร้อมเลเวล '+jumpLevel+' ทันที':'')+' ?')))return;if((S.jade||0)<cost)return;
  S.jade-=cost;S.bpPremium=true;S.bpPasses=(S.bpPasses||0)+1;if(jumpLevel)S.bpXP=Math.max(S.bpXP||0,jumpLevel*BP_XP_PER_LV);
  S.log.unshift({t:tstr(),m:'ปลดล็อกเวอร์พาสพรีเมียม'+(jumpLevel?' + เลเวล '+jumpLevel:''),n:-cost,cur:'jade'});S.log=S.log.slice(0,80);save();R()}
@@ -2137,9 +2178,9 @@ function vAdminGacha(){if(!gcDraft)gcDraft=JSON.parse(JSON.stringify(GC));
  <div class="card"><b class="n">🎟️ แพ็กขายบัตรสุ่ม (ราคาเป็นหยกเขียว)</b>${gcDraft.packs.map((p,i)=>`<div class="gcg" style="margin-top:8px;grid-template-columns:1fr 1fr auto;align-items:end"><label class="gcl"><span>จำนวนบัตร</span><input class="inp" type="number" min="1" value="${p.n}" oninput="gcPk(${i},'n',this.value)"></label><label class="gcl"><span>ราคา (หยก)</span><input class="inp" type="number" min="0" value="${p.c}" oninput="gcPk(${i},'c',this.value)"></label><button class="btn" onclick="gcPkDel(${i})">ลบ</button></div>`).join('')}
  <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" onclick="gcPkAdd()">+ เพิ่มแพ็ก</button><button class="btn" onclick="if(confirm('คืนค่าเริ่มต้นทั้งหมด (ยังไม่บันทึก)?'))gcReset()">คืนค่าเริ่มต้น</button></div></div>`}
 function vAdmin(){if(!isAdmin)return '<div class="card"><div class="mut">เฉพาะบัญชีแอดมินเท่านั้น</div></div>';
- const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า'],['topup','💎 เติมหยก'],['bp','🎫 เวอร์พาส'],['players','👥 ผู้เล่น'],['gacha','🎰 กาชา'],['lb','🐉 กล่องสุ่ม'],['decor','✨ ของตกแต่ง'],['jump','🪂 โดดดึ๋ง'],['rankcfg','⚔️ แรงค์'],['stats','📊 สถิติ'],['sys','🛠️ ระบบ'],['ugc','🎬 คลิปผู้เล่น'],['mus','🎵 เพลงเสริม'],['rpt','🚩 รายงาน'],['rw','🎁 ของรางวัล']];
+ const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า'],['topup','💎 เติมหยก'],['promo','🎉 โปรโมชั่น'],['bp','🎫 เวอร์พาส'],['players','👥 ผู้เล่น'],['gacha','🎰 กาชา'],['lb','🐉 กล่องสุ่ม'],['decor','✨ ของตกแต่ง'],['jump','🪂 โดดดึ๋ง'],['rankcfg','⚔️ แรงค์'],['stats','📊 สถิติ'],['sys','🛠️ ระบบ'],['ugc','🎬 คลิปผู้เล่น'],['mus','🎵 เพลงเสริม'],['rpt','🚩 รายงาน'],['rw','🎁 ของรางวัล']];
  let h=`<div class="tabs" style="margin:0 0 4px">${tabs.map(([k,l])=>`<button class="tab ${adminTab===k?'on':''}" onclick="adminTab='${k}';R()">${l}</button>`).join('')}</div>`;
- if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else if(adminTab==='shop')h+=vAdminShop();else if(adminTab==='topup')h+=vAdminTopup();else if(adminTab==='players')h+=vAdminPlayers();else if(adminTab==='gacha')h+=vAdminGacha();else if(adminTab==='lb')h+=vAdminLB();else if(adminTab==='decor')h+=vAdminDecor();else if(adminTab==='jump')h+=vAdminJump();else if(adminTab==='rankcfg')h+=vAdminRankCfg();else if(adminTab==='ugc')h+=vAdminUgc();else if(adminTab==='mus')h+=vAdminMus();else if(adminTab==='rpt')h+=vAdminRpt();else if(adminTab==='rw')h+=vAdminRw();else if(adminTab==='stats')h+=vAdminStats();else if(adminTab==='sys')h+=vAdminSys();else h+=vAdminBp();
+ if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else if(adminTab==='shop')h+=vAdminShop();else if(adminTab==='topup')h+=vAdminTopup();else if(adminTab==='promo')h+=vAdminPromo();else if(adminTab==='players')h+=vAdminPlayers();else if(adminTab==='gacha')h+=vAdminGacha();else if(adminTab==='lb')h+=vAdminLB();else if(adminTab==='decor')h+=vAdminDecor();else if(adminTab==='jump')h+=vAdminJump();else if(adminTab==='rankcfg')h+=vAdminRankCfg();else if(adminTab==='ugc')h+=vAdminUgc();else if(adminTab==='mus')h+=vAdminMus();else if(adminTab==='rpt')h+=vAdminRpt();else if(adminTab==='rw')h+=vAdminRw();else if(adminTab==='stats')h+=vAdminStats();else if(adminTab==='sys')h+=vAdminSys();else h+=vAdminBp();
  return h}
 
 // ---------- admin: system settings + stats ----------
@@ -3114,7 +3155,7 @@ function vipSettings(){const pc=passCount(),adm=typeof isAdmin!=='undefined'&&is
  return `<div class="card" style="margin-top:0"><b class="n">ยศเวอร์พาส (VIP)</b><div class="mut" style="margin-top:4px">แสดงยศของคุณข้างชื่อในอันดับ · สะสมการซื้อเวอร์พาสพรีเมียมแล้ว <b>${adm?'ทุกพาส (แอดมิน)':pc+' พาส'}</b> · กดซ้ำที่ยศที่ใช้อยู่เพื่อซ่อน</div>${grid('v')}</div>
  <div class="card"><b class="n">ป้ายชื่อซีซั่นเวอร์พาส</b><div class="mut" style="margin-top:4px">ใช้เงื่อนไขการปลดล็อกเดียวกับยศ VIP แสดงใต้ชื่อในอันดับ</div>${grid('p')}</div>`}
 function vSettings(){const ts=myTitles();
- return notifSettingsHTML()+gfxCard()+vipSettings()+`<div class="card" style="margin-top:0"><b class="n">ยศและป้ายชื่อ</b><div class="mut" style="margin-top:4px">ไอเทมที่ได้จากเวอร์พาส (เช่น ไอเทมตำนานประจำซีซั่น) ใช้เป็นยศแสดงข้างชื่อในหน้าอันดับได้ ผู้เล่นที่มียศจะมีป้ายชื่อเรืองแสงในอันดับ</div>${ts.length?ts.map((t,i)=>`<div class="row" style="margin-top:10px"><span class="ttl">${esc(t)}</span>${rtChip(3)}${S.title===t?'<button class="btn" onclick="setTitle(-1)">ถอดยศ</button>':'<button class="btn pri" onclick="setTitle('+i+')">สวมใส่</button>'}</div>`).join(''):'<div class="mut" style="margin-top:8px">ยังไม่มียศ — รับไอเทมจากรางวัลเวอร์พาสเพื่อปลดล็อก</div>'}</div>`
+ return notifSettingsHTML()+notifSoundCardHTML()+gfxCard()+vipSettings()+`<div class="card" style="margin-top:0"><b class="n">ยศและป้ายชื่อ</b><div class="mut" style="margin-top:4px">ไอเทมที่ได้จากเวอร์พาส (เช่น ไอเทมตำนานประจำซีซั่น) ใช้เป็นยศแสดงข้างชื่อในหน้าอันดับได้ ผู้เล่นที่มียศจะมีป้ายชื่อเรืองแสงในอันดับ</div>${ts.length?ts.map((t,i)=>`<div class="row" style="margin-top:10px"><span class="ttl">${esc(t)}</span>${rtChip(3)}${S.title===t?'<button class="btn" onclick="setTitle(-1)">ถอดยศ</button>':'<button class="btn pri" onclick="setTitle('+i+')">สวมใส่</button>'}</div>`).join(''):'<div class="mut" style="margin-top:8px">ยังไม่มียศ — รับไอเทมจากรางวัลเวอร์พาสเพื่อปลดล็อก</div>'}</div>`
  +`<div class="card" style="margin-top:0"><b class="n">คลังธีม UI</b><div class="mut" style="margin-top:4px">ธีมที่ปลดล็อกแล้วเลือกใช้ได้ทันที ${isAdmin?'(แอดมินปลดล็อกทุกธีมอัตโนมัติ)':'ปลดล็อกธีมใหม่ได้จากรางวัลเวอร์พาส'}</div></div>`
  +THEMES.map(t=>{const ok=themeOk(t.id),on=(S.theme||'default')===t.id||(t.id==='default'&&!S.theme);
   return `<div class="card"><div class="row" style="align-items:flex-start;gap:12px"><div style="width:84px;height:64px;border-radius:12px;border:2px solid ${RT[t.rt][1]};box-shadow:0 0 10px ${RT[t.rt][1]}66;flex:none;background:${t.sw}"></div><div style="flex:1;min-width:0"><b class="n">${t.name}</b><div style="margin-top:5px">${rtChip(t.rt)}</div><div class="mut" style="margin-top:4px">${t.desc}</div></div></div>
@@ -3150,7 +3191,42 @@ async function toggleOSNotif(){
 function notifSettingsHTML(){const on=!!S.notifOn,granted=typeof Notification!=='undefined'&&Notification.permission==='granted';
  return `<div class="card" style="margin-top:0"><b class="n">🔔 การแจ้งเตือนนอกเว็บ</b><div class="mut" style="margin-top:4px">เปิดไว้แล้วเปิดเว็บทิ้งไว้เบื้องหลัง (สลับแอป/ล็อกหน้าจอได้) จะมีการแจ้งเตือนเด้งขึ้นมาเวลามีข้อความแชทใหม่ คำเชิญ หรือประกาศจากแอดมิน — ต้องติดตั้งเว็บนี้เป็นแอปที่หน้าจอหลักก่อนถึงจะได้ผลดีที่สุด</div>
  <div class="row" style="margin-top:10px"><span class="chip ${on&&granted?'ok':'wn'}">${on&&granted?'เปิดอยู่':granted&&!on?'ปิดอยู่':'ยังไม่อนุญาต'}</span><button class="btn pri" style="margin-left:auto" onclick="toggleOSNotif()">${on?'ปิดการแจ้งเตือน':'เปิดการแจ้งเตือน'}</button></div></div>`}
-function notifyC(o){if(isBanned())return;osNotify(o.title,o.txt);let t=document.getElementById('ctoast');if(!t){t=document.createElement('div');t.id='ctoast';document.body.appendChild(t)}
+// ---------- เสียงแจ้งเตือนขณะเปิดแอปอยู่ (ต่างจากการแจ้งเตือนนอกเว็บด้านบน — เล่นเสียงทันทีตอนมี toast เด้งขึ้นมาขณะใช้งานแอป) ----------
+let sndCtx=null;
+function primeSnd(){try{if(!sndCtx)sndCtx=new (window.AudioContext||window.webkitAudioContext)();if(sndCtx.state==='suspended')sndCtx.resume().catch(()=>{})}catch(e){}}
+document.addEventListener('pointerdown',primeSnd,{once:true});
+function playNotifSound(){if(S&&S.sndOn===false)return;
+ if(S&&S.notifSound){try{const a=new Audio(S.notifSound);a.volume=0.7;a.play().catch(()=>{})}catch(e){}return}
+ try{primeSnd();if(!sndCtx)return;const ctx=sndCtx,now=ctx.currentTime;
+  [[880,now,0.12],[1320,now+0.12,0.16]].forEach(([freq,t,dur])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.25,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+dur+0.02)})}
+ catch(e){}}
+function toggleSnd(){S.sndOn=S.sndOn===false?true:false;save();R();if(S.sndOn)playNotifSound()}
+function cldUploadAudio(blob,on){return new Promise((res,rej)=>{const x=new XMLHttpRequest(),fd=new FormData(),er=m=>{const e=new Error(m);e.code=m;rej(e)};fd.append('file',blob);fd.append('upload_preset',CLD.preset);
+ x.open('POST','https://api.cloudinary.com/v1_1/'+CLD.cloud+'/video/upload');
+ x.upload.onprogress=e=>{if(e.lengthComputable&&on)on(Math.round(e.loaded/e.total*100))};
+ x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status>=200&&x.status<300&&j.secure_url)res(j.secure_url);else er((j.error&&j.error.message)||('อัปโหลดไม่สำเร็จ ('+x.status+')'))};
+ x.onerror=()=>er('เครือข่ายมีปัญหา');x.ontimeout=x.onerror;x.send(fd)})}
+async function uploadNotifSound(){if(!(rovVipActive()||rovSvipActive()))return;const st=$('#sndst'),bt=$('#sndbtn'),f=$('#sndfile').files[0];
+ if(!f){st.textContent='เลือกไฟล์เสียงก่อน';return}
+ if(f.size>10*1048576){st.textContent='ไฟล์เสียงเกิน 10MB';return}
+ if(!cldOn()){st.textContent='ระบบอัปโหลดยังไม่พร้อมใช้งาน';return}
+ bt.disabled=true;st.textContent='กำลังอัปโหลด...';
+ try{const url=await cldUploadAudio(f);S.notifSound=url;save();st.textContent='✅ อัปโหลดเสียงแจ้งเตือนสำเร็จ';$('#sndfile').value='';R();playNotifSound()}
+ catch(e){st.textContent='อัปโหลดไม่สำเร็จ: '+cldFriendlyErr((e&&e.code)||'ลองใหม่')}
+ bt.disabled=false}
+function resetNotifSound(){S.notifSound='';save();R();say('ใช้เสียงแจ้งเตือนเริ่มต้นแล้ว')}
+function notifSoundCardHTML(){const on=S.sndOn!==false,vip=rovVipActive()||rovSvipActive();
+ return `<div class="card" style="margin-top:0"><b class="n">🔊 เสียงแจ้งเตือน</b><div class="mut" style="margin-top:4px">เล่นเสียงเตือนทันทีเมื่อมีข้อความแชทใหม่ คำเชิญ หรือประกาศเด้งขึ้นมาขณะเปิดแอปอยู่ (คนละส่วนกับการแจ้งเตือนนอกเว็บด้านบน)</div>
+ <div class="row" style="margin-top:10px"><span class="chip ${on?'ok':'wn'}">${on?'เปิดอยู่':'ปิดอยู่'}</span><button class="btn pri" style="margin-left:auto" onclick="toggleSnd()">${on?'ปิดเสียง':'เปิดเสียง'}</button></div>
+ <button class="btn" style="width:100%;margin-top:10px" onclick="playNotifSound()">🔊 ทดสอบเสียง</button>
+ ${vip?`<div class="mut" style="margin-top:12px">สิทธิ์ ROVHUB VIP/SVIP: อัปโหลดเสียงแจ้งเตือนของคุณเองได้ (mp3/ogg/wav ไม่เกิน 10MB)</div>
+ <input id="sndfile" type="file" accept="audio/*" class="inp" style="margin-top:6px">
+ <button class="btn pri" id="sndbtn" style="width:100%;margin-top:8px" onclick="uploadNotifSound()">อัปโหลดเสียง</button>
+ <div class="mut" id="sndst" style="margin-top:6px"></div>
+ ${S.notifSound?`<div class="row" style="margin-top:8px"><span class="chip ok">กำลังใช้เสียงที่อัปโหลดเอง</span><button class="btn" style="margin-left:auto" onclick="resetNotifSound()">ใช้เสียงเริ่มต้น</button></div>`:''}`
+ :`<div class="mut" style="margin-top:12px">อัปโหลดเสียงแจ้งเตือนของคุณเองได้เมื่อเป็นสมาชิก ROVHUB VIP/SVIP — ตอนนี้ใช้เสียงเริ่มต้นของระบบ</div>`}
+ </div>`}
+function notifyC(o){if(isBanned())return;osNotify(o.title,o.txt);playNotifSound();let t=document.getElementById('ctoast');if(!t){t=document.createElement('div');t.id='ctoast';document.body.appendChild(t)}
  t.innerHTML=`<div class="ctin" onclick="${o.act}">${o.av||''}<div style="min-width:0;flex:1"><b class="n">${esc(o.title)}</b><div class="mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(o.txt)}</div></div></div>`;t.className='on';clearTimeout(toastTm);toastTm=setTimeout(()=>{t.className=''},5500)}
 function hideToast(){const t=document.getElementById('ctoast');if(t)t.className=''}
 function chatRefresh(){fabUpdate();if(pg==='chats'||pg==='user')R();else if(pg==='more')R();else head()}
@@ -3613,11 +3689,11 @@ async function hwPull(n){if(isBanned())return;const h=hwS(),gm=gachaM,c=HWM(gm);
  if(!isAdmin)h.ticket=(h.ticket||0)-need;
  const res=[];for(let i=0;i<n;i++){const k=hwRoll(h,gm);h.pulls++;const note=hwApply(h,k,gm);res.push({k,note,m:gm});h.hist.unshift({t:tstr(),k,m:gm})}
  h.hist=h.hist.slice(0,40);save();hwShow(res,n)}
-function hwBuy(){const e=$('#dlg'),j=S.jade||0;
+function hwBuy(){const e=$('#dlg'),j=S.jade||0,jp=promoJadePct();
  e.innerHTML=`<div class="ov" style="align-items:center;padding:16px" onclick="if(event.target===this)$('#dlg').innerHTML=''"><div class="gb hwbuy" style="border-radius:22px;max-width:400px;max-height:88vh;padding:18px"><div style="display:grid;place-items:center;margin-bottom:6px">${hwTk(110)}</div><b class="n" style="font-size:18px">ซื้อบัตรสุ่มฮาโลวีน</b><div class="mut" style="margin:4px 0 10px">ใช้หยกเขียวซื้อ ราคาเฉลี่ยใบละประมาณ ${hwAvg()} หยกเขียว · หยกของคุณ ${fmt(j)}</div>
- ${GC.packs.map(({n,c})=>`<div class="row hwrow"><div class="gap"><span class="hwic" style="width:84px">${hwTk(40)}</span><div><b class="n">บัตรสุ่ม ${n} ใบ</b><div class="mut">ใบละ ${+(c/n).toFixed(1)} หยกเขียว</div></div></div><button class="btn ${j>=c?'pri':''}" onclick="hwBuyDo(${n},${c})">${curI('jade')} ${fmt(c)}</button></div>`).join('')}
+ ${GC.packs.map(({n,c})=>{const dc=promoJadePrice(c);return `<div class="row hwrow"><div class="gap"><span class="hwic" style="width:84px">${hwTk(40)}</span><div><b class="n">บัตรสุ่ม ${n} ใบ</b><div class="mut">ใบละ ${+(dc/n).toFixed(1)} หยกเขียว</div></div></div><button class="btn ${j>=dc?'pri':''}" onclick="hwBuyDo(${n},${c})">${curI('jade')} ${fmt(dc)}${jp?` <span style="text-decoration:line-through">${fmt(c)}</span>`:''}</button></div>`}).join('')}
  <button class="btn" style="width:100%;margin-top:12px" onclick="$('#dlg').innerHTML=''">ปิด</button></div></div>`}
-async function hwBuyDo(n,c){if((S.jade||0)<c){$('#dlg').innerHTML='';if(await dlg('หยกเขียวไม่พอ ไปเติมหยกเขียวไหม?','เติมหยก'))go('topup');return}
+async function hwBuyDo(n,baseC){const c=promoJadePrice(baseC);if((S.jade||0)<c){$('#dlg').innerHTML='';if(await dlg('หยกเขียวไม่พอ ไปเติมหยกเขียวไหม?','เติมหยก'))go('topup');return}
  const h=hwS();S.jade-=c;h.ticket=(h.ticket||0)+n;S.log.unshift({t:tstr(),m:'ซื้อบัตรสุ่มฮาโลวีน '+n+' ใบ',n:-c,cur:'jade'});S.log=S.log.slice(0,80);save();$('#dlg').innerHTML='';R();notifyC({title:'ซื้อบัตรสำเร็จ',txt:'ได้บัตรสุ่ม '+n+' ใบ',act:'hideToast()'})}
 function hzCv(){const cv=document.getElementById('hzc');if(!cv)return null;const d=Math.min(2,window.devicePixelRatio||1);cv.width=innerWidth*d;cv.height=innerHeight*d;return {cv,x:cv.getContext('2d'),d,W:cv.width,H:cv.height}}
 const HZ={sp:{}};
@@ -4051,7 +4127,7 @@ function attachUgc(){detachUgc();try{attachP1()}catch(e){}try{let r=db.ref('ugc'
   r=db.ref('ugcreq');r.on('value',sn=>{UGREQA=sn.val()||{};ugRefresh()},()=>{});ugRefs.push(r)}}catch(e){}}
 function detachUgc(){ugRefs.forEach(r=>{try{r.off()}catch(e){}});ugRefs=[]}
 function ugRefresh(soft){if(pg==='admin'&&adminTab==='mus'){const e=$('#mu_l');if(e)e.innerHTML=musListHTML()}if(pg==='admin'&&adminTab==='ugc'){const e=$('#ugadm');if(e&&!(soft&&e.contains(document.activeElement)))e.innerHTML=ugAdminHTML()}if($('#ug')&&$('#ug').dataset.mode==='mine'&&!soft)ugMineLoad()}
-async function ugCredit(){if(!uid||!S)return;for(const rid of Object.keys(UGREQ||{})){const q=UGREQ[rid];if(!q||q.st!=='a'||q.credited)continue;try{const r=await db.ref('ugcreq/'+uid+'/'+rid+'/credited').transaction(c=>c?undefined:true);if(r&&r.committed){const n=+q.jade||0;S.jade=(S.jade||0)+n;S.log=S.log||[];S.log.unshift({t:tstr(),m:'รางวัลคลิป (หยกเขียว)',n,cur:'jade'});S.log=S.log.slice(0,80);save();R();say('ได้รับหยกเขียว +'+n+' จากรางวัลคลิปของคุณ')}}catch(e){}}}
+async function ugCredit(){if(!uid||!S)return;for(const rid of Object.keys(UGREQ||{})){const q=UGREQ[rid];if(!q||q.st!=='a'||q.credited)continue;try{const r=await db.ref('ugcreq/'+uid+'/'+rid+'/credited').transaction(c=>c?undefined:true);if(r&&r.committed){const n=+q.jade||0;try{await db.ref('users/'+uid+'/jade').transaction(c=>(c||0)+n)}catch(e){}S.jade=(S.jade||0)+n;S.log=S.log||[];S.log.unshift({t:tstr(),m:'รางวัลคลิป (หยกเขียว)',n,cur:'jade'});S.log=S.log.slice(0,80);save();R();say('ได้รับหยกเขียว +'+n+' จากรางวัลคลิปของคุณ')}}catch(e){}}}
 function ugCnt(){if(!VF.open)return;(VF.items||[]).forEach(c=>{if(!c.ugc)return;const cc=UGC[c.rid]||{},a=$('#vfln-'+c.id),b=$('#vfsn-'+c.id),d=$('#vfvn-'+c.id);if(a)a.textContent=abN(cc.l||0);if(b)b.textContent=abN(cc.s||0);if(d)d.textContent=abN(cc.v||0)})}
 const ugInc=(rid,k,d)=>db.ref('ugcc/'+rid+'/'+k).transaction(n=>{n=(n||0)+d;return n<0?0:n}).catch(()=>{});
 function ugF(rid){S.ugf=S.ugf||{};return S.ugf[rid]||(S.ugf[rid]={})}
@@ -4690,7 +4766,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachMyStorageReq();attachBpLevels();attachGC();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll();attachStorageReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachMyStorageReq();attachBpLevels();attachGC();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();attachPromoCfg();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll();attachStorageReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
