@@ -793,7 +793,7 @@ function applyTheme(){try{const d=document.documentElement;if(S&&themeOk('fantas
 let fbApp,auth,db,ready=false;
 let user=null,uid=null,isAdmin=false,authMode='in';
 let authStage='form',pendingSignup=null,otpCode='',otpExpireAt=0,otpResendAt=0,otpSuppressEnter=false,otpTick=null;
-let S=null,run=null,saveOk=null,lastSave=null,pushTimer=null;
+let S=null,run=null,saveOk=null,lastSave=null,pushTimer=null,removedInfo=null,userDocPending=false;
 let content=[],pg='login',cur=null,adminTab='content';
 let announce=[],announceRefOff=null;
 let contacts=[],contactsRefOff=null;
@@ -921,11 +921,26 @@ function vOtpScreen(){const left=Math.max(0,Math.ceil((otpResendAt-Date.now())/1
 
 // ---------- realtime user doc ----------
 function attachUser(){userRefOff=db.ref('users/'+uid);
- userRefOff.on('value',snap=>{const v=snap.val();
-  if(!v){S=fresh();if(ANTICHEAT.fakeEmailBan&&isDisposableEmail((user&&user.email)||'')){S.ban={perm:true,reason:'ตรวจพบอีเมลปลอม/ใช้แล้วทิ้ง (ระบบแบนอัตโนมัติ)',at:Date.now(),len:'ถาวร'};S.jumpStatus='cheat'}pushUser(true);roll();pg==='admin'?head():R();return}
+ userRefOff.on('value',async snap=>{const v=snap.val();
+  if(!v){
+   // เอกสารผู้เล่นหายไป — เช็กก่อนว่าแอดมินลบบัญชีนี้ทิ้งไปหรือเปล่า (ไม่ใช่แค่ผู้เล่นใหม่ที่ยังไม่เคยมีข้อมูล)
+   // ระหว่างที่กำลังเช็ก (รอ Firebase ตอบกลับ) กัน R() ของตัวอื่นมาเรนเดอร์หน้าเกมทั้งที่ยังไม่มี S ด้วย userDocPending
+   userDocPending=true;R();
+   let rm=null;try{rm=(await db.ref('removed/'+uid).once('value')).val()}catch(e){}
+   userDocPending=false;
+   if(rm){S=null;removedInfo=rm;R();return}
+   S=fresh();if(ANTICHEAT.fakeEmailBan&&isDisposableEmail((user&&user.email)||'')){S.ban={perm:true,reason:'ตรวจพบอีเมลปลอม/ใช้แล้วทิ้ง (ระบบแบนอัตโนมัติ)',at:Date.now(),len:'ถาวร'};S.jumpStatus='cheat'}pushUser(true);roll();pg==='admin'?head():R();return}
   if(S&&typeof v.ts==='number'&&v.ts<=S.ts){markSave(true);return} // echo of our own write — local state already correct, skip re-render so nothing on screen (e.g. a form you're typing in) gets wiped
+  removedInfo=null;
   const keepRun=run;S=Object.assign(fresh(),v);run=keepRun;roll();pg==='admin'?head():R() // on the admin page a background update only refreshes the header (points/nav), never the form itself
  },e=>{markSave(false)})}
+function isRemoved(){return !!removedInfo}
+function vRemoved(){const r=removedInfo||{};return `<div class="card" style="margin-top:0;text-align:center;padding:28px 18px">
+ <div style="font-size:46px">🚫</div><b class="n" style="font-size:20px;color:#d32f2f">บัญชีนี้ถูกลบออกจากระบบ</b>
+ <div class="mut" style="margin-top:10px">บัญชีนี้ถูกแอดมินลบออกจากเกมอย่างถาวร และไม่สามารถกู้คืนได้</div>
+ ${r.reason?`<div style="margin-top:12px;padding:10px;border-radius:12px;background:var(--gr)"><div class="mut" style="font-size:12px">เหตุผล</div><div style="white-space:pre-wrap">${esc(r.reason)}</div></div>`:''}
+ <button class="btn" style="width:100%;margin-top:16px" onclick="auth.signOut()">ออกจากระบบ</button></div>`}
+function vLoadingDoc(){return '<div class="card" style="margin-top:0;text-align:center;padding:40px 18px"><div class="mut">กำลังโหลดข้อมูล...</div></div>'}
 function detachAll(){try{detachUgc()}catch(e){}if(cmLegacy){cmLegacy.off();cmLegacy=null}if(userRefOff)userRefOff.off();if(contentRefOff)contentRefOff.off();if(announceRefOff)announceRefOff.off();if(contactsRefOff)contactsRefOff.off();if(leaderboardRefOff)leaderboardRefOff.off();if(codesRefOff)codesRefOff.off();if(shopRefOff)shopRefOff.off();if(topupsRefOff)topupsRefOff.off();if(myTopupsRefOff)myTopupsRefOff.off();if(qrRefOff)qrRefOff.off();if(bpLevelsRefOff)bpLevelsRefOff.off();if(gcRefOff)gcRefOff.off();if(jumpCfgRefOff)jumpCfgRefOff.off();jumpCfgRefOff=null;gcRefOff=null;userRefOff=null;contentRefOff=null;announceRefOff=null;contactsRefOff=null;leaderboardRefOff=null;codesRefOff=null;shopRefOff=null;topupsRefOff=null;myTopupsRefOff=null;qrRefOff=null;bpLevelsRefOff=null;detachSocial();S=null;content=[];announce=[];contacts=[];leaderboard=[];codes=[];shop=[];topups=[];myTopups=[];bpLevels={};run=null;goldRun=null}
 function markSave(ok){saveOk=ok;if(ok)lastSave=new Date();const e=$('#sv');if(e)e.textContent=ok===false?'⚠️ บันทึกไม่สำเร็จ (เช็กอินเทอร์เน็ต)':lastSave?'☁️ บันทึกถาวรแล้ว '+p2(lastSave.getHours())+':'+p2(lastSave.getMinutes())+':'+p2(lastSave.getSeconds()):''}
 function save(){if(!S||!uid)return;S.ts=Date.now();if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushUser()},900)}
@@ -1820,9 +1835,9 @@ function head(){const F=FX(),P=PG[pg]||PG.home;
  const ic=document.querySelector('header .ico');if(ic){if(hwUi())ic.innerHTML='<img src="'+HWUA.logo+'" alt="ROV Point Hub">';else if(F)ic.innerHTML='<img src="'+IMG.lg+'" alt="X">';else ic.textContent='🎮'}
  if(F&&!hwUi()&&pg==='home'){$('#h1').innerHTML='<span class="xl">X</span> ตำนานเทพกู้จักรวาล';$('#hp').innerHTML='รวมพลัง • ตำนาน • จักรวาล<br>สู่การกู้โลกและทุกมิติ'}else{$('#h1').textContent=P[0];$('#hp').textContent=P[1]}
  {const hd=document.querySelector('header');if(hd)hd.setAttribute('data-hw',hwUi()?(pg==='home'?'home':'in'):'')}
- $('#hact').innerHTML=(pg==='login'||isBanned())?'':F?bellHTML()+`<button class="fp" onclick="go('redeem')">${curI('star')}<b>${fmt(S?S.pts:0)}</b>${fi2('chev')}</button><button class="fp" onclick="go('shop')">${curI('coin')}<b>${fmt(S?S.gold||0:0)}</b>${fi2('chev')}</button>${hwUi()?`<button class="fp" onclick="go('topup')">${curI('jade')}<b>${fmt(S?S.jade||0:0)}</b>${fi2('chev')}</button>`:''}<button class="fp" onclick="guide(1)">${fi2('q')}<b>วิธีใช้</b>${fi2('chev')}</button>`
+ $('#hact').innerHTML=(pg==='login'||isBanned()||isRemoved()||userDocPending)?'':F?bellHTML()+`<button class="fp" onclick="go('redeem')">${curI('star')}<b>${fmt(S?S.pts:0)}</b>${fi2('chev')}</button><button class="fp" onclick="go('shop')">${curI('coin')}<b>${fmt(S?S.gold||0:0)}</b>${fi2('chev')}</button>${hwUi()?`<button class="fp" onclick="go('topup')">${curI('jade')}<b>${fmt(S?S.jade||0:0)}</b>${fi2('chev')}</button>`:''}<button class="fp" onclick="guide(1)">${fi2('q')}<b>วิธีใช้</b>${fi2('chev')}</button>`
  :bellHTML()+`<span class="sw" style="margin:0">⭐ ${fmt(S?S.pts:0)}</span><span class="sw" style="margin:0">🪙 ${fmt(S?S.gold||0:0)}</span><span class="sw" style="margin:0">💎 ${fmt(S?S.jade||0:0)}</span><button class="sw" style="margin:0" onclick="guide(1)">❓ วิธีใช้</button>`;
- $('#nav').style.display=(pg==='login'||isBanned())?'none':'flex';
+ $('#nav').style.display=(pg==='login'||isBanned()||isRemoved()||userDocPending)?'none':'flex';
  if(F){const NI={home:'home',missions:'target',lib:'book',rank:'trophy',more:'menu'},b=([k,i,l])=>`<button class="nv ${navOn(k)&&pg!=='bp'?'on':''}" onclick="go('${k}')"><span>${hwUi()?`<img class="hwni" src="${HW3['nv_'+NI[k]]}" alt="">`:fi2(NI[k])}</span>${l}</button>`;
   $('#nav').innerHTML=NAV.slice(0,2).map(b).join('')+`<button class="nvx ${pg==='bp'?'on':''}" onclick="go('bp')"><img src="${hwUi()?HW3.nvx:IMG.lg}" alt="X"></button>`+NAV.slice(2).map(b).join('')}
  else $('#nav').innerHTML=NAV.map(([k,i,l])=>`<button class="nv ${navOn(k)?'on':''}" onclick="go('${k}')"><span>${i}</span>${l}</button>`).join('');
@@ -2361,12 +2376,61 @@ function plBanBox(u){const b=u.ban,on=b&&(b.perm||(b.until&&b.until>Date.now()))
  const hist=(u.banHist||[]).slice(0,3).map(h=>`<div class="mut" style="font-size:12px">• ${h.perm?'ถาวร':esc(h.len||'')} · ${esc(h.reason||'')} · ${esc(h.ended||'')}${h.note?' ('+esc(h.note)+')':''}</div>`).join('');
  const ap=u.banAppeal?`<div style="margin-top:8px;padding:10px;border-radius:12px;background:var(--gr)"><div class="mut" style="font-size:12px">คำอุทธรณ์ (${banDt(u.banAppeal.ts)})</div><div style="white-space:pre-wrap">${esc(u.banAppeal.text)}</div></div>`:'';
  if(on)return `<div class="banbox on"><b class="n" style="color:#d32f2f">ถูกแบน${b.perm?'ถาวร':' (ถึง '+banDt(b.until)+')'}</b><div class="mut" style="margin-top:2px">${esc(b.reason||'')}</div>${ap}
- <input id="bnun" class="inp" placeholder="หมายเหตุการปลดแบน (ไม่บังคับ)" maxlength="200"><button class="btn gold" style="width:100%;margin-top:8px" onclick="plUnban()">ปลดแบน</button>${hist}</div>`;
+ <input id="bnun" class="inp" placeholder="หมายเหตุการปลดแบน (ไม่บังคับ)" maxlength="200"><button class="btn gold" style="width:100%;margin-top:8px" onclick="plUnban()">ปลดแบน</button>
+ <button class="btn" style="width:100%;margin-top:8px;color:#d32f2f;border-color:#d32f2f" onclick="plDeleteAccount()">🗑️ ลบบัญชีนี้ออกจากเกม (ถาวร)</button>
+ <div class="mut" style="font-size:12px;margin-top:4px">บัญชีจะหายไปจากอันดับและโปรไฟล์ทันที ผู้เล่นจะเห็นประกาศแจ้งเมื่อเข้าเกมอีกครั้ง — กู้คืนไม่ได้</div>${hist}</div>`;
  return `<div class="banbox"><b class="n">แบนผู้เล่น</b>
  <div class="row" style="margin-top:8px;gap:8px"><select id="bntype" class="inp" style="margin-top:0" onchange="$('#bnn').disabled=$('#bnunit').disabled=this.value==='perm'"><option value="temp">ชั่วคราว</option><option value="perm">ถาวร</option></select><input id="bnn" type="number" min="1" class="inp" style="margin-top:0" value="7"><select id="bnunit" class="inp" style="margin-top:0"><option value="d">วัน</option><option value="m">เดือน</option></select></div>
  <textarea id="bnrs" rows="2" class="inp" placeholder="เหตุผล/หมายเหตุ (ผู้เล่นจะเห็นข้อความนี้)" maxlength="300"></textarea>
  <button class="btn" style="width:100%;margin-top:8px;color:#d32f2f" onclick="plBan()">แบนผู้เล่น</button>${ap}${hist}</div>`}
 function plSyncBanToLeaderboard(id,banned){try{db.ref('leaderboard/'+id).update({banned}).catch(()=>{})}catch(e){}}
+async function plDeleteAccount(){if(!plSel||!plData)return;const id=plSel,st=$('#plst');
+ const b=plData.ban,banned=b&&(b.perm||(b.until&&b.until>Date.now()));
+ if(!banned){st.textContent='ต้องแบนบัญชีนี้ก่อนถึงจะลบได้';return}
+ if(!(await dlg('ลบบัญชีนี้ออกจากเกมถาวร? บัญชีจะหายไปจากอันดับ/โปรไฟล์ทันที และกู้คืนไม่ได้','ลบบัญชี')))return;
+ st.textContent='กำลังลบ...';
+ const reason=(b&&b.reason)||'ถูกลบบัญชีโดยแอดมิน';
+ try{
+  // เขียนประกาศไว้ก่อน แล้วค่อยลบข้อมูลบัญชี — ให้ผู้เล่นคนนั้นเห็นประกาศตอนเข้าเกมครั้งถัดไป แทนที่จะถูกตีความว่าเป็นผู้เล่นใหม่
+  await db.ref('removed/'+id).set({at:Date.now(),reason});
+  await db.ref('users/'+id).remove();
+  await db.ref('leaderboard/'+id).remove();
+  await db.ref('profiles/'+id).remove();
+  try{await db.ref('profbg/'+id).remove()}catch(e){}
+  try{await db.ref('profbgvid/'+id).remove()}catch(e){}
+  try{await db.ref('profbgvidsz/'+id).remove()}catch(e){}
+ }catch(e){st.textContent='ลบไม่สำเร็จ: '+((e&&e.message)||'ลองใหม่');return}
+ plSel=null;plData=null;plAvNew=undefined;plBgNew=undefined;
+ const d=$('#pldet');if(d)d.innerHTML=plDet();const l=$('#pllist');if(l)l.innerHTML=plList();
+ say('ลบบัญชีผู้เล่นออกจากเกมแล้ว')}
+// ---------- แอดมินแก้ไขรูปโปรไฟล์/พื้นหลังของผู้เล่นคนอื่น ----------
+let plAvNew,plBgNew;
+function plAvPrev(){const a=plAvNew!==undefined?plAvNew:((plData&&plData.prof&&plData.prof.av)||'');return a?`<img class="avs" src="${a}" style="width:80px;height:80px" alt="">`:`<span class="avs ini" style="width:80px;height:80px;font-size:36px">?</span>`}
+async function plPickAvatar(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('image/')){$('#plst').textContent='เลือกไฟล์รูปภาพ';return}
+ try{plAvNew=await cropSquare(f,112);const e=$('#plav2');if(e)e.innerHTML=plAvPrev()}catch(e){$('#plst').textContent='อ่านรูปไม่ได้'}}
+function plClearAvatar(){plAvNew='';const e=$('#plav2');if(e)e.innerHTML=plAvPrev()}
+function plCurBg(){return plBgNew!==undefined?plBgNew:((plData&&plData.prof&&plData.prof.bg)||'')}
+function plBgPrevRefresh(){const e=$('#plbgp');if(e)e.setAttribute('style',bgCss(plCurBg(),'default')+';height:70px;border-radius:12px;background-size:cover;background-position:center;margin-top:6px');document.querySelectorAll('.plbgp i').forEach(x=>x.classList.toggle('on',x.dataset.v===plCurBg()))}
+async function plPickBg(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('image/')){$('#plst').textContent='เลือกไฟล์รูปภาพ';return}
+ try{plBgNew=await cropWide(f,480,200);plBgPrevRefresh()}catch(e){$('#plst').textContent='อ่านรูปไม่ได้'}}
+function plSetBgPreset(v){plBgNew=v;plBgPrevRefresh()}
+function plMediaBox(){return `<div class="card"><b class="n">แก้ไขรูปโปรไฟล์ / พื้นหลัง</b><div class="mut" style="margin-top:4px">ผู้เล่นเห็นผลทันทีถ้าออนไลน์อยู่</div>
+ <div class="row" style="margin-top:10px;gap:10px;align-items:center"><div id="plav2">${plAvPrev()}</div><div style="display:flex;flex-direction:column;gap:6px;flex:1"><input type="file" accept="image/*" class="inp" style="margin-top:0" onchange="plPickAvatar(this)"><button class="btn" style="margin-top:0" onclick="plClearAvatar()">ลบรูปโปรไฟล์</button></div></div>
+ <label class="mut" style="display:block;margin-top:10px">พื้นหลังโปรไฟล์</label>
+ <div id="plbgp" style="${bgCss(plCurBg(),'default')};height:70px;border-radius:12px;background-size:cover;background-position:center;margin-top:6px"></div>
+ <div class="bgp plbgp">${BGP.map((_,i)=>`<i data-v="g${i}" class="${plCurBg()==='g'+i?'on':''}" style="background-image:${BGP[i]}" onclick="plSetBgPreset('g${i}')"></i>`).join('')}</div>
+ <div class="row" style="gap:8px;margin-top:8px"><input type="file" accept="image/*" class="inp" onchange="plPickBg(this)"><button class="btn" onclick="plSetBgPreset('')">ค่าเริ่มต้น</button></div>
+ <button class="btn pri" style="width:100%;margin-top:10px" onclick="plSaveMedia()">บันทึกรูปโปรไฟล์/พื้นหลัง</button></div>`}
+async function plSaveMedia(){if(!plSel)return;const st=$('#plst'),id=plSel;
+ if(plAvNew===undefined&&plBgNew===undefined){st.textContent='ยังไม่ได้เลือกรูปใหม่';return}
+ const av=plAvNew!==undefined?plAvNew:((plData.prof&&plData.prof.av)||''),bg=plBgNew!==undefined?plBgNew:((plData.prof&&plData.prof.bg)||'');
+ st.textContent='กำลังบันทึก...';
+ try{
+  await plRun('บันทึกรูปโปรไฟล์/พื้นหลังแล้ว',o=>{o.prof=Object.assign({},o.prof||{},{av,bg})});
+  try{await db.ref('profiles/'+id).update({av})}catch(e){}
+  try{await db.ref('profbg/'+id).set(bg||null)}catch(e){}
+  plAvNew=undefined;plBgNew=undefined;
+ }catch(e){st.textContent='บันทึกไม่สำเร็จ'}}
 function plBan(){const type=$('#bntype').value,n=Math.round(+$('#bnn').value),unit=$('#bnunit').value,reason=$('#bnrs').value.trim(),st=$('#plst'),id=plSel;
  if(plSel===uid){st.textContent='แบนบัญชีตัวเองไม่ได้';return}if(type==='temp'&&!(n>=1&&n<=3650)){st.textContent='ใส่ระยะเวลา 1–3650';return}if(!reason){st.textContent='กรอกเหตุผล/หมายเหตุ';return}
  const now=Date.now();let until=0,len='ถาวร';if(type==='temp'){const d=new Date(now);if(unit==='m')d.setMonth(d.getMonth()+n);else d.setDate(d.getDate()+n);until=d.getTime();len=n+(unit==='m'?' เดือน':' วัน')}
@@ -2394,8 +2458,8 @@ function plDet(){if(!plSel||!plData)return plSel?'<div class="card"><div class="
  <button class="btn" style="width:100%;margin-top:8px" onclick="plTheme()">ปลดล็อกธีมแฟนตาซี</button>
  <button class="btn" style="width:100%;margin-top:8px" onclick="plNick()">รีเซ็ตชื่อเล่น (ให้ตั้งใหม่ได้)${(lb.name||(u.prof&&u.prof.name))?' · '+esc(lb.name||u.prof.name):''}</button>
  <input id="plitem" class="inp" placeholder="ชื่อไอเทม/ยศที่จะมอบ เช่น ไอเทมตำนานประจำซีซั่น" maxlength="60"><button class="btn" style="width:100%;margin-top:8px" onclick="plItem()">มอบไอเทม/ยศ</button>
- ${plBanBox(u)}<div class="mut" id="plst" style="margin-top:8px"></div></div>`}
-async function selPlayer(id){plSel=id;plData=null;const e=$('#pldet');if(e)e.innerHTML=plDet();const l=$('#pllist');if(l)l.innerHTML=plList();
+ ${plBanBox(u)}<div class="mut" id="plst" style="margin-top:8px"></div></div>${plMediaBox()}`}
+async function selPlayer(id){plSel=id;plData=null;plAvNew=undefined;plBgNew=undefined;const e=$('#pldet');if(e)e.innerHTML=plDet();const l=$('#pllist');if(l)l.innerHTML=plList();
  try{plData=(await db.ref('users/'+id).once('value')).val()||{}}catch(e){plData={};}
  const d=$('#pldet');if(d)d.innerHTML=plDet()}
 async function adminPatch(uid2,fn){const r=db.ref('users/'+uid2);await r.once('value');
@@ -3500,7 +3564,7 @@ function vJump(){jumpRoll();
  <div class="row" style="margin-top:10px;gap:8px"><button class="btn" style="flex:1" onclick="jumpExPass()">🎫 แลกบัตรเวอร์พาส (${JUMPCFG.passCost})</button><button class="btn" style="flex:1" onclick="jumpExDisc()">💎 แลกส่วนลด 15% (${JUMPCFG.discCost})</button></div></div>
  <div class="card"><b class="n">กระเป๋าของฉัน</b><div class="row" style="margin-top:6px"><span class="chip ok">🎫 บัตรปลดล็อกเวอร์พาส ${h.pass||0}</span><span class="chip ok">💎 คูปองส่วนลด 15% ${S.jadeDisc||0}</span></div></div>
  <div class="card" style="cursor:pointer" onclick="jumpModalOpen('invite')"><div class="row"><div class="gap"><span class="em">🎁</span><div><b class="n">ภารกิจรับตั๋วกระโดด</b><div class="mut">เชิญเพื่อน + ภารกิจรายวัน · สูงสุด ${1+JUMP_MS.length+1} ตั๋ว/วัน</div></div></div><span class="chip wn">${(allok&&!gotAll)||JUMP_MS.some(m=>!S.jump.ms[m[0]]&&jumpMsDone(m[0]))?'รับได้!':''}</span></div></div>`}
-function jumpCard(){if(!jumpActive())return'';return `<div class="card" style="margin-top:0;cursor:pointer" onclick="go('jump')"><div class="row"><div class="gap"><span class="em">🪂</span><div><b class="n">โดดดึ๋ง รับรางวัลฟรี</b><div class="mut">ตั๋ววันนี้ ${(S.jump&&S.jump.tix)||0} ใบ · เหรียญกิจกรรม ${(S&&S.jumpCoin)||0} · แตะเพื่อเล่น</div></div></div><span class="chip wn">ใหม่</span></div></div>`}
+function jumpCard(){if(!S||!jumpActive())return'';return `<div class="card" style="margin-top:0;cursor:pointer" onclick="go('jump')"><div class="row"><div class="gap"><span class="em">🪂</span><div><b class="n">โดดดึ๋ง รับรางวัลฟรี</b><div class="mut">ตั๋ววันนี้ ${(S.jump&&S.jump.tix)||0} ใบ · เหรียญกิจกรรม ${(S&&S.jumpCoin)||0} · แตะเพื่อเล่น</div></div></div><span class="chip wn">ใหม่</span></div></div>`}
 // ---------- admin: jump-activity player management ----------
 let JPL=null,jpQ='',jpSel=null,jpData=null,jpTab='hist',jpLoaded=false;
 const JPSTATUS_LABEL={safe:'ปลอดภัย',abnormal:'ผิดปกติ',cheat:'โกง/บัค'};
@@ -4087,7 +4151,7 @@ async function phRepost(id){S.phr=S.phr||{};
  }catch(e){say('รีโพสต์ไม่สำเร็จ')}}
 async function phDelete(id){if(!(await dlg('ลบโพสต์นี้?','ลบ')))return;try{await db.ref('photos/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
 const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena,live:vLive,photos:vPhotos};
-function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60);if(pg==='topup')loadMyStorageUsed();if(pg==='login'&&authStage==='otp')setTimeout(otpStartTick,30);if(pg==='rank'&&rankTab==='rp')setTimeout(rankCountdownStartTick,30)}
+function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():userDocPending?vLoadingDoc():isRemoved()?vRemoved():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60);if(pg==='topup')loadMyStorageUsed();if(pg==='login'&&authStage==='otp')setTimeout(otpStartTick,30);if(pg==='rank'&&rankTab==='rp')setTimeout(rankCountdownStartTick,30)}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isBanned();roll();if(wb&&!isBanned()){R();return}if(wb){const e=$('#bnrem');if(e)e.innerHTML='<b>'+banRemain(S.ban)+'</b>';return}S.on++;S.life=(S.life||0)+1;bpEvt('sec');if(pg==='missions'&&missionsTab==='bpm'&&S.on%5===0&&!document.querySelector('#dlg .ov'))R();{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
   const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
