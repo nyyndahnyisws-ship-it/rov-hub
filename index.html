@@ -4054,8 +4054,11 @@ function phRepostersHTML(p){const rs=p.reposters||{},keys=Object.keys(rs);if(!ke
  <div style="display:flex">${show.map((k,i)=>`<span style="margin-left:${i?-10:0}px;border:2px solid rgba(20,20,20,.7);border-radius:50%;display:block;line-height:0">${avHTML(k,{name:rs[k]&&rs[k].name},24)}</span>`).join('')}</div>
  <span style="color:#fff;font-size:12px;margin-left:6px">🔁 ${fmt(keys.length)}</span></div>`}
 function phMusicPillHTML(p){const playing=phAudioPlayingId===p.id;
- return `<div style="padding:8px 14px 0"><button class="chip${playing?' on':''}" onclick="phToggleMusic('${p.id}',${JSON.stringify(p.musicUrl||'')})">${playing?'⏸️':'🎵'} ${esc((p.musicTitle||'เพลง').slice(0,30))}${p.musicAuthor?' - '+esc(p.musicAuthor.slice(0,20)):''}</button></div>`}
-function phToggleMusic(id,url){if(!url)return;
+ return `<div style="padding:8px 14px 0"><button class="chip${playing?' on':''}" onclick="phToggleMusic('${p.id}')">${playing?'⏸️':'🎵'} ${esc((p.musicTitle||'เพลง').slice(0,30))}${p.musicAuthor?' - '+esc(p.musicAuthor.slice(0,20)):''}</button></div>`}
+function phToggleMusic(id){
+ // หา URL เพลงจากข้อมูลโพสต์เองแทนที่จะฝัง URL ดิบลงใน onclick="..." โดยตรง — ฝังตรงๆ แบบเดิมทำให้
+ // เครื่องหมาย " ใน URL ที่ JSON.stringify() ใส่มา ไปตัด attribute onclick="..." ให้ขาดกลางคัน จนปุ่มกดไม่ทำงานและไม่มีเสียงเลย
+ const p=PH.find(x=>x.id===id),url=p&&p.musicUrl;if(!url)return;
  if(phAudioPlayingId===id){if(phAudioEl)phAudioEl.pause();phAudioPlayingId=null;R();return}
  if(phAudioEl){try{phAudioEl.pause()}catch(e){}}
  try{phAudioEl=new Audio(url);phAudioEl.loop=true;phAudioEl.volume=0.8;phAudioEl.play().catch(()=>{});phAudioPlayingId=id;phAudioEl.onended=()=>{phAudioPlayingId=null;R()}}catch(e){}
