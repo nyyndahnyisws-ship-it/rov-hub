@@ -1092,7 +1092,14 @@ async function creditApproved(){if(!S||!uid)return;
     // กัน: ถ้า save() แบบเขียนทับทั้งเอกสารพร้อมกันดันชนเพดานเดลต้าของฟิลด์อื่น (เช่น pts/gold)
     // จน Firebase ปฏิเสธการเขียนทั้งก้อน หยกเขียว+โบนัสที่เพิ่งได้จะได้ไม่หายไปเงียบๆ
     try{await db.ref('users/'+uid+'/jade').transaction(c=>(c||0)+n)}catch(e){}
-    S.jade=(S.jade||0)+n;S.log=S.log||[];S.log.unshift({t:tstr(),m:'เติมหยกเขียว '+fmt(t.baht||0)+' บาท',n:n,cur:'jade'});S.log=S.log.slice(0,80);save();R();say('💎 ได้รับหยกเขียว +'+fmt(n))}}catch(e){}}}
+    S.jade=(S.jade||0)+n;S.log=S.log||[];S.log.unshift({t:tstr(),m:'เติมหยกเขียว '+fmt(t.baht||0)+' บาท',n:n,cur:'jade'});S.log=S.log.slice(0,80);
+    let coinMsg='';
+    if(n>=99&&isAdmin){ // ภารกิจคอลแลป (ทดสอบ เฉพาะแอดมินตามกติกาเดิม): เติมหยกเขียวครบ 99+ ได้เหรียญกิจกรรม 600, SVIP รับเพิ่มอีก 500
+     const svip=typeof rovSvipActive==='function'&&rovSvipActive(),coinN=600+(svip?500:0);
+     try{await db.ref('users/'+uid+'/hxhCoin').transaction(c=>(c||0)+coinN)}catch(e){}
+     S.hxhCoin=(S.hxhCoin||0)+coinN;S.log.unshift({t:tstr(),m:'ภารกิจเติมหยกเขียวครบ 99+: รับเหรียญกิจกรรมคอลแลป'+(svip?' (รวม SVIP +500)':''),n:coinN,cur:'hxh'});S.log=S.log.slice(0,80);
+     coinMsg=' · 🟡 +'+fmt(coinN)+' เหรียญกิจกรรมคอลแลป';}
+    save();R();say('💎 ได้รับหยกเขียว +'+fmt(n)+coinMsg)}}catch(e){}}}
 function attachCodes(){codesRefOff=db.ref('promocodes');
  codesRefOff.on('value',snap=>{const v=snap.val()||{};codes=Object.keys(v).map(id=>Object.assign({code:id},v[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   if(pg==='admin'&&adminTab==='codes'){const e=$('#cdlist');if(e)e.innerHTML=codesList()}},()=>{})}
@@ -2170,22 +2177,22 @@ function vMoreFRaw(){const it=[['daily','เช็กอินและภาร
  return `<div class="mhero"><img src="${MORE_IMG.hero}" alt="เมนูเพิ่มเติม"></div>`+[['profile','โปรไฟล์ของฉัน','user'],['gacha','ตู้กาชาฮาโลวีน','pump'],['chats','ช่องแชท','mail'],['friends','เพื่อน','star'],['live','ไลฟ์สด','flame','goLive()'],['decor','ของตกแต่ง','gem'],['jump','โดดดึ๋ง รับรางวัลฟรี','cloud'],['photos','โพสต์รูปภาพ','img']].map(([k,t,ic,fn])=>`<button class="mrow c-${hxhRowColor(k)}" onclick="${fn||"go('"+k+"')"}"><span class="mi" style="display:grid;place-items:center;font-size:34px;color:#9fc4ff;width:90px">${fi2(ic)}</span><b>${t}${k==='chats'?chatBadge():''}</b><span class="mc">${fi2('chev')}</span></button>`).join('')+`<button class="mrow c-gold" onclick="openWhatsNew()"><span class="mi" style="display:grid;place-items:center;font-size:34px;color:#9fc4ff;width:90px">${fi2('gift')}</span><b>มีอะไรใหม่</b><span class="mc">${fi2('chev')}</span></button>`+`<button class="mrow c-cyan" onclick="openContentRules()"><span class="mi" style="display:grid;place-items:center;font-size:34px;color:#9fc4ff;width:90px">${fi2('bell')}</span><b>กฎการลงเนื้อหา</b><span class="mc">${fi2('chev')}</span></button>`+it.map(([k,t],i)=>{if(k==='admin'&&!isAdmin)return'';return `<button class="mrow c-${hxhRowColor(k)}" onclick="${k==='guide'?'guide(1)':"go('"+k+"')"}"><span class="mi" style="background-image:url(${MORE_IMG.icons[i]})"></span><b>${t}</b><span class="mc">${fi2('chev')}</span></button>`}).join('')+(isAdmin?`<button class="mrow c-purple" onclick="go('hxhgacha')"><span class="mi" style="display:grid;place-items:center;font-size:30px">⛓️</span><b>ล่าชิ้นส่วนโซ่นักล่า (แอดมิน)</b><span class="mc">${fi2('chev')}</span></button>`:'')
  +`<div class="card"><div class="row"><div style="min-width:0"><b class="n" style="word-break:break-all">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'}</div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>`}
 const HXH_FLOORS=[
- {stones:3,cost:29,p:[28.73,28.73,100]},
- {stones:4,cost:69,p:[33.04,33.04,54.55,100]},
- {stones:5,cost:129,p:[14.86,14.86,30.29,30.29,100]},
+ {stones:3,cost:19,p:[28.73,28.73,100]},
+ {stones:4,cost:39,p:[33.04,33.04,54.55,100]},
+ {stones:5,cost:99,p:[14.86,14.86,30.29,30.29,100]},
  {stones:6,cost:299,p:[2.08,2.08,2.08,12.88,12.88,100]},
  {stones:7,cost:399,p:[2.09,2.09,2.09,2.09,10.01,10.01,100]},
- {stones:8,cost:599,p:[0.26,0.26,0.26,0.26,2.78,2.78,2.78,100]}
+ {stones:8,cost:499,p:[0.26,0.26,0.26,0.26,2.78,2.78,2.78,100]}
 ];
 const HXH_CRY_P=[0.01,0.01,0.10,0.16,21.05,100];
 function hxhDone(){return (S.hxhFloor||0)>=6}
 function vHxHGacha(){if(!isAdmin)return `<div class="card">หน้านี้เฉพาะแอดมิน</div>`;
  const cleared=S.hxhFloor||0,coin=S.hxhCoin||0,cry=S.hxhCry||[null,null,null,null,null,null],won=cry.filter(c=>c&&c.won).length;
- const cryRow=`<div style="margin-top:18px"><div class="mut" style="text-align:center;margin-bottom:8px">คริสตัลธีม UI Hunter×Hunter (${won}/6)</div><div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">${cry.map((c,i)=>`<div class="hxhchip ${c&&c.won?'on':''} ${c&&!c.won?'empty':''}">${c?(c.won?'💎':'💨'):'❔'}</div>`).join('')}</div></div>`;
+ const cryRow=`<div style="margin-top:18px"><div class="mut" style="text-align:center;margin-bottom:8px">คริสตัลธีม UI Hunter×Hunter (${won}/6)</div><div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">${cry.map((c,i)=>`<div class="hxhchip ${c&&c.won?'on':''} ${c&&!c.won?'empty':''}">${c?(c.won?'<img src="'+HXH_LOGO2+'" style="width:85%;object-fit:contain">':'💨'):'❔'}</div>`).join('')}</div></div>`;
  let body;
  if(S.hxhCryPending){
   body=`<div class="mut" style="margin-top:10px;text-align:center">พบโซ่นักล่าด่านที่ ${cleared}! เลือกคริสตัล 1 ก้อนที่ยังไม่เปิด</div>
- <div class="stonerowHxh">${Array.from({length:6},(_,i)=>`<button class="hxhstone" onclick="hxhPickCrystal(${i})" ${(cry[i]||S.hxhBusy)?'disabled':''} style="${cry[i]?'opacity:.25':''}">${cry[i]?(cry[i].won?'💎':'💨'):'❔'}</button>`).join('')}</div>`;
+ <div class="stonerowHxh">${Array.from({length:6},(_,i)=>`<button class="hxhstone" onclick="hxhPickCrystal(${i})" ${(cry[i]||S.hxhBusy)?'disabled':''} style="${cry[i]?'opacity:.25':''}">${cry[i]?(cry[i].won?'<img src="'+HXH_LOGO2+'" style="width:85%;object-fit:contain">':'💨'):'❔'}</button>`).join('')}</div>`;
  }else if(hxhDone()){
   body=`<div class="mut" style="margin-top:14px;text-align:center">ล่าชิ้นส่วนโซ่ครบทุกด่านแล้ว! 🎉</div>`;
  }else{
@@ -2202,7 +2209,7 @@ function vHxHGacha(){if(!isAdmin)return `<div class="card">หน้านี้
  <div class="mut" style="margin-top:18px;text-align:left;font-size:12.5px;line-height:1.8">
  <b>กฎ/อัตรา:</b><br>
  • แต่ละด่าน (1-6) มีก้อนหินให้ค้นหาทีละก้อน ค่าค้นหาและโอกาสพบเพิ่มขึ้นทุกครั้งที่พลาด ค้นหาก้อนสุดท้ายของด่านรับชิ้นส่วนโซ่การันตี 100%<br>
- • ค่าค้นหาต่อด่าน (หยกเขียว/ครั้ง): ด่าน1=29 · ด่าน2=69 · ด่าน3=129 · ด่าน4=299 · ด่าน5=399 · ด่าน6=599 — มีเหรียญกิจกรรมจะถูกหักใช้ก่อนหยกเขียวอัตโนมัติ (1 เหรียญ = 1 หยกเขียว)<br>
+ • ค่าค้นหาต่อด่าน (หยกเขียว/ครั้ง): ด่าน1=19 · ด่าน2=39 · ด่าน3=99 · ด่าน4=299 · ด่าน5=399 · ด่าน6=499 — มีเหรียญกิจกรรมจะถูกหักใช้ก่อนหยกเขียวอัตโนมัติ (1 เหรียญ = 1 หยกเขียว)<br>
  • พบโซ่แต่ละด่าน จะเลือกเปิดคริสตัล 1 ก้อนจาก 6 ก้อน เปิดแล้วเปิดเลย เปิดซ้ำไม่ได้ คริสตัลก้อนสุดท้าย (ด่านที่ 6) การันตี 100% ได้ครบแน่นอน ใครดวงดีอาจได้ครบก่อนด่าน 6<br>
  • กิจกรรมนี้ยังเป็นเวอร์ชันทดสอบภายใน เห็น/เล่นได้เฉพาะบัญชีแอดมินเท่านั้น จนกว่าจะเปิดให้ผู้เล่นทั่วไปอย่างเป็นทางการ
  </div>
@@ -2240,7 +2247,8 @@ async function hxhPickCrystal(i){if(S.hxhBusy||!S.hxhCryPending)return;
  addLog(S,'เปิดคริสตัลธีม UI Hunter×Hunter ก้อนที่'+(i+1)+': '+(win?'ได้รับชิ้นส่วน':'ว่างเปล่า'),0,'hxh');
  S.hxhBusy=false;save();R();
  const wonNow=(S.hxhCry||[]).filter(c=>c&&c.won).length;
- await dlg(win?'✨ ได้รับชิ้นส่วนธีม UI Hunter×Hunter! ('+wonNow+'/6)':'💨 คริสตัลก้อนนี้ว่างเปล่า... ลุ้นด่านต่อไป','ตกลง','');
+ if(win){await dlgH('<div style="text-align:center"><img src="'+HXH_LOGO2+'" style="width:100%;max-width:280px;filter:drop-shadow(0 0 14px #ffd76a)"><div class="n" style="margin-top:12px;font-size:17px">✨ ได้รับชิ้นส่วนธีม UI Hunter×Hunter!</div><div class="mut" style="margin-top:4px">สะสมแล้ว '+wonNow+'/6 ชิ้น</div></div>','ตกลง')}
+ else{await dlg('💨 คริสตัลก้อนนี้ว่างเปล่า... ลุ้นด่านต่อไป','ตกลง','')}
 }
 
 function vMore(){if(FX())return vMoreF();const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-direction:row;align-items:center;gap:12px" onclick="${k}"><span class="em">${e}</span><b>${t}</b></button>`;
