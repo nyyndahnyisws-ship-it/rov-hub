@@ -1094,11 +1094,16 @@ async function creditApproved(){if(!S||!uid)return;
     try{await db.ref('users/'+uid+'/jade').transaction(c=>(c||0)+n)}catch(e){}
     S.jade=(S.jade||0)+n;S.log=S.log||[];S.log.unshift({t:tstr(),m:'เติมหยกเขียว '+fmt(t.baht||0)+' บาท',n:n,cur:'jade'});S.log=S.log.slice(0,80);
     let coinMsg='';
-    if(n>=99&&isAdmin){ // ภารกิจคอลแลป (ทดสอบ เฉพาะแอดมินตามกติกาเดิม): เติมหยกเขียวครบ 99+ ได้เหรียญกิจกรรม 600, SVIP รับเพิ่มอีก 500
-     const svip=typeof rovSvipActive==='function'&&rovSvipActive(),coinN=600+(svip?500:0);
-     try{await db.ref('users/'+uid+'/hxhCoin').transaction(c=>(c||0)+coinN)}catch(e){}
-     S.hxhCoin=(S.hxhCoin||0)+coinN;S.log.unshift({t:tstr(),m:'ภารกิจเติมหยกเขียวครบ 99+: รับเหรียญกิจกรรมคอลแลป'+(svip?' (รวม SVIP +500)':''),n:coinN,cur:'hxh'});S.log=S.log.slice(0,80);
-     coinMsg=' · 🟡 +'+fmt(coinN)+' เหรียญกิจกรรมคอลแลป';}
+    if(isAdmin){ // ภารกิจคอลแลป (ทดสอบ เฉพาะแอดมินตามกติกาเดิม): รายการภารกิจตั้งค่าได้จากแอดมิน > ⛓️ คอลแลป HxH
+     const svip=typeof rovSvipActive==='function'&&rovSvipActive();
+     for(const ms of (HXH_MISSIONS||[])){
+      if(!ms||!ms.on||n<ms.threshold)continue;
+      const coinN=Math.round((ms.coins||0)+(svip?(ms.svipBonus||0):0));
+      if(coinN<=0)continue;
+      try{await db.ref('users/'+uid+'/hxhCoin').transaction(c=>(c||0)+coinN)}catch(e){}
+      S.hxhCoin=(S.hxhCoin||0)+coinN;S.log.unshift({t:tstr(),m:'ภารกิจ: '+(ms.label||'เติมหยกเขียว')+(svip&&ms.svipBonus?' (รวม SVIP)':''),n:coinN,cur:'hxh'});S.log=S.log.slice(0,80);
+      coinMsg+=' · 🟡 +'+fmt(coinN)+' เหรียญกิจกรรมคอลแลป';
+     }}
     save();R();say('💎 ได้รับหยกเขียว +'+fmt(n)+coinMsg)}}catch(e){}}}
 function attachCodes(){codesRefOff=db.ref('promocodes');
  codesRefOff.on('value',snap=>{const v=snap.val()||{};codes=Object.keys(v).map(id=>Object.assign({code:id},v[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -2176,15 +2181,64 @@ function hxhRowColor(k){const m={profile:'blue',live:'red',gacha:'gold',chats:'b
 function vMoreFRaw(){const it=[['daily','เช็กอินและภารกิจรายวัน'],['explore','ค้นหาและอันดับครีเอเตอร์'],['team','ทีม'],['rewards','ของรางวัลจำกัด'],['settings','ตั้งค่า / คลังธีม UI'],['bp','เวอร์พาส'],['redeem','แลกคูปอง'],['redeemcode','กรอกโค้ดรับของรางวัล'],['shop','ร้านค้า (เหรียญทอง)'],['topup','เติมหยกเขียว'],['mine','คูปองและประวัติ'],['contact','ติดต่อแอดมิน'],['admin','หน้าแอดมิน'],['guide','วิธีใช้งาน']];
  return `<div class="mhero"><img src="${MORE_IMG.hero}" alt="เมนูเพิ่มเติม"></div>`+[['profile','โปรไฟล์ของฉัน','user'],['gacha','ตู้กาชาฮาโลวีน','pump'],['chats','ช่องแชท','mail'],['friends','เพื่อน','star'],['live','ไลฟ์สด','flame','goLive()'],['decor','ของตกแต่ง','gem'],['jump','โดดดึ๋ง รับรางวัลฟรี','cloud'],['photos','โพสต์รูปภาพ','img']].map(([k,t,ic,fn])=>`<button class="mrow c-${hxhRowColor(k)}" onclick="${fn||"go('"+k+"')"}"><span class="mi" style="display:grid;place-items:center;font-size:34px;color:#9fc4ff;width:90px">${fi2(ic)}</span><b>${t}${k==='chats'?chatBadge():''}</b><span class="mc">${fi2('chev')}</span></button>`).join('')+`<button class="mrow c-gold" onclick="openWhatsNew()"><span class="mi" style="display:grid;place-items:center;font-size:34px;color:#9fc4ff;width:90px">${fi2('gift')}</span><b>มีอะไรใหม่</b><span class="mc">${fi2('chev')}</span></button>`+`<button class="mrow c-cyan" onclick="openContentRules()"><span class="mi" style="display:grid;place-items:center;font-size:34px;color:#9fc4ff;width:90px">${fi2('bell')}</span><b>กฎการลงเนื้อหา</b><span class="mc">${fi2('chev')}</span></button>`+it.map(([k,t],i)=>{if(k==='admin'&&!isAdmin)return'';return `<button class="mrow c-${hxhRowColor(k)}" onclick="${k==='guide'?'guide(1)':"go('"+k+"')"}"><span class="mi" style="background-image:url(${MORE_IMG.icons[i]})"></span><b>${t}</b><span class="mc">${fi2('chev')}</span></button>`}).join('')+(isAdmin?`<button class="mrow c-purple" onclick="go('hxhgacha')"><span class="mi" style="display:grid;place-items:center;font-size:30px">⛓️</span><b>ล่าชิ้นส่วนโซ่นักล่า (แอดมิน)</b><span class="mc">${fi2('chev')}</span></button>`:'')
  +`<div class="card"><div class="row"><div style="min-width:0"><b class="n" style="word-break:break-all">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'}</div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>`}
-const HXH_FLOORS=[
- {stones:3,cost:19,p:[28.73,28.73,100]},
- {stones:4,cost:39,p:[33.04,33.04,54.55,100]},
- {stones:5,cost:99,p:[14.86,14.86,30.29,30.29,100]},
- {stones:6,cost:299,p:[2.08,2.08,2.08,12.88,12.88,100]},
- {stones:7,cost:399,p:[2.09,2.09,2.09,2.09,10.01,10.01,100]},
- {stones:8,cost:499,p:[0.26,0.26,0.26,0.26,2.78,2.78,2.78,100]}
+const HXH_FLOORS_DEF=[
+ {cost:19,p:[28.73,28.73,100]},
+ {cost:39,p:[33.04,33.04,54.55,100]},
+ {cost:99,p:[14.86,14.86,30.29,30.29,100]},
+ {cost:299,p:[2.08,2.08,2.08,12.88,12.88,100]},
+ {cost:399,p:[2.09,2.09,2.09,2.09,10.01,10.01,100]},
+ {cost:499,p:[0.26,0.26,0.26,0.26,2.78,2.78,2.78,100]}
 ];
-const HXH_CRY_P=[0.01,0.01,0.10,0.16,21.05,100];
+const HXH_CRY_P_DEF=[0.01,0.01,0.10,0.16,21.05,100];
+const HXH_MISSIONS_DEF=[{id:'m1',label:'เติมหยกเขียวครบ 99 หยกขึ้นไป',threshold:99,coins:600,svipBonus:500,on:true}];
+const HXH_SCHED_DEF={enabled:true,startAt:0,endAt:0};
+let HXH_FLOORS=JSON.parse(JSON.stringify(HXH_FLOORS_DEF));
+let HXH_CRY_P=HXH_CRY_P_DEF.slice();
+let HXH_MISSIONS=JSON.parse(JSON.stringify(HXH_MISSIONS_DEF));
+let HXH_SCHED=Object.assign({},HXH_SCHED_DEF);
+let hxhCfgRefOff=null,hxhCfgDraft=null;
+function hxhCfgMerge(r){
+ let floors=JSON.parse(JSON.stringify(HXH_FLOORS_DEF));
+ if(r&&Array.isArray(r.floors)){
+  floors=floors.map((d,idx)=>{const f=r.floors[idx];if(!f||typeof f!=='object')return d;
+   const cost=isFinite(+f.cost)&&+f.cost>=0?+f.cost:d.cost;
+   let p=Array.isArray(f.p)&&f.p.length?f.p.map(x=>Math.max(0,Math.min(100,+x||0))):d.p;
+   return {cost,p}});
+ }
+ let cryP=HXH_CRY_P_DEF.slice();
+ if(r&&Array.isArray(r.cryP)&&r.cryP.length===6&&r.cryP.every(x=>isFinite(+x)))cryP=r.cryP.map(x=>Math.max(0,Math.min(100,+x)));
+ let missions=JSON.parse(JSON.stringify(HXH_MISSIONS_DEF));
+ if(r&&Array.isArray(r.missions))missions=r.missions.filter(m=>m&&m.id).map(m=>({id:String(m.id),label:String(m.label||''),threshold:Math.max(0,+m.threshold||0),coins:Math.max(0,Math.round(+m.coins||0)),svipBonus:Math.max(0,Math.round(+m.svipBonus||0)),on:m.on!==false}));
+ let sched=Object.assign({},HXH_SCHED_DEF);
+ if(r&&r.sched&&typeof r.sched==='object'){if(typeof r.sched.enabled==='boolean')sched.enabled=r.sched.enabled;if(isFinite(+r.sched.startAt))sched.startAt=+r.sched.startAt||0;if(isFinite(+r.sched.endAt))sched.endAt=+r.sched.endAt||0}
+ HXH_FLOORS=floors;HXH_CRY_P=cryP;HXH_MISSIONS=missions;HXH_SCHED=sched;
+}
+function attachHxhCfg(){try{hxhCfgRefOff=db.ref('settings/hxhgacha');hxhCfgRefOff.on('value',snap=>{hxhCfgMerge(snap.val());
+ if(pg==='admin'&&adminTab==='hxh'){const e=$('#hxhcfgst');if(e)e.textContent='ซิงก์กับฐานข้อมูลล่าสุด '+tstr()}
+ else if(pg==='more'&&typeof hxhUi==='function'&&hxhUi())R();
+},()=>{hxhCfgMerge(null)})}catch(e){}}
+async function hxhCfgSave(){const d=hxhCfgDraft;if(!d)return;
+ for(const f of d.floors){if(!(f.cost>=0)){say('ค่าค้นหาติดลบไม่ได้');return}if(!f.p.length){say('ต้องมีอย่างน้อย 1 ช่อง');return}for(const x of f.p)if(!(x>=0&&x<=100)){say('เรทต้องอยู่ระหว่าง 0-100');return}}
+ if(d.cryP.length!==6){say('อัตราคริสตัลต้องมี 6 ค่า');return}
+ for(const x of d.cryP)if(!(x>=0&&x<=100)){say('เรทคริสตัลต้องอยู่ระหว่าง 0-100');return}
+ for(const m of d.missions){if(!m.id){say('ภารกิจต้องมีรหัส');return}if(!(m.threshold>=0)||!(m.coins>=0)||!(m.svipBonus>=0)){say('ค่าภารกิจติดลบไม่ได้');return}}
+ const b=$('#hxhcfgsave');if(b)b.disabled=true;
+ try{await db.ref('settings/hxhgacha').set(JSON.parse(JSON.stringify(d)));hxhCfgMerge(d);say('บันทึกแล้ว มีผลทันที (เห็นเฉพาะแอดมิน) ✅')}
+ catch(e){say('บันทึกไม่สำเร็จ — ตรวจสอบว่าเข้าสู่ระบบด้วยบัญชีแอดมิน')}
+ if(b)b.disabled=false}
+function hxhCfgReload(){hxhCfgDraft=null;R()}
+function hxhCfgReset(){hxhCfgDraft={floors:JSON.parse(JSON.stringify(HXH_FLOORS_DEF)),cryP:HXH_CRY_P_DEF.slice(),missions:JSON.parse(JSON.stringify(HXH_MISSIONS_DEF)),sched:Object.assign({},HXH_SCHED_DEF)};R()}
+function hxhEventLive(){if(!HXH_SCHED.enabled)return false;const t=Date.now();if(HXH_SCHED.startAt&&t<HXH_SCHED.startAt)return false;if(HXH_SCHED.endAt&&t>HXH_SCHED.endAt)return false;return true}
+function hxhEventStatus(){if(!HXH_SCHED.enabled)return {k:'off',t:'ปิดใช้งานโดยแอดมิน'};const t=Date.now();if(HXH_SCHED.startAt&&t<HXH_SCHED.startAt)return {k:'wait',t:'ยังไม่เริ่ม (เริ่ม '+new Date(HXH_SCHED.startAt).toLocaleString('th-TH')+')'};if(HXH_SCHED.endAt&&t>HXH_SCHED.endAt)return {k:'end',t:'สิ้นสุดแล้ว ('+new Date(HXH_SCHED.endAt).toLocaleString('th-TH')+')'};if(!HXH_SCHED.startAt&&!HXH_SCHED.endAt)return {k:'live',t:'เปิดอยู่ (ไม่กำหนดเวลา)'};return {k:'live',t:'กำลังเปิดอยู่ตอนนี้'}}
+function hxhPStr(p){return p.join(',')}
+function hxhFloorCost(i,v){if(!hxhCfgDraft)return;hxhCfgDraft.floors[i].cost=Math.max(0,+v||0)}
+function hxhFloorP(i,v){if(!hxhCfgDraft)return;const arr=String(v).split(',').map(x=>+String(x).trim()).filter(x=>isFinite(x)).map(x=>Math.max(0,Math.min(100,x)));hxhCfgDraft.floors[i].p=arr.length?arr:[100];R()}
+function hxhCryRate(i,v){if(!hxhCfgDraft)return;hxhCfgDraft.cryP[i]=Math.max(0,Math.min(100,+v||0))}
+function hxhSchedOn(v){if(!hxhCfgDraft)return;hxhCfgDraft.sched.enabled=(+v===1)}
+function hxhSchedAt(k,v){if(!hxhCfgDraft)return;if(v===''){hxhCfgDraft.sched[k]=0;return}const t=new Date(v).getTime();hxhCfgDraft.sched[k]=isFinite(t)?t:0}
+function hxhMisAdd(){if(!hxhCfgDraft)return;hxhCfgDraft.missions.push({id:'m'+Date.now(),label:'ภารกิจใหม่',threshold:99,coins:100,svipBonus:0,on:true});R()}
+function hxhMisDel(i){if(!hxhCfgDraft)return;hxhCfgDraft.missions.splice(i,1);R()}
+function hxhMisSet(i,k,v){if(!hxhCfgDraft)return;const m=hxhCfgDraft.missions[i];if(!m)return;if(k==='label')m.label=String(v).slice(0,80);else if(k==='on')m.on=(+v===1);else m[k]=Math.max(0,+v||0)}
 function hxhDone(){return (S.hxhFloor||0)>=6}
 function vHxHGacha(){if(!isAdmin)return `<div class="card">หน้านี้เฉพาะแอดมิน</div>`;
  const cleared=S.hxhFloor||0,coin=S.hxhCoin||0,cry=S.hxhCry||[null,null,null,null,null,null],won=cry.filter(c=>c&&c.won).length;
@@ -2196,20 +2250,21 @@ function vHxHGacha(){if(!isAdmin)return `<div class="card">หน้านี้
  }else if(hxhDone()){
   body=`<div class="mut" style="margin-top:14px;text-align:center">ล่าชิ้นส่วนโซ่ครบทุกด่านแล้ว! 🎉</div>`;
  }else{
-  const f=HXH_FLOORS[cleared],att=S.hxhAtt||0,tried=S.hxhTried||[];
+  const f=HXH_FLOORS[cleared],att=S.hxhAtt||0,tried=S.hxhTried||[],stones=f.p.length,disc=Math.max(0,Math.min(100,(S.hxhDisc&&S.hxhDisc[cleared])||0)),fcost=Math.max(0,Math.round(f.cost*(1-disc/100)));
   body=`<div class="gch" style="margin-top:14px"><span>${curI('jade')} หยกเขียว ${fmt(S.jade||0)}</span><span>🟡 เหรียญกิจกรรม ${fmt(coin)}</span></div>
- <div class="mut" style="margin-top:10px">ด่านที่ ${cleared+1}/6 · ค้นหาครั้งที่ ${att+1}/${f.stones} · ค่าค้นหา ${f.cost}/ครั้ง</div>
- <div class="stonerowHxh" style="margin-top:14px">${Array.from({length:f.stones},(_,i)=>`<button class="hxhstone" onclick="hxhSearchStone(${i})" ${(tried.includes(i)||S.hxhBusy)?'disabled':''} style="${tried.includes(i)?'opacity:.25':''}">${tried.includes(i)?'💨':'⛓️'}</button>`).join('')}</div>`;
+ <div class="mut" style="margin-top:10px">ด่านที่ ${cleared+1}/6 · ค้นหาครั้งที่ ${att+1}/${stones} · ค่าค้นหา ${disc>0?`<s style="opacity:.5">${f.cost}</s> `:''}${fcost}/ครั้ง${disc>0?' (ลด '+disc+'%)':''}</div>
+ <div class="stonerowHxh" style="margin-top:14px">${Array.from({length:stones},(_,i)=>`<button class="hxhstone" onclick="hxhSearchStone(${i})" ${(tried.includes(i)||S.hxhBusy)?'disabled':''} style="${tried.includes(i)?'opacity:.25':''}">${tried.includes(i)?'💨':'⛓️'}</button>`).join('')}</div>`;
  }
  return `<div class="card" style="margin-top:0;text-align:center">
  <b class="n" style="font-size:18px">⛓️ ล่าชิ้นส่วนโซ่นักล่า</b>
  <div class="mut" style="margin-top:4px">กิจกรรมทดสอบ (เฉพาะแอดมิน ผู้เล่นทั่วไปยังไม่เห็นหน้านี้) — ล่าโซ่นักล่าให้ครบ 6 ด่าน ลุ้นคริสตัลธีม UI Hunter×Hunter</div>
+ <div class="chip" style="margin-top:8px;display:inline-block">🗓️ สถานะกำหนดเวลา: ${hxhEventStatus().t}</div>
  ${body}
  ${cryRow}
  <div class="mut" style="margin-top:18px;text-align:left;font-size:12.5px;line-height:1.8">
  <b>กฎ/อัตรา:</b><br>
  • แต่ละด่าน (1-6) มีก้อนหินให้ค้นหาทีละก้อน ค่าค้นหาและโอกาสพบเพิ่มขึ้นทุกครั้งที่พลาด ค้นหาก้อนสุดท้ายของด่านรับชิ้นส่วนโซ่การันตี 100%<br>
- • ค่าค้นหาต่อด่าน (หยกเขียว/ครั้ง): ด่าน1=19 · ด่าน2=39 · ด่าน3=99 · ด่าน4=299 · ด่าน5=399 · ด่าน6=499 — มีเหรียญกิจกรรมจะถูกหักใช้ก่อนหยกเขียวอัตโนมัติ (1 เหรียญ = 1 หยกเขียว)<br>
+ • ค่าค้นหาต่อด่าน (หยกเขียว/ครั้ง): ${HXH_FLOORS.map((f,idx)=>'ด่าน'+(idx+1)+'='+f.cost).join(' · ')} — มีเหรียญกิจกรรมจะถูกหักใช้ก่อนหยกเขียวอัตโนมัติ (1 เหรียญ = 1 หยกเขียว)<br>
  • พบโซ่แต่ละด่าน จะเลือกเปิดคริสตัล 1 ก้อนจาก 6 ก้อน เปิดแล้วเปิดเลย เปิดซ้ำไม่ได้ คริสตัลก้อนสุดท้าย (ด่านที่ 6) การันตี 100% ได้ครบแน่นอน ใครดวงดีอาจได้ครบก่อนด่าน 6<br>
  • กิจกรรมนี้ยังเป็นเวอร์ชันทดสอบภายใน เห็น/เล่นได้เฉพาะบัญชีแอดมินเท่านั้น จนกว่าจะเปิดให้ผู้เล่นทั่วไปอย่างเป็นทางการ
  </div>
@@ -2217,7 +2272,7 @@ function vHxHGacha(){if(!isAdmin)return `<div class="card">หน้านี้
 async function hxhSearchStone(i){if(hxhDone()||S.hxhCryPending||S.hxhBusy)return;
  const cleared=S.hxhFloor||0,f=HXH_FLOORS[cleared],tried=S.hxhTried||[];
  if(tried.includes(i))return;
- const cost=f.cost,coin=S.hxhCoin||0,fromCoin=Math.min(coin,cost),fromJade=cost-fromCoin;
+ const disc=Math.max(0,Math.min(100,(S.hxhDisc&&S.hxhDisc[cleared])||0)),cost=Math.max(0,Math.round(f.cost*(1-disc/100))),coin=S.hxhCoin||0,fromCoin=Math.min(coin,cost),fromJade=cost-fromCoin;
  if((S.jade||0)<fromJade){say('หยกเขียวไม่พอ (ต้องใช้ '+cost+' รวมเหรียญกิจกรรม มีหยกเขียว '+fmt(S.jade||0)+')');return}
  if(!(await dlg('ค้นหาด่านที่ '+(cleared+1)+' ก้อนนี้ ใช้ '+cost+' (หักเหรียญกิจกรรมก่อน แล้วจึงหยกเขียว)?')))return;
  if(hxhDone()||S.hxhCryPending||S.hxhBusy||(S.hxhTried||[]).includes(i))return;
@@ -2377,10 +2432,45 @@ function vAdminGacha(){if(!gcDraft)gcDraft=JSON.parse(JSON.stringify(GC));
  ${mach(1)}${mach(2)}
  <div class="card"><b class="n">🎟️ แพ็กขายบัตรสุ่ม (ราคาเป็นหยกเขียว)</b>${gcDraft.packs.map((p,i)=>`<div class="gcg" style="margin-top:8px;grid-template-columns:1fr 1fr auto;align-items:end"><label class="gcl"><span>จำนวนบัตร</span><input class="inp" type="number" min="1" value="${p.n}" oninput="gcPk(${i},'n',this.value)"></label><label class="gcl"><span>ราคา (หยก)</span><input class="inp" type="number" min="0" value="${p.c}" oninput="gcPk(${i},'c',this.value)"></label><button class="btn" onclick="gcPkDel(${i})">ลบ</button></div>`).join('')}
  <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" onclick="gcPkAdd()">+ เพิ่มแพ็ก</button><button class="btn" onclick="if(confirm('คืนค่าเริ่มต้นทั้งหมด (ยังไม่บันทึก)?'))gcReset()">คืนค่าเริ่มต้น</button></div></div>`}
+function vAdminHxh(){
+ if(!hxhCfgDraft)hxhCfgDraft={floors:JSON.parse(JSON.stringify(HXH_FLOORS)),cryP:HXH_CRY_P.slice(),missions:JSON.parse(JSON.stringify(HXH_MISSIONS)),sched:Object.assign({},HXH_SCHED)};
+ const d=hxhCfgDraft,st=hxhEventStatus();
+ const floorsHtml=d.floors.map((f,i)=>`<div class="card" style="margin-top:10px"><b class="n" style="font-size:14px">ด่านที่ ${i+1} · ${f.p.length} ก้อน</b>
+ <div class="gcg" style="margin-top:8px">
+ <label class="gcl"><span>ค่าค้นหา/ครั้ง (หยกเขียว)</span><input class="inp" type="number" min="0" value="${f.cost}" oninput="hxhFloorCost(${i},this.value)"></label>
+ <label class="gcl" style="grid-column:1/-1"><span>โอกาสพบโซ่แต่ละครั้ง % (คั่นด้วย , เรียงตามลำดับครั้งที่ค้นหา ค่าสุดท้ายควรเป็น 100 เพื่อการันตี)</span><input class="inp" value="${hxhPStr(f.p)}" onchange="hxhFloorP(${i},this.value)"></label>
+ </div></div>`).join('');
+ const cryHtml=`<div class="card" style="margin-top:10px"><b class="n" style="font-size:14px">💎 โอกาสได้ชิ้นส่วนธีม UI เมื่อเปิดคริสตัล % (ตามจำนวนด่านที่ผ่านแล้ว ค่าที่ 6 ควรเป็น 100 เพื่อการันตี)</b>
+ <div class="gcg" style="margin-top:8px">${d.cryP.map((v,i)=>`<label class="gcl"><span>ผ่านด่านที่ ${i+1}</span><input class="inp" type="number" min="0" max="100" step="any" value="${v}" oninput="hxhCryRate(${i},this.value)"></label>`).join('')}</div></div>`;
+ const misHtml=`<div class="card" style="margin-top:10px"><b class="n" style="font-size:14px">🎯 ภารกิจรับเหรียญกิจกรรม (เงื่อนไข: เติมหยกเขียวครบตามกำหนดในครั้งเดียว)</b>
+ ${d.missions.map((m,i)=>`<div class="gcg" style="margin-top:8px;border-top:1px solid #ffffff14;padding-top:8px">
+ <label class="gcl" style="grid-column:1/-1"><span>ชื่อภารกิจ</span><input class="inp" value="${esc(m.label)}" oninput="hxhMisSet(${i},'label',this.value)"></label>
+ <label class="gcl"><span>เติมขั้นต่ำ (หยกเขียว)</span><input class="inp" type="number" min="0" value="${m.threshold}" oninput="hxhMisSet(${i},'threshold',this.value)"></label>
+ <label class="gcl"><span>ได้เหรียญกิจกรรม</span><input class="inp" type="number" min="0" value="${m.coins}" oninput="hxhMisSet(${i},'coins',this.value)"></label>
+ <label class="gcl"><span>โบนัสเพิ่ม (เฉพาะ SVIP)</span><input class="inp" type="number" min="0" value="${m.svipBonus}" oninput="hxhMisSet(${i},'svipBonus',this.value)"></label>
+ <label class="gcl"><span>สถานะ</span><select class="inp" onchange="hxhMisSet(${i},'on',this.value)"><option value="1" ${m.on?'selected':''}>เปิดใช้งาน</option><option value="0" ${m.on?'':'selected'}>ปิดใช้งาน</option></select></label>
+ <button class="btn" style="grid-column:1/-1" onclick="hxhMisDel(${i})">ลบภารกิจนี้</button>
+ </div>`).join('')}
+ <button class="btn" style="width:100%;margin-top:10px" onclick="hxhMisAdd()">+ เพิ่มภารกิจใหม่</button></div>`;
+ return `<div class="card" style="margin-top:0"><b class="n">⛓️ ตั้งค่ากิจกรรมคอลแลป Hunter×Hunter (เรียลไทม์)</b>
+ <div class="mut" style="margin-top:4px">หน้ากิจกรรมนี้ยังเห็น/เล่นได้เฉพาะบัญชีแอดมินเท่านั้น จนกว่าจะเปิดให้ผู้เล่นทั่วไปอย่างเป็นทางการ แก้ค่าแล้วกด "บันทึก" มีผลทันที · <span id="hxhcfgst"></span></div>
+ <div class="chip" style="margin-top:8px;display:inline-block">🗓️ สถานะตอนนี้: ${st.t}</div>
+ <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="hxhcfgsave" style="flex:1" onclick="hxhCfgSave()">💾 บันทึก มีผลทันที</button><button class="btn" onclick="hxhCfgReload()">โหลดค่าปัจจุบัน</button></div></div>
+ <div class="card"><b class="n">🗓️ เปิด/ปิด และกำหนดเวลากิจกรรม</b>
+ <div class="gcg" style="margin-top:8px">
+ <label class="gcl" style="grid-column:1/-1"><span>สถานะกิจกรรม</span><select class="inp" onchange="hxhSchedOn(this.value)"><option value="1" ${d.sched.enabled?'selected':''}>เปิดใช้งาน</option><option value="0" ${d.sched.enabled?'':'selected'}>ปิดใช้งาน</option></select></label>
+ <label class="gcl"><span>เวลาเริ่ม (เว้นว่าง = เริ่มได้ทันที)</span><input class="inp" type="datetime-local" value="${d.sched.startAt?gcEndStr(d.sched.startAt):''}" onchange="hxhSchedAt('startAt',this.value)"></label>
+ <label class="gcl"><span>เวลาสิ้นสุด (เว้นว่าง = ไม่กำหนด)</span><input class="inp" type="datetime-local" value="${d.sched.endAt?gcEndStr(d.sched.endAt):''}" onchange="hxhSchedAt('endAt',this.value)"></label>
+ </div>
+ <div class="mut" style="margin-top:8px">หมายเหตุ: บัญชีแอดมินเข้าดู/ทดสอบกิจกรรมได้เสมอไม่ว่าจะตั้งเวลาอย่างไร เวลานี้จะมีผลกับผู้เล่นทั่วไปในอนาคตเมื่อเปิดใช้งานจริง</div></div>
+ ${floorsHtml}${cryHtml}${misHtml}
+ <div class="card"><b class="n">🟡 แจก/หักเหรียญกิจกรรมและส่วนลดรายคน</b><div class="mut" style="margin-top:4px">ไปที่แท็บ "👥 ผู้เล่น" — เลือกผู้เล่น แล้วใช้ช่อง "ปรับยอด" เลือกสกุลเงิน "เหรียญกิจกรรมคอลแลป" เพื่อแจก/หักให้รายคน หรือใช้ "แจกให้ผู้เล่นทุกคน" เพื่อแจกทั้งระบบ · ส่วนลดค่าค้นหารายด่านของผู้เล่นแต่ละคน ตั้งได้ในกล่องรายละเอียดผู้เล่นคนนั้น (หัวข้อ "ส่วนลดคอลแลป HxH รายคน")</div>
+ <button class="btn" style="width:100%;margin-top:10px" onclick="adminTab='players';R()">ไปที่แท็บผู้เล่น</button></div>
+ <div class="card"><button class="btn" style="width:100%" onclick="if(confirm('คืนค่าเริ่มต้นทั้งหมด (ยังไม่บันทึก)?'))hxhCfgReset()">คืนค่าเริ่มต้นทั้งหมด</button></div>`}
 function vAdmin(){if(!isAdmin)return '<div class="card"><div class="mut">เฉพาะบัญชีแอดมินเท่านั้น</div></div>';
- const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า'],['topup','💎 เติมหยก'],['promo','🎉 โปรโมชั่น'],['bp','🎫 เวอร์พาส'],['players','👥 ผู้เล่น'],['gacha','🎰 กาชา'],['lb','🐉 กล่องสุ่ม'],['decor','✨ ของตกแต่ง'],['jump','🪂 โดดดึ๋ง'],['rankcfg','⚔️ แรงค์'],['stats','📊 สถิติ'],['sys','🛠️ ระบบ'],['ugc','🎬 คลิปผู้เล่น'],['mus','🎵 เพลงเสริม'],['rpt','🚩 รายงาน'],['rw','🎁 ของรางวัล']];
+ const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า'],['topup','💎 เติมหยก'],['promo','🎉 โปรโมชั่น'],['bp','🎫 เวอร์พาส'],['players','👥 ผู้เล่น'],['gacha','🎰 กาชา'],['hxh','⛓️ คอลแลป HxH'],['lb','🐉 กล่องสุ่ม'],['decor','✨ ของตกแต่ง'],['jump','🪂 โดดดึ๋ง'],['rankcfg','⚔️ แรงค์'],['stats','📊 สถิติ'],['sys','🛠️ ระบบ'],['ugc','🎬 คลิปผู้เล่น'],['mus','🎵 เพลงเสริม'],['rpt','🚩 รายงาน'],['rw','🎁 ของรางวัล']];
  let h=`<div class="tabs" style="margin:0 0 4px">${tabs.map(([k,l])=>`<button class="tab ${adminTab===k?'on':''}" onclick="adminTab='${k}';R()">${l}</button>`).join('')}</div>`;
- if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else if(adminTab==='shop')h+=vAdminShop();else if(adminTab==='topup')h+=vAdminTopup();else if(adminTab==='promo')h+=vAdminPromo();else if(adminTab==='players')h+=vAdminPlayers();else if(adminTab==='gacha')h+=vAdminGacha();else if(adminTab==='lb')h+=vAdminLB();else if(adminTab==='decor')h+=vAdminDecor();else if(adminTab==='jump')h+=vAdminJump();else if(adminTab==='rankcfg')h+=vAdminRankCfg();else if(adminTab==='ugc')h+=vAdminUgc();else if(adminTab==='mus')h+=vAdminMus();else if(adminTab==='rpt')h+=vAdminRpt();else if(adminTab==='rw')h+=vAdminRw();else if(adminTab==='stats')h+=vAdminStats();else if(adminTab==='sys')h+=vAdminSys();else h+=vAdminBp();
+ if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else if(adminTab==='shop')h+=vAdminShop();else if(adminTab==='topup')h+=vAdminTopup();else if(adminTab==='promo')h+=vAdminPromo();else if(adminTab==='players')h+=vAdminPlayers();else if(adminTab==='gacha')h+=vAdminGacha();else if(adminTab==='hxh')h+=vAdminHxh();else if(adminTab==='lb')h+=vAdminLB();else if(adminTab==='decor')h+=vAdminDecor();else if(adminTab==='jump')h+=vAdminJump();else if(adminTab==='rankcfg')h+=vAdminRankCfg();else if(adminTab==='ugc')h+=vAdminUgc();else if(adminTab==='mus')h+=vAdminMus();else if(adminTab==='rpt')h+=vAdminRpt();else if(adminTab==='rw')h+=vAdminRw();else if(adminTab==='stats')h+=vAdminStats();else if(adminTab==='sys')h+=vAdminSys();else h+=vAdminBp();
  return h}
 
 // ---------- admin: system settings + stats ----------
@@ -2625,24 +2715,28 @@ function plBan(){const type=$('#bntype').value,n=Math.round(+$('#bnn').value),un
 function plUnban(){const note=($('#bnun')||{}).value||'',id=plSel;plRun('ปลดแบนแล้ว',o=>{if(o.ban){o.banHist=o.banHist||[];o.banHist.unshift(Object.assign({},o.ban,{ended:'ปลดโดยแอดมิน',note:note.trim(),endAt:Date.now()}));o.banHist=o.banHist.slice(0,10)}o.ban=null;o.banAppeal=null});
  plSyncBanToLeaderboard(id,false)}
 let plSel=null,plData=null,plQ='';
-const CURN={pts:'คะแนน',gold:'เหรียญทอง',jade:'หยกเขียว'};
+const CURN={pts:'คะแนน',gold:'เหรียญทอง',jade:'หยกเขียว',hxhCoin:'เหรียญกิจกรรมคอลแลป'};
 function plList(){const q=plQ.trim().toLowerCase();const l=leaderboard.slice().sort((a,b)=>(b.pts||0)-(a.pts||0)).filter(r=>!q||(r.email||'').toLowerCase().includes(q)).slice(0,50);
  return l.length?l.map(r=>`<button class="mrow2${plSel===r.uid?' on':''}" onclick="selPlayer('${r.uid}')"><span style="min-width:0;word-break:break-all;text-align:left">${esc(r.email||r.uid)}</span><b>${fmt(r.pts||0)}</b></button>`).join(''):'<div class="mut">ไม่พบผู้เล่น</div>'}
 function vAdminPlayers(){return `<div class="card" style="margin-top:0"><b class="n">จัดการผู้เล่น</b><div class="mut" style="margin-top:4px">ค้นหาผู้เล่น แล้วปรับคะแนน เหรียญทอง หยกเขียว พาสสะสม ธีม หรือมอบไอเทม/ยศให้ได้ทันที (ผู้เล่นเห็นผลทันทีถ้าออนไลน์อยู่)</div>
  <input class="inp" placeholder="ค้นหาอีเมล" value="${esc(plQ)}" oninput="plQ=this.value;$('#pllist').innerHTML=plList()"><div id="pllist" style="margin-top:8px;display:grid;gap:6px;max-height:260px;overflow:auto">${plList()}</div></div>
  <div id="pldet">${plDet()}</div>
  <div class="card"><b class="n">แจกให้ผู้เล่นทุกคน</b><div class="mut" style="margin-top:4px">แจกให้ทุกคนที่เคยสมัคร (${leaderboard.length} คน) — ใช้ตัวเลขติดลบเพื่อหัก</div>
- <div class="row" style="margin-top:8px;gap:8px"><select id="bccur" class="inp" style="margin-top:0"><option value="pts">คะแนน</option><option value="gold">เหรียญทอง</option><option value="jade">หยกเขียว</option></select><input id="bcamt" type="number" class="inp" style="margin-top:0" placeholder="จำนวน"></div>
+ <div class="row" style="margin-top:8px;gap:8px"><select id="bccur" class="inp" style="margin-top:0"><option value="pts">คะแนน</option><option value="gold">เหรียญทอง</option><option value="jade">หยกเขียว</option><option value="hxhCoin">เหรียญกิจกรรมคอลแลป</option></select><input id="bcamt" type="number" class="inp" style="margin-top:0" placeholder="จำนวน"></div>
  <button class="btn gold" style="width:100%;margin-top:10px" onclick="plBroadcast()">แจกให้ทุกคน</button><div class="mut" id="bcst" style="margin-top:6px"></div></div>`}
 function plDet(){if(!plSel||!plData)return plSel?'<div class="card"><div class="mut">กำลังโหลด...</div></div>':'';const u=plData,lb=leaderboard.find(r=>r.uid===plSel)||{};
  return `<div class="card"><b class="n" style="word-break:break-all">${esc(lb.email||plSel)}</b>
- <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px"><span class="chip">คะแนน ${fmt(u.pts||0)}</span><span class="chip wn">เหรียญทอง ${fmt(u.gold||0)}</span><span class="chip ok">หยกเขียว ${fmt(u.jade||0)}</span><span class="chip">พาสสะสม ${u.bpPasses||0}</span><span class="chip">เลเวลเวอร์พาส ${Math.min(BP_MAX_LV,Math.floor((u.bpXP||0)/BP_XP_PER_LV))}</span></div>
- <div class="row" style="margin-top:12px;gap:8px"><select id="plcur" class="inp" style="margin-top:0"><option value="pts">คะแนน</option><option value="gold">เหรียญทอง</option><option value="jade">หยกเขียว</option></select><input id="plamt" type="number" class="inp" style="margin-top:0" placeholder="+ เพิ่ม / − หัก"></div>
+ <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px"><span class="chip">คะแนน ${fmt(u.pts||0)}</span><span class="chip wn">เหรียญทอง ${fmt(u.gold||0)}</span><span class="chip ok">หยกเขียว ${fmt(u.jade||0)}</span><span class="chip">พาสสะสม ${u.bpPasses||0}</span><span class="chip">เลเวลเวอร์พาส ${Math.min(BP_MAX_LV,Math.floor((u.bpXP||0)/BP_XP_PER_LV))}</span><span class="chip">🟡 เหรียญกิจกรรมคอลแลป ${fmt(u.hxhCoin||0)}</span></div>
+ <div class="row" style="margin-top:12px;gap:8px"><select id="plcur" class="inp" style="margin-top:0"><option value="pts">คะแนน</option><option value="gold">เหรียญทอง</option><option value="jade">หยกเขียว</option><option value="hxhCoin">เหรียญกิจกรรมคอลแลป</option></select><input id="plamt" type="number" class="inp" style="margin-top:0" placeholder="+ เพิ่ม / − หัก"></div>
  <button class="btn pri" style="width:100%;margin-top:8px" onclick="plAdjust()">ปรับยอด</button>
  <div class="row" style="margin-top:8px;gap:8px"><button class="btn" style="flex:1" onclick="plPass()">เพิ่มพาสสะสม +1</button><button class="btn" style="flex:1" onclick="plLevel()">เพิ่มเลเวลเวอร์พาส +5</button></div>
  <button class="btn" style="width:100%;margin-top:8px" onclick="plTheme()">ปลดล็อกธีมแฟนตาซี</button>
  <button class="btn" style="width:100%;margin-top:8px" onclick="plNick()">รีเซ็ตชื่อเล่น (ให้ตั้งใหม่ได้)${(lb.name||(u.prof&&u.prof.name))?' · '+esc(lb.name||u.prof.name):''}</button>
  <input id="plitem" class="inp" placeholder="ชื่อไอเทม/ยศที่จะมอบ เช่น ไอเทมตำนานประจำซีซั่น" maxlength="60"><button class="btn" style="width:100%;margin-top:8px" onclick="plItem()">มอบไอเทม/ยศ</button>
+ <div class="card" style="margin-top:8px"><b class="n" style="font-size:14px">⛓️ ส่วนลดคอลแลป HxH รายคน (เฉพาะผู้เล่นนี้)</b>
+ <div class="mut" style="margin-top:4px">ใส่ % ส่วนลดค่าค้นหาแต่ละด่าน (0-100) เว้นว่างหรือ 0 = ไม่มีส่วนลด มีผลเฉพาะผู้เล่นคนนี้เท่านั้น</div>
+ <div class="gcg" style="margin-top:8px">${[0,1,2,3,4,5].map(i=>`<label class="gcl"><span>ด่านที่ ${i+1}</span><input id="plhxhd${i}" type="number" min="0" max="100" class="inp" value="${(u.hxhDisc&&u.hxhDisc[i])||''}"></label>`).join('')}</div>
+ <button class="btn" style="width:100%;margin-top:8px" onclick="plHxhDisc()">บันทึกส่วนลด</button></div>
  ${plBanBox(u)}<div class="mut" id="plst" style="margin-top:8px"></div></div>${plMediaBox()}`}
 async function selPlayer(id){plSel=id;plData=null;plAvNew=undefined;plBgNew=undefined;const e=$('#pldet');if(e)e.innerHTML=plDet();const l=$('#pllist');if(l)l.innerHTML=plList();
  try{plData=(await db.ref('users/'+id).once('value')).val()||{}}catch(e){plData={};}
@@ -2655,6 +2749,8 @@ async function plRun(msg,fn){const st=$('#plst');if(!plSel)return;st.textContent
 function addLog(o,m,n,cur){o.log=o.log||[];o.log.unshift({t:tstr(),m,n,cur});o.log=o.log.slice(0,80)}
 function plAdjust(){const cur=$('#plcur').value,amt=Math.round(+$('#plamt').value);if(!amt){$('#plst').textContent='ใส่จำนวนที่ไม่ใช่ 0';return}
  plRun((amt>0?'เพิ่ม ':'หัก ')+fmt(Math.abs(amt))+' '+CURN[cur]+' แล้ว',o=>{o[cur]=Math.max(0,(o[cur]||0)+amt);addLog(o,'แอดมินปรับยอด',amt,cur)})}
+function plHxhDisc(){const d=[0,1,2,3,4,5].map(i=>{const e=$('#plhxhd'+i);return e?Math.max(0,Math.min(100,Math.round(+e.value||0))):0});
+ plRun('บันทึกส่วนลดคอลแลป HxH แล้ว',o=>{o.hxhDisc=d})}
 function plPass(){plRun('เพิ่มพาสสะสมแล้ว',o=>{o.bpPasses=(o.bpPasses||0)+1})}
 function plLevel(){plRun('เพิ่มเลเวลเวอร์พาส +5 แล้ว',o=>{o.bpXP=Math.min(BP_MAX_LV*BP_XP_PER_LV,(o.bpXP||0)+5*BP_XP_PER_LV)})}
 async function plNick(){if(!plSel)return;const id=plSel;if(!(await dlg('รีเซ็ตชื่อเล่นของผู้เล่นคนนี้?','รีเซ็ต')))return;try{await db.ref('profiles/'+id+'/name').remove()}catch(e){}plRun('รีเซ็ตชื่อเล่นแล้ว',o=>{o.prof=Object.assign({},o.prof||{},{name:''})})}
@@ -5077,7 +5173,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();if(isAdmin){try{localStorage.setItem(HXH_HINT_KEY,'1')}catch(e){}}
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachMyStorageReq();attachBpLevels();attachGC();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();attachPromoCfg();songsAttach();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll();attachStorageReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachMyStorageReq();attachBpLevels();attachGC();attachHxhCfg();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();attachPromoCfg();songsAttach();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll();attachStorageReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
