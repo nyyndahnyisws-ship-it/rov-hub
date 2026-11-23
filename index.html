@@ -2797,7 +2797,7 @@ function vAdminPlayers(){return `<div class="card" style="margin-top:0"><b class
  <button class="btn gold" style="width:100%;margin-top:10px" onclick="plBroadcast()">แจกให้ทุกคน</button><div class="mut" id="bcst" style="margin-top:6px"></div></div>`}
 function plDet(){if(!plSel||!plData)return plSel?'<div class="card"><div class="mut">กำลังโหลด...</div></div>':'';const u=plData,lb=leaderboard.find(r=>r.uid===plSel)||{};
  return `<div class="card"><b class="n" style="word-break:break-all">${esc(lb.email||plSel)}</b>
- <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px"><span class="chip">คะแนน ${fmt(u.pts||0)}</span><span class="chip wn">เหรียญทอง ${fmt(u.gold||0)}</span><span class="chip ok">หยกเขียว ${fmt(u.jade||0)}</span><span class="chip">พาสสะสม ${u.bpPasses||0}</span><span class="chip">เลเวลเวอร์พาส ${Math.min(BP_MAX_LV,Math.floor((u.bpXP||0)/BP_XP_PER_LV))}</span><span class="chip">🟡 เหรียญกิจกรรมคอลแลป ${fmt(u.hxhCoin||0)}</span></div>
+ <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px"><span class="chip">คะแนน ${fmt(u.pts||0)}</span><span class="chip wn">เหรียญทอง ${fmt(u.gold||0)}</span><span class="chip ok">หยกเขียว ${fmt(u.jade||0)}</span><span class="chip">พาสสะสม ${u.bpPasses||0}</span><span class="chip">เลเวลเวอร์พาส ${Math.min(BP_MAX_LV,Math.floor((u.bpXP||0)/BP_XP_PER_LV))}</span><span class="chip">🟡 เหรียญกิจกรรมคอลแลป ${fmt(u.hxhCoin||0)}</span><span class="chip">🎵 ตั๋วกระโดด ${fmt((u.jump&&u.jump.tix)||0)}</span><span class="chip">🪙 เหรียญกิจกรรมโดดดึ๋ง ${fmt(u.jumpCoin||0)}</span></div>
  <div class="row" style="margin-top:12px;gap:8px"><select id="plcur" class="inp" style="margin-top:0"><option value="pts">คะแนน</option><option value="gold">เหรียญทอง</option><option value="jade">หยกเขียว</option><option value="hxhCoin">เหรียญกิจกรรมคอลแลป</option></select><input id="plamt" type="number" class="inp" style="margin-top:0" placeholder="+ เพิ่ม / − หัก"></div>
  <button class="btn pri" style="width:100%;margin-top:8px" onclick="plAdjust()">ปรับยอด</button>
  <div class="row" style="margin-top:8px;gap:8px"><button class="btn" style="flex:1" onclick="plPass()">เพิ่มพาสสะสม +1</button><button class="btn" style="flex:1" onclick="plLevel()">เพิ่มเลเวลเวอร์พาส +5</button></div>
@@ -3775,7 +3775,7 @@ async function jumpDeviceCheck(){if(!S||!uid||S.jumpBanned)return;try{
 }catch(e){}}
 const JUMP_MS=[['ci','เช็กอินรายวันสำเร็จวันนี้'],['wh','หมุนวงล้อประจำวัน'],['dq','ทำภารกิจคลิปประจำวันอย่างน้อย 1 ข้อ'],['share','แชร์กิจกรรมให้เพื่อน']];
 function jumpRoll(){if(!S)return;if(!S.jump||typeof S.jump!=='object')S.jump={};if(S.jump.tile==null)S.jump.tile=0;
- if(S.jump.d!==day()){const first=!S.jump.d;S.jump.d=day();S.jump.ms={login:1};S.jump.tix=1;if(!first)save()}}
+ if(S.jump.d!==day()){const first=!S.jump.d;S.jump.d=day();S.jump.ms={login:1};S.jump.tix=(S.jump.tix||0)+1;if(!first)save()}}
 function jumpMsDone(k){if(k==='ci')return ciState().done;if(k==='wh')return S.wh===day();if(k==='dq'){dqRoll();return DQM.some(m=>S.dq&&S.dq.got&&S.dq.got[m[0]])}if(k==='share')return !!(S.jump.ms&&S.jump.ms.shareReady);return false}
 function jumpShareReady(){jumpRoll();if(S.jump.ms.shareReady)return;S.jump.ms.shareReady=1;save();R();jumpInvite()}
 function jumpInvite(){const t='มาเล่นกิจกรรม "โดดดึ๋ง รับรางวัลฟรี" ที่ ROV Point Hub กันเถอะ '+location.href.split('#')[0];
@@ -3954,6 +3954,14 @@ function jpAdjustCoin(){const amt=Math.round(+$('#jpamt_coin').value);if(!amt){$
  jpRun((amt>0?'เพิ่ม ':'หัก ')+fmt(Math.abs(amt))+' เหรียญกิจกรรม แล้ว',o=>{o.jumpCoin=Math.max(0,(o.jumpCoin||0)+amt);addLog(o,'แอดมินปรับเหรียญกิจกรรม',amt,'jumpcoin')})}
 function jpConjure(ty){jpRun('เสก'+jumpBoxLabel(ty)+'ให้ผู้เล่นแล้ว',o=>{const r=jumpBoxReward(ty,o);addLog(o,'แอดมินเสกกล่อง: '+r.title+' '+r.txt,r.tixGain||r.coin||0,r.tixGain?'jumptix':'jumpcoin')})}
 function jpUnbanJump(){jpRun('ปลดบล็อกกิจกรรมโดดดึ๋งแล้ว',o=>{o.jumpBanned=false})}
+async function jpResetAllBoards(){const st=$('#jpresetst');
+ if(!(await dlg('ล้างกระดานเดินของผู้เล่นทุกคนตอนนี้เลย? ทุกคนจะกลับไปอยู่ที่จุดเริ่มต้น (ตั๋วกระโดด/เหรียญกิจกรรม/ภารกิจที่สะสมไว้จะไม่หาย ล้างเฉพาะตำแหน่งบนกระดาน) (กู้คืนไม่ได้)','ล้างกระดานเลย')))return;
+ if(st)st.textContent='กำลังล้างกระดาน...';
+ try{const list=(leaderboard||[]).slice();let n=0;
+  for(const r of list){const uid2=r.uid;if(!uid2)continue;
+   try{if(await adminPatch(uid2,o=>{o.jump=o.jump||{};o.jump.tile=0}))n++}catch(e){}}
+  if(st)st.textContent='✅ ล้างกระดานแล้ว '+n+'/'+list.length+' คน '+tstr();say('ล้างกระดานเดินของผู้เล่นทุกคนเรียบร้อย ('+n+' คน) — ทุกคนกลับไปจุดเริ่มต้นแล้ว')
+ }catch(e){if(st)st.textContent='ผิดพลาด: '+((e&&e.code)||'ลองใหม่')}}
 function jpGlobalCfgHTML(){const c=ANTICHEAT;
  const tg=(k,label,desc)=>`<div style="margin-top:12px"><div class="row" style="justify-content:space-between;align-items:center"><b class="n" style="flex:1;min-width:0">${label}</b><button class="btn ${c[k]?'pri':''}" onclick="acToggle('${k}')">${c[k]?'เปิดอยู่':'ปิดอยู่'}</button></div><div class="mut" style="font-size:12px;margin-top:2px">${desc}</div></div>`;
  return `<div class="mut">การตั้งค่านี้มีผลกับทั้งเว็บ ไม่ใช่เฉพาะผู้เล่นคนนี้</div>
@@ -4004,6 +4012,8 @@ function vAdminJump(){const d=jumpCfgDraft||JUMPCFG;
  <button class="btn gold" style="width:100%;margin-top:10px" onclick="jpLoad()">${jpLoaded?'🔄 รีเฟรชรายชื่อผู้เล่นทั้งหมด':'📋 โหลดรายชื่อผู้เล่นทั้งหมด'}</button>
  <input class="inp" style="margin-top:8px" placeholder="ค้นหาอีเมล" value="${esc(jpQ)}" oninput="jpQ=this.value;$('#jplist').innerHTML=jpListHTML()">
  <div id="jplist" style="margin-top:8px;display:grid;gap:6px;max-height:260px;overflow:auto">${jpListHTML()}</div></div>
+ <div class="card"><b class="n">🧹 ล้างกระดานเดิน (ผู้เล่นทุกคน)</b><div class="mut" style="margin-top:4px">รีเซ็ตตำแหน่งบนกระดานของผู้เล่นทุกคนกลับไปที่จุดเริ่มต้น (ช่อง "เริ่ม") ทันที — ไม่กระทบตั๋วกระโดด เหรียญกิจกรรม หรือภารกิจประจำวันที่สะสมไว้</div>
+ <button class="btn" style="width:100%;margin-top:10px;border-color:#ef4444;color:#ef4444" onclick="jpResetAllBoards()">⚠️ ล้างกระดานผู้เล่นทุกคนตอนนี้</button><div class="mut" id="jpresetst" style="margin-top:6px"></div></div>
  <div id="jpdet">${jpDetHTML()}</div>`}
 let lbrRefOff=null;
 
