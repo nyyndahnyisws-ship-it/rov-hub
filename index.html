@@ -2154,7 +2154,7 @@ function homeF(nx,nw){
  <div class="card" id="oidc"></div>
  ${rulesHomeBannerHTML()}
  <div class="grid3">${tiles.map(([k,ic,t,d])=>`<button class="menu ft" onclick="go('${k}')"><span class="ic">${hwUi()&&HWTI[ic]?`<img class="hwti" src="${HWUA[HWTI[ic]]}" alt="">`:fi2(ic)}</span><span class="tx"><b>${t}</b><span class="mut">${d}</span></span></button>`).join('')}</div>`}
-function vHome(){return dailyCard()+jumpCard()+vHome0()}
+function vHome(){return lottoHomeCard()+dailyCard()+jumpCard()+vHome0()}
 function vHome0(){const nx=T.find(t=>S.pts<t[1]),nw=content.filter(c=>!S.seen[c.id]).length,F=FX();if(F)return hwPromo()+homeF(nx,nw);
  return hwPromo()+bnHTML(false)+(announce.filter(a=>!a.img).length?'<div class="mut" style="margin:2px 4px 6px">📢 ประกาศ</div>'+announce.filter(a=>!a.img).slice(0,5).map(annCard).join(''):'')
  +`<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'} · ข้อมูลผูกกับบัญชีนี้ถาวร</div></div></div></div></div>
@@ -2186,6 +2186,7 @@ const MORE_IMG={"icons": ["data:image/webp;base64,UklGRvwdAABXRUJQVlA4IPAdAACQXQ
 function vMoreH(){const rows=[['daily','เช็กอินและภารกิจ','gift'],['explore','ค้นหาและอันดับครีเอเตอร์','book'],['team','ทีม','witch'],['rewards','ของรางวัลจำกัด','chest'],['profile','โปรไฟล์ของฉัน','pumpkin'],['live','ไลฟ์สด','fi:flame'],['gacha','ตู้กาชาฮาโลวีน','cauldron'],['chats','ช่องแชท','envghost'],['friends','เพื่อน','witch'],['decor','ของตกแต่ง','fi:gem'],['jump','โดดดึ๋ง รับรางวัลฟรี','fi:cloud'],['settings','ตั้งค่า / คลังธีม UI','book'],['bp','เวอร์พาส','scroll'],['redeem','แลกคูปอง','chest'],['redeemcode','กรอกโค้ดรับของรางวัล','gift'],['shop','ร้านค้า (เหรียญทอง)','dragon2'],['topup','เติมหยกเขียว','gem'],['mine','คูปองและประวัติ','envelope'],['contact','ติดต่อแอดมิน','star'],['photos','โพสต์รูปภาพ','fi:img'],['admin','หน้าแอดมิน','dragon'],['whatsnew','มีอะไรใหม่','gift'],['rules','กฎการลงเนื้อหา','fi:bell'],['guide','วิธีใช้งาน','quest']];
  return `<div class="mhero"><img src="${MORE_IMG.hero}" alt="เมนูเพิ่มเติม"></div>`+rows.map(([k,t,ic])=>{if(k==='admin'&&!isAdmin)return '';const fiIc=ic.startsWith('fi:')?ic.slice(3):null;return `<button class="mrow" onclick="${k==='guide'?'guide(1)':k==='whatsnew'?'openWhatsNew()':k==='rules'?'openContentRules()':k==='live'?'goLive()':"go('"+k+"')"}"><span class="mi" style="${fiIc?'display:grid;place-items:center;font-size:30px;color:#f6ecda':'background-image:var(--h-i-'+ic+')'}">${fiIc?fi2(fiIc):''}</span><b>${t}${k==='chats'?chatBadge():''}</b><span class="mc">${fi2('chev')}</span></button>`}).join('')
  +(isAdmin||hxhLaunched()?`<button class="mrow" onclick="go('hxhgacha')"><span class="mi" style="display:grid;place-items:center;font-size:30px">⛓️</span><b>ล่าชิ้นส่วนโซ่นักล่า${isAdmin&&!hxhLaunched()?' (แอดมิน)':''}</b><span class="mc">${fi2('chev')}</span></button>`:'')
+ +`<button class="mrow c-gold" onclick="go('lotto')"><span class="mi" style="display:grid;place-items:center;font-size:30px">🎱</span><b>ซื้อหวย</b><span class="mc">${fi2('chev')}</span></button>`
  +`<div class="card hwme" style="margin-top:14px"><div class="row"><div style="min-width:0"><b class="n" style="word-break:break-all">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'}</div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>`}
 function vMoreF(){if(hwUi())return vMoreH();if(hxhUi())return vMoreX();return vMoreFRaw()}
 function vMoreX(){const av=(S&&S.prof&&S.prof.av)||'';const hero=`<div class="moreheroX"><video class="bgvideo" autoplay loop muted playsinline poster="${HXHMORE.poster}"><source src="${HXHMORE.mp4}" type="video/mp4"></video><img class="bgimg" src="${HXHMORE.hero}">${av?`<img class="avslotX ring" src="${av}">`:''}</div>`+`<img class="hxhMoreImg" src="${HXHMORE.ticker}" alt="">`+`<div class="hxhProfRow"><img class="hxhMoreImg" src="${HXHMORE.profile}" alt=""><b class="hxhProfEmail">${esc((user&&user.email)||'')}</b><span class="hxhProfRole">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'}</span><button class="hxhProfLogout" onclick="logout()" aria-label="ออกจากระบบ"></button></div>`;
@@ -2213,6 +2214,7 @@ function hxhRowColor(k){const m={profile:'blue',live:'red',gacha:'gold',chats:'b
 function vMoreAcctCard(){return `<div class="card"><div class="row"><div style="min-width:0"><b class="n" style="word-break:break-all">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน':'ผู้เล่น'}</div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>`}
 function vMoreFRaw(){const it=[['daily','เช็กอินและภารกิจรายวัน'],['explore','ค้นหาและอันดับครีเอเตอร์'],['team','ทีม'],['rewards','ของรางวัลจำกัด'],['settings','ตั้งค่า / คลังธีม UI'],['bp','เวอร์พาส'],['redeem','แลกคูปอง'],['redeemcode','กรอกโค้ดรับของรางวัล'],['shop','ร้านค้า (เหรียญทอง)'],['topup','เติมหยกเขียว'],['mine','คูปองและประวัติ'],['contact','ติดต่อแอดมิน'],['admin','หน้าแอดมิน'],['guide','วิธีใช้งาน']];
  return `<div class="mhero"><img src="${MORE_IMG.hero}" alt="เมนูเพิ่มเติม"></div>`+[['profile','โปรไฟล์ของฉัน','user'],['gacha','ตู้กาชาฮาโลวีน','pump'],['chats','ช่องแชท','mail'],['friends','เพื่อน','star'],['live','ไลฟ์สด','flame','goLive()'],['decor','ของตกแต่ง','gem'],['jump','โดดดึ๋ง รับรางวัลฟรี','cloud'],['photos','โพสต์รูปภาพ','img']].map(([k,t,ic,fn])=>`<button class="mrow c-${hxhRowColor(k)}" onclick="${fn||"go('"+k+"')"}"><span class="mi" style="display:grid;place-items:center;font-size:34px;color:#9fc4ff;width:90px">${fi2(ic)}</span><b>${t}${k==='chats'?chatBadge():''}</b><span class="mc">${fi2('chev')}</span></button>`).join('')+`<button class="mrow c-gold" onclick="openWhatsNew()"><span class="mi" style="display:grid;place-items:center;font-size:34px;color:#9fc4ff;width:90px">${fi2('gift')}</span><b>มีอะไรใหม่</b><span class="mc">${fi2('chev')}</span></button>`+`<button class="mrow c-cyan" onclick="openContentRules()"><span class="mi" style="display:grid;place-items:center;font-size:34px;color:#9fc4ff;width:90px">${fi2('bell')}</span><b>กฎการลงเนื้อหา</b><span class="mc">${fi2('chev')}</span></button>`+it.map(([k,t],i)=>{if(k==='admin'&&!isAdmin)return'';return `<button class="mrow c-${hxhRowColor(k)}" onclick="${k==='guide'?'guide(1)':"go('"+k+"')"}"><span class="mi" style="background-image:url(${MORE_IMG.icons[i]})"></span><b>${t}</b><span class="mc">${fi2('chev')}</span></button>`}).join('')+(isAdmin||hxhLaunched()?`<button class="mrow c-purple" onclick="go('hxhgacha')"><span class="mi" style="display:grid;place-items:center;font-size:30px">⛓️</span><b>ล่าชิ้นส่วนโซ่นักล่า${isAdmin&&!hxhLaunched()?' (แอดมิน)':''}</b><span class="mc">${fi2('chev')}</span></button>`:'')
+ +`<button class="mrow c-gold" onclick="go('lotto')"><span class="mi" style="display:grid;place-items:center;font-size:30px">🎱</span><b>ซื้อหวย</b><span class="mc">${fi2('chev')}</span></button>`
  +vMoreAcctCard()}
 const HXH_FLOORS_DEF=[
  {cost:19,p:[28.73,28.73,100]},
@@ -2409,7 +2411,7 @@ async function hxhPickCrystal(i){if(S.hxhBusy||!S.hxhCryPending)return;
 }
 function vMore(){if(FX())return vMoreF();const b=(k,e,t)=>`<button class="menu" style="width:100%;flex-direction:row;align-items:center;gap:12px" onclick="${k}"><span class="em">${e}</span><b>${t}</b></button>`;
  return `<div class="card" style="margin-top:0"><div class="row"><div class="gap"><span class="em">👤</span><div><b class="n">${esc((user&&user.email)||'')}</b><div class="mut">${isAdmin?'สิทธิ์แอดมิน (อีเมลนี้ถูกกำหนดไว้ล่วงหน้า)':'ผู้เล่น'}</div></div></div><button class="btn" onclick="logout()">ออกจากระบบ</button></div></div>
- <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('profile')",'👤','โปรไฟล์ของฉัน')}${b("goLive()",'🔴','ไลฟ์สด')}${b("go('gacha')",'🎃','ตู้กาชาฮาโลวีน')}${b("go('chats')",'💬','ช่องแชท'+chatBadge())}${b("go('friends')",'🤝','เพื่อน')}${b("go('settings')",'⚙️','ตั้งค่า / คลังธีม UI')}${b("go('bp')",'🎫','เวอร์พาส')}${b("go('redeem')",'🎟️','แลกคูปอง')}${b("go('redeemcode')",'🎁','กรอกโค้ดรับของรางวัล')}${b("go('shop')",'🛒','ร้านค้า (เหรียญทอง)')}${b("go('decor')",'✨','ของตกแต่ง')}${b("go('jump')",'🪂','โดดดึ๋ง รับรางวัลฟรี')}${isAdmin||hxhLaunched()?b("go('hxhgacha')",'⛓️','ล่าชิ้นส่วนโซ่นักล่า'+(isAdmin&&!hxhLaunched()?' (แอดมิน)':'')):''}${b("go('photos')",'📸','โพสต์รูปภาพ')}${b("go('topup')",'💎','เติมหยกเขียว')}${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('openWhatsNew()','🎉','มีอะไรใหม่')}${b('openContentRules()','📜','กฎการลงเนื้อหา')}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
+ <div class="card" style="margin-top:0;display:grid;gap:10px">${b("go('profile')",'👤','โปรไฟล์ของฉัน')}${b("goLive()",'🔴','ไลฟ์สด')}${b("go('gacha')",'🎃','ตู้กาชาฮาโลวีน')}${b("go('chats')",'💬','ช่องแชท'+chatBadge())}${b("go('friends')",'🤝','เพื่อน')}${b("go('settings')",'⚙️','ตั้งค่า / คลังธีม UI')}${b("go('bp')",'🎫','เวอร์พาส')}${b("go('redeem')",'🎟️','แลกคูปอง')}${b("go('redeemcode')",'🎁','กรอกโค้ดรับของรางวัล')}${b("go('shop')",'🛒','ร้านค้า (เหรียญทอง)')}${b("go('decor')",'✨','ของตกแต่ง')}${b("go('jump')",'🪂','โดดดึ๋ง รับรางวัลฟรี')}${isAdmin||hxhLaunched()?b("go('hxhgacha')",'⛓️','ล่าชิ้นส่วนโซ่นักล่า'+(isAdmin&&!hxhLaunched()?' (แอดมิน)':'')):''}${b("go('lotto')",'🎱','ซื้อหวย')}${b("go('photos')",'📸','โพสต์รูปภาพ')}${b("go('topup')",'💎','เติมหยกเขียว')}${b("go('mine')",'🧾','คูปองและประวัติ')}${b("go('contact')",'📬','ติดต่อแอดมิน')}${isAdmin?b("go('admin')",'🛠️','หน้าแอดมิน'):''}${b('openWhatsNew()','🎉','มีอะไรใหม่')}${b('openContentRules()','📜','กฎการลงเนื้อหา')}${b('guide(1)','❓','วิธีใช้งาน')}</div>`}
 
 // ---------- contact admin (player side) ----------
 function readB64Img(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)})}
@@ -2572,10 +2574,348 @@ function vAdminHxh(){
  <div class="card"><b class="n">🟡 แจก/หักเหรียญกิจกรรมและส่วนลดรายคน</b><div class="mut" style="margin-top:4px">ไปที่แท็บ "👥 ผู้เล่น" — เลือกผู้เล่น แล้วใช้ช่อง "ปรับยอด" เลือกสกุลเงิน "เหรียญกิจกรรมคอลแลป" เพื่อแจก/หักให้รายคน หรือใช้ "แจกให้ผู้เล่นทุกคน" เพื่อแจกทั้งระบบ · ส่วนลดค่าค้นหารายด่านของผู้เล่นแต่ละคน ตั้งได้ในกล่องรายละเอียดผู้เล่นคนนั้น (หัวข้อ "ส่วนลดคอลแลป HxH รายคน")</div>
  <button class="btn" style="width:100%;margin-top:10px" onclick="adminTab='players';R()">ไปที่แท็บผู้เล่น</button></div>
  <div class="card"><button class="btn" style="width:100%" onclick="if(confirm('คืนค่าเริ่มต้นทั้งหมด (ยังไม่บันทึก)?'))hxhCfgReset()">คืนค่าเริ่มต้นทั้งหมด</button></div>`}
+// ========== ระบบซื้อขายหวย (เลขหวยออก) ==========
+const LOTTO_SLOT_DIGITS={top3:3,front3:3,top2:2,bottom2:2,straight4:4};
+const LOTTO_SLOT_LABEL={top3:'3 ตัวบน',front3:'3 ตัวหน้า',top2:'2 ตัวบน',bottom2:'2 ตัวล่าง',straight4:'4 ตัวตรง'};
+const LOTTO_TYPES_DEF=[
+ {id:'t3up',label:'3 ตัวบน',slot:'top3',mode:'exact',rate:900,on:true},
+ {id:'t3tod',label:'3 ตัวโต๊ด',slot:'top3',mode:'permute',rate:150,on:true},
+ {id:'t3front',label:'3 ตัวหน้า',slot:'front3',mode:'exact',rate:120,on:true},
+ {id:'t2up',label:'2 ตัวบน',slot:'top2',mode:'exact',rate:90,on:true},
+ {id:'t2dn',label:'2 ตัวล่าง',slot:'bottom2',mode:'exact',rate:90,on:true},
+ {id:'t4straight',label:'4 ตัวตรง',slot:'straight4',mode:'exact',rate:3200,on:true}
+];
+let LOTTOCFG={enabled:true,roundId:'',label:'',openAt:0,closeAt:0,status:'closed',results:{},announcedAt:0,banned:[],types:LOTTO_TYPES_DEF.map(t=>Object.assign({},t))};
+let lottoCfgDraft=null,lottoResultsDraft=null;
+let lottoBets=[],myLottoBets=[],lottoHistoryList=[];
+let lottoBetsRefOff=null,myLottoBetsRefOff=null,lottoCfgRefOff=null,lottoHistoryRefOff=null;
+let lottoCfgPrimed=false,lottoLastSeenKey=null;
+let lottoSel=null,lottoNumInput='',lottoStakeInput='',lottoTab='buy';
+let lottoCdTick=null;
+
+function lottoMerge(v){
+ const o={enabled:true,roundId:'',label:'',openAt:0,closeAt:0,status:'closed',results:{},announcedAt:0,banned:[],types:LOTTO_TYPES_DEF.map(t=>Object.assign({},t))};
+ if(v&&typeof v==='object'){
+  if(typeof v.enabled==='boolean')o.enabled=v.enabled;
+  if(typeof v.roundId==='string')o.roundId=v.roundId;
+  if(typeof v.label==='string')o.label=v.label.slice(0,80);
+  if(typeof v.openAt==='number')o.openAt=v.openAt;
+  if(typeof v.closeAt==='number')o.closeAt=v.closeAt;
+  if(v.status==='open'||v.status==='closed'||v.status==='announced')o.status=v.status;
+  if(v.results&&typeof v.results==='object')o.results=Object.assign({},v.results);
+  if(typeof v.announcedAt==='number')o.announcedAt=v.announcedAt;
+  if(Array.isArray(v.types)&&v.types.length)o.types=v.types.map(t=>({id:String((t&&t.id)||''),label:String((t&&t.label)||'').slice(0,40),slot:(t&&LOTTO_SLOT_DIGITS[t.slot])?t.slot:'top3',mode:(t&&t.mode==='permute')?'permute':'exact',rate:Math.max(0,+(t&&t.rate)||0),on:!(t&&t.on===false)}));
+  if(Array.isArray(v.banned))o.banned=v.banned.map(b=>({typeId:String((b&&b.typeId)||''),number:String((b&&b.number)||'').replace(/\D/g,''),mode:(b&&b.mode==='rate')?'rate':'block',rate:Math.max(0,+(b&&b.rate)||0)})).filter(b=>b.typeId&&b.number);
+ }
+ LOTTOCFG=o;
+}
+function attachLOTTOCFG(){try{lottoCfgRefOff=db.ref('settings/lotto');
+ lottoCfgRefOff.on('value',snap=>{
+  lottoMerge(snap.val());
+  const key=LOTTOCFG.status+'|'+LOTTOCFG.roundId;
+  if(!lottoCfgPrimed){lottoCfgPrimed=true;lottoLastSeenKey=key}
+  else if(key!==lottoLastSeenKey){lottoLastSeenKey=key;lottoAnnounceTransition()}
+  if(pg==='lotto'||pg==='home')R();
+  if(pg==='admin'&&adminTab==='lotto'){const e=$('#lottost');if(e)e.textContent='ซิงก์ล่าสุด '+tstr()}
+ },()=>{lottoMerge(null)})}catch(e){}}
+function lottoAnnounceTransition(){
+ try{
+  if(LOTTOCFG.status==='open')lottoToast('🎟️ <b>เปิดรับซื้อหวยแล้ว!</b>'+(LOTTOCFG.label?'<br>'+esc(LOTTOCFG.label):'')+(LOTTOCFG.closeAt?'<br>ปิดรับ '+new Date(LOTTOCFG.closeAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):''));
+  else if(LOTTOCFG.status==='closed'&&LOTTOCFG.roundId)lottoToast('⏰ <b>ปิดรับซื้อหวยแล้ว</b><br>รอประกาศผล');
+  else if(LOTTOCFG.status==='announced')lottoToast('📣 <b>ประกาศผลหวยแล้ว!</b><br>กดดูผลที่หน้าหลักหรือหน้าซื้อหวย');
+ }catch(e){}
+}
+function attachMyLottoBets(){try{myLottoBetsRefOff=db.ref('lottoBets/'+uid);
+ myLottoBetsRefOff.on('value',snap=>{const v=snap.val()||{};myLottoBets=Object.keys(v).map(id=>Object.assign({id},v[id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(pg==='lotto')R()},()=>{})}catch(e){}}
+function attachLottoBetsAll(){try{lottoBetsRefOff=db.ref('lottoBets');
+ lottoBetsRefOff.on('value',snap=>{const v=snap.val()||{};const list=[];
+  Object.keys(v).forEach(u=>Object.keys(v[u]).forEach(id=>list.push(Object.assign({uid:u,id},v[u][id]))));
+  lottoBets=list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(pg==='admin'&&adminTab==='lotto'){const e=$('#lottobetlist');if(e)e.innerHTML=lottoAdminBetListHTML()}
+ },()=>{})}catch(e){}}
+function attachLottoHistory(){try{lottoHistoryRefOff=db.ref('lottoHistory').limitToLast(20);
+ lottoHistoryRefOff.on('value',snap=>{const v=snap.val()||{};lottoHistoryList=Object.keys(v).map(k=>v[k]).sort((a,b)=>(b.announcedAt||0)-(a.announcedAt||0));
+  if(pg==='lotto'||(pg==='admin'&&adminTab==='lotto'))R()},()=>{})}catch(e){}}
+
+// ---------- ฟังก์ชันตรรกะล้วน (เทสได้ง่าย ไม่พึ่ง DOM/Firebase) ----------
+function lottoRoundPhase(cfg,nowMs){
+ cfg=cfg||LOTTOCFG;nowMs=nowMs||Date.now();
+ const fmtD=ms=>new Date(ms).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'});
+ if(!cfg||!cfg.enabled||!cfg.roundId)return {k:'off',t:'ยังไม่มีงวดหวยที่เปิดอยู่'};
+ const label=cfg.label?('งวด "'+cfg.label+'" '):'';
+ if(cfg.status==='announced')return {k:'announced',t:label+'ประกาศผลแล้ว'+(cfg.announcedAt?' '+fmtD(cfg.announcedAt):'')};
+ if(cfg.status==='closed')return {k:'closed',t:label+'ปิดรับซื้อแล้ว รอประกาศผล'};
+ if(cfg.closeAt&&nowMs>=cfg.closeAt)return {k:'closing',t:label+'ถึงเวลาปิดรับซื้อแล้ว รอแอดมินประกาศผล'};
+ const closeTxt=cfg.closeAt?('ปิดรับซื้อ '+fmtD(cfg.closeAt)):'ยังไม่กำหนดเวลาปิดรับซื้อ';
+ return {k:'open',t:label+'เปิดรับซื้ออยู่ · '+closeTxt};
+}
+function lottoCanBuy(cfg,nowMs){return lottoRoundPhase(cfg,nowMs).k==='open'}
+function lottoBannedEntry(cfg,typeId,number){if(!cfg||!Array.isArray(cfg.banned))return null;return cfg.banned.find(b=>b.typeId===typeId&&b.number===number)||null}
+function lottoIsBlocked(cfg,typeId,number){const b=lottoBannedEntry(cfg,typeId,number);return !!(b&&b.mode==='block')}
+function lottoEffectiveRate(cfg,type,number){const b=lottoBannedEntry(cfg,type.id,number);if(b&&b.mode==='rate')return b.rate;return type.rate}
+function lottoValidNumber(slot,numStr){const n=LOTTO_SLOT_DIGITS[slot]||0;return /^[0-9]+$/.test(numStr||'')&&(numStr||'').length===n}
+function lottoPermsOf(numStr){const chars=(numStr||'').split('');const out=new Set();
+ const perm=(arr,cur)=>{if(!arr.length){out.add(cur);return}for(let i=0;i<arr.length;i++)perm(arr.slice(0,i).concat(arr.slice(i+1)),cur+arr[i])};
+ perm(chars,'');return Array.from(out);
+}
+function lottoCheckWin(bet,results){
+ const res=(results&&results[bet.slot])||'';
+ if(!res)return null;
+ const win=bet.mode==='permute'?lottoPermsOf(bet.number).includes(res):bet.number===res;
+ return {win,payout:win?Math.round((bet.stake||0)*(bet.rate||0)):0};
+}
+function lottoRequiredSlots(){
+ const slots=new Set();
+ lottoBets.filter(b=>b.roundId===LOTTOCFG.roundId&&b.status==='pending').forEach(b=>slots.add(b.slot));
+ return Array.from(slots);
+}
+function lottoTypeById(id){return (LOTTOCFG.types||[]).find(t=>t.id===id)}
+
+// ---------- หน้าผู้เล่น: ซื้อหวย ----------
+function lottoSetTab(t){lottoTab=(t==='history'?'history':'buy');R()}
+function lottoPickType(id){lottoSel=id;lottoNumInput='';lottoStakeInput='';R()}
+function lottoCountdownText(){
+ if(!LOTTOCFG.closeAt)return 'ยังไม่กำหนดเวลาปิดรับซื้อ';
+ const ms=LOTTOCFG.closeAt-Date.now();
+ if(ms<=0)return 'ถึงเวลาปิดรับซื้อแล้ว รอแอดมินปิด/ประกาศผล';
+ const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;
+ return 'ปิดรับซื้อใน '+(h?h+' ชม. ':'')+m+' นาที '+ss+' วิ';
+}
+function lottoCountdownStartTick(){if(lottoCdTick)clearInterval(lottoCdTick);
+ lottoCdTick=setInterval(()=>{
+  const els=[document.getElementById('lottohomecd'),document.getElementById('lottopagecd')].filter(Boolean);
+  if(!els.length){clearInterval(lottoCdTick);lottoCdTick=null;return}
+  const t=lottoCountdownText();els.forEach(e=>e.textContent=t);
+ },1000)}
+async function lottoBuy(){
+ const t=lottoTypeById(lottoSel);if(!t||!t.on){say('แทงหวยประเภทนี้ไม่ได้ในตอนนี้');return}
+ if(!lottoCanBuy(LOTTOCFG)){say('ขณะนี้ปิดรับซื้อหวยแล้ว');return}
+ const num=(lottoNumInput||'').trim();
+ if(!lottoValidNumber(t.slot,num)){say('กรุณาใส่เลข '+LOTTO_SLOT_DIGITS[t.slot]+' หลักให้ครบ');return}
+ if(lottoIsBlocked(LOTTOCFG,t.id,num)){say('เลขนี้อั้น ไม่รับซื้อในงวดนี้ครับ');return}
+ const stake=Math.round(+lottoStakeInput||0);
+ if(!stake||stake<1){say('ใส่จำนวนหยกเขียวที่ต้องการซื้อ');return}
+ if((S.jade||0)<stake){if(await dlg('หยกเขียวไม่พอ ไปเติมหยกเขียวไหม?','เติมหยก'))go('topup');return}
+ const rate=lottoEffectiveRate(LOTTOCFG,t,num);
+ const potential=Math.round(stake*rate);
+ if(!(await dlg('ซื้อ "'+t.label+'" เลข '+num+'\nราคา 💎'+fmt(stake)+' หยกเขียว\nถ้าถูกรับ 💎'+fmt(potential)+' หยกเขียว\nยืนยันซื้อ?','ซื้อเลย')))return;
+ if(!lottoCanBuy(LOTTOCFG)){say('ปิดรับซื้อไปแล้วระหว่างที่คุณกำลังยืนยัน ลองใหม่อีกครั้ง');return}
+ if((S.jade||0)<stake)return;
+ S.jade-=stake;
+ S.log=S.log||[];S.log.unshift({t:tstr(),m:'ซื้อหวย '+t.label+' เลข '+num,n:-stake,cur:'jade'});S.log=S.log.slice(0,80);
+ save();
+ const id='lb'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+ try{await db.ref('lottoBets/'+uid+'/'+id).set({uid,email:(user&&user.email)||'',roundId:LOTTOCFG.roundId,typeId:t.id,typeLabel:t.label,slot:t.slot,mode:t.mode,number:num,stake,rate,potential,status:'pending',payout:0,ts:firebase.database.ServerValue.TIMESTAMP});}catch(e){}
+ lottoNumInput='';lottoStakeInput='';R();say('ซื้อหวยสำเร็จ ✅ รอผลประกาศ');
+}
+function vLotto(){
+ const ph=lottoRoundPhase(LOTTOCFG);
+ const head=`<div class="card" style="margin-top:0"><b class="n">🎱 ซื้อขายหวย</b><div class="mut" style="margin-top:4px" id="lottopagecd">${ph.k==='open'?esc(lottoCountdownText()):esc(ph.t)}</div>
+ <div class="chip wn" style="margin-top:8px;display:inline-block">💎 ${fmt(S.jade||0)} หยกเขียว</div></div>
+ <div class="tabs" style="margin-top:10px"><button class="tab ${lottoTab==='buy'?'on':''}" onclick="lottoSetTab('buy')">ซื้อหวย</button><button class="tab ${lottoTab==='history'?'on':''}" onclick="lottoSetTab('history')">ของฉัน/ผลย้อนหลัง</button></div>`;
+ return head+(lottoTab==='history'?lottoHistoryHTML():lottoBuyHTML(ph));
+}
+function lottoBuyHTML(ph){
+ if(ph.k==='off')return '<div class="card"><div class="mut">ยังไม่มีงวดหวยที่เปิดอยู่ในขณะนี้</div></div>';
+ const types=(LOTTOCFG.types||[]).filter(t=>t.on);
+ if(!types.length)return '<div class="card"><div class="mut">แอดมินยังไม่เปิดประเภทหวยให้ซื้อ</div></div>';
+ const canBuy=ph.k==='open';
+ const typeChips=types.map(t=>`<button class="chip ${lottoSel===t.id?'wn':''}" style="margin:3px" onclick="lottoPickType('${t.id}')">${esc(t.label)} · x${fmt(t.rate)}</button>`).join('');
+ const t=lottoTypeById(lottoSel);
+ let form='';
+ if(t){
+  const digits=LOTTO_SLOT_DIGITS[t.slot];
+  const blocked=lottoNumInput.length===digits&&lottoIsBlocked(LOTTOCFG,t.id,lottoNumInput);
+  const rate=lottoNumInput.length===digits?lottoEffectiveRate(LOTTOCFG,t,lottoNumInput):t.rate;
+  const stake=Math.round(+lottoStakeInput||0);
+  form=`<div class="card" style="margin-top:10px"><b class="n">${esc(t.label)}</b><div class="mut" style="margin-top:2px">ใส่เลข ${digits} หลัก · อัตราจ่าย x${fmt(rate)}</div>
+  <input class="inp" style="margin-top:8px;font-size:20px;text-align:center;letter-spacing:4px" maxlength="${digits}" inputmode="numeric" placeholder="${'0'.repeat(digits)}" value="${esc(lottoNumInput)}" oninput="lottoNumInput=this.value.replace(/\\D/g,'').slice(0,${digits});R()">
+  ${blocked?'<div class="mut" style="color:#ef4444;margin-top:4px">⛔ เลขนี้อั้น ไม่รับซื้อในงวดนี้</div>':''}
+  <input class="inp" style="margin-top:8px" type="number" min="1" placeholder="จำนวนหยกเขียวที่ซื้อ" value="${esc(lottoStakeInput)}" oninput="lottoStakeInput=this.value;R()">
+  ${stake?`<div class="mut" style="margin-top:6px">ถ้าถูก รับ 💎 ${fmt(Math.round(stake*rate))} หยกเขียว</div>`:''}
+  <button class="btn pri" style="width:100%;margin-top:10px" ${(!canBuy||blocked)?'disabled':''} onclick="lottoBuy()">🎟️ ยืนยันซื้อ</button>
+  ${!canBuy?'<div class="mut" style="margin-top:6px">ปิดรับซื้อแล้ว</div>':''}</div>`;
+ }
+ return `<div class="card" style="margin-top:10px"><b class="n">เลือกประเภทหวย</b><div style="margin-top:8px">${typeChips}</div></div>${form}`;
+}
+function lottoHistoryHTML(){
+ const mine=myLottoBets.slice(0,40).map(b=>`<div class="card" style="margin-top:8px"><div class="row"><div><b>${esc(b.typeLabel||'')}</b> เลข <b>${esc(b.number||'')}</b><div class="mut">💎${fmt(b.stake)} · อัตรา x${fmt(b.rate)}</div></div><div style="text-align:right">${b.status==='won'?`<span class="chip wn">✅ ถูก +${fmt(b.payout)}</span>`:b.status==='lost'?'<span class="chip">ไม่ถูก</span>':'<span class="chip">รอผล</span>'}</div></div></div>`).join('');
+ const hist=lottoHistoryList.map(h=>{const r=h.results||{};const chips=Object.keys(LOTTO_SLOT_LABEL).filter(s=>r[s]).map(s=>`<span class="chip" style="margin:2px">${LOTTO_SLOT_LABEL[s]} ${esc(r[s])}</span>`).join('');
+  return `<div class="card" style="margin-top:8px"><b class="n">${esc(h.label||'งวดหวย')}</b><div class="mut">${new Date(h.announcedAt||0).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}</div><div style="margin-top:6px">${chips}</div></div>`}).join('');
+ return `<div class="mut" style="margin:10px 4px 0">ประวัติการซื้อของฉัน</div>${mine||'<div class="card"><div class="mut">ยังไม่เคยซื้อ</div></div>'}
+  <div class="mut" style="margin:14px 4px 0">ผลย้อนหลัง</div>${hist||'<div class="card"><div class="mut">ยังไม่มีผลย้อนหลัง</div></div>'}`;
+}
+
+// ---------- การ์ดหน้าหลัก ----------
+function lottoHomeCard(){
+ const ph=lottoRoundPhase(LOTTOCFG);
+ if(ph.k==='off')return '';
+ if(ph.k==='announced'){
+  const r=LOTTOCFG.results||{};
+  const chips=Object.keys(LOTTO_SLOT_LABEL).filter(s=>r[s]).map(s=>`<div style="text-align:center"><div class="mut" style="font-size:11px">${LOTTO_SLOT_LABEL[s]}</div><div style="font-size:22px;font-weight:800;letter-spacing:2px">${esc(r[s])}</div></div>`).join('');
+  return `<div class="card" style="margin-top:0;border-color:#f5b82e;background:linear-gradient(135deg,#f5b82e22,transparent)"><b class="n">🎱 ผลหวย${LOTTOCFG.label?' · '+esc(LOTTOCFG.label):''}</b>
+   <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;justify-content:center">${chips}</div>
+   <button class="btn pri" style="width:100%;margin-top:12px" onclick="go('lotto')">ดูว่าฉันถูกรางวัลไหม</button></div>`;
+ }
+ if(ph.k==='open')return `<div class="card" style="margin-top:0;border-color:#2ecc71"><b class="n">🎱 หวยเปิดรับซื้อแล้ว${LOTTOCFG.label?' · '+esc(LOTTOCFG.label):''}</b><div class="mut" style="margin-top:4px" id="lottohomecd">${esc(lottoCountdownText())}</div><button class="btn pri" style="width:100%;margin-top:10px" onclick="go('lotto')">🎟️ ซื้อหวย</button></div>`;
+ return `<div class="card" style="margin-top:0"><b class="n">🎱 หวย${LOTTOCFG.label?' · '+esc(LOTTOCFG.label):''}</b><div class="mut" style="margin-top:4px">${esc(ph.t)}</div></div>`;
+}
+
+// ---------- แจ้งเตือนลอยแบบเด่นๆ หาย 5 วิ ----------
+function lottoToast(html){
+ try{
+  let box=document.getElementById('lottoToastBox');
+  if(!box){box=document.createElement('div');box.id='lottoToastBox';box.style.cssText='position:fixed;left:0;right:0;top:10px;z-index:10000;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none';document.body.appendChild(box)}
+  const el=document.createElement('div');
+  el.style.cssText='pointer-events:auto;max-width:92vw;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-weight:800;font-size:13.5px;line-height:1.5;padding:12px 18px;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.45);text-align:center;opacity:0;transform:translateY(-14px);transition:opacity .25s,transform .25s';
+  el.innerHTML=html;
+  box.appendChild(el);
+  requestAnimationFrame(()=>{el.style.opacity='1';el.style.transform='translateY(0)'});
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(-10px)';setTimeout(()=>el.remove(),420)},5000);
+ }catch(e){}
+}
+
+// ---------- หน้าแอดมิน ----------
+function lottoCfgGetDraft(){if(!lottoCfgDraft)lottoCfgDraft={types:JSON.parse(JSON.stringify(LOTTOCFG.types)),banned:JSON.parse(JSON.stringify(LOTTOCFG.banned)),label:LOTTOCFG.label||'',closeAt:LOTTOCFG.closeAt||0};return lottoCfgDraft}
+function lottoResultsGetDraft(){if(!lottoResultsDraft)lottoResultsDraft=Object.assign({top3:'',front3:'',top2:'',bottom2:'',straight4:''},LOTTOCFG.results);return lottoResultsDraft}
+function lottoCfgSetLabel(v){lottoCfgGetDraft().label=String(v).slice(0,80)}
+function lottoCfgSetCloseAt(v){const d=lottoCfgGetDraft();if(v===''){d.closeAt=0;return}const t=new Date(v).getTime();d.closeAt=isFinite(t)?t:0}
+function lottoTypeSet(i,k,v){const d=lottoCfgGetDraft();const t=d.types[i];if(!t)return;
+ if(k==='label')t.label=String(v).slice(0,40);
+ else if(k==='slot')t.slot=LOTTO_SLOT_DIGITS[v]?v:'top3';
+ else if(k==='mode')t.mode=(v==='permute'?'permute':'exact');
+ else if(k==='on')t.on=(+v===1);
+ else if(k==='rate')t.rate=Math.max(0,+v||0);
+}
+function lottoTypeAdd(){const d=lottoCfgGetDraft();d.types.push({id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),label:'ประเภทใหม่',slot:'top3',mode:'exact',rate:100,on:true});R()}
+function lottoTypeDel(i){const d=lottoCfgGetDraft();d.types.splice(i,1);R()}
+function lottoBanAdd(){const d=lottoCfgGetDraft();d.banned.push({typeId:(d.types[0]&&d.types[0].id)||'',number:'',mode:'block',rate:0});R()}
+function lottoBanSet(i,k,v){const d=lottoCfgGetDraft();const b=d.banned[i];if(!b)return;
+ if(k==='typeId')b.typeId=String(v);
+ else if(k==='number'){const t=d.types.find(x=>x.id===b.typeId)||d.types[0]||{slot:'top3'};b.number=String(v).replace(/\D/g,'').slice(0,LOTTO_SLOT_DIGITS[t.slot]||6);}
+ else if(k==='mode')b.mode=(v==='rate'?'rate':'block');
+ else if(k==='rate')b.rate=Math.max(0,+v||0);
+}
+function lottoBanDel(i){const d=lottoCfgGetDraft();d.banned.splice(i,1);R()}
+async function lottoCfgSaveTypes(){const d=lottoCfgGetDraft();const btn=$('#lottocfgsave');if(btn)btn.disabled=true;
+ try{await db.ref('settings/lotto').update({types:d.types,banned:d.banned.filter(b=>b.typeId&&b.number)});lottoCfgDraft=null;const e=$('#lottost');if(e){e.textContent='บันทึกแล้ว ✓';setTimeout(()=>{if(e)e.textContent=''},2000)}}
+ catch(e){say('บันทึกไม่สำเร็จ ('+((e&&e.code)||'ลองใหม่')+')')}finally{R()}}
+async function lottoStartRound(){
+ const d=lottoCfgGetDraft();
+ if(LOTTOCFG.status==='open'){if(!(await dlg('มีงวดที่เปิดรับซื้ออยู่แล้ว ต้องการปิดงวดเดิมแล้วเปิดงวดใหม่ทันทีเลยหรือไม่? (ยอดซื้อที่ค้างของงวดเก่าจะไม่หาย แต่ต้องกลับมาประกาศผลแยกทีหลังผ่านประวัติ)')))return}
+ const id='lr'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+ const patch={enabled:true,roundId:id,label:d.label||'',openAt:Date.now(),closeAt:d.closeAt||0,status:'open',results:{},announcedAt:0,types:d.types,banned:[]};
+ try{await db.ref('settings/lotto').update(patch);lottoCfgDraft=null;lottoResultsDraft=null;say('เปิดรับซื้อหวยงวดใหม่แล้ว ✅')}
+ catch(e){say('ผิดพลาด ('+((e&&e.code)||'ลองใหม่')+')')}
+ R();
+}
+async function lottoUpdateCurrent(){
+ const d=lottoCfgGetDraft();
+ try{await db.ref('settings/lotto').update({label:d.label||'',closeAt:d.closeAt||0});say('อัปเดตงวดปัจจุบันแล้ว ✅')}
+ catch(e){say('ผิดพลาด')}
+ R();
+}
+async function lottoCloseRound(){
+ if(!(await dlg('ปิดรับซื้อหวยงวดนี้ตอนนี้เลยหรือไม่? ผู้เล่นจะซื้อเพิ่มไม่ได้อีก','ปิดรับซื้อ')))return;
+ try{await db.ref('settings/lotto').update({status:'closed'})}catch(e){}
+ R();
+}
+async function lottoReopenRound(){
+ try{await db.ref('settings/lotto').update({status:'open'})}catch(e){}
+ R();
+}
+async function lottoAnnounce(){
+ const d=lottoResultsGetDraft();
+ const req=lottoRequiredSlots();
+ const missing=req.filter(slot=>!d[slot]||d[slot].length!==LOTTO_SLOT_DIGITS[slot]);
+ if(missing.length){say('กรุณาใส่ผลให้ครบก่อน ยังขาด: '+missing.map(s=>LOTTO_SLOT_LABEL[s]||s).join(', '));return}
+ if(!req.length){if(!(await dlg('งวดนี้ยังไม่มีใครซื้อเลย ต้องการประกาศผล (ปิดงวด) เลยหรือไม่?')))return}
+ else if(!(await dlg('ยืนยันประกาศผลหวยงวดนี้? ระบบจะตรวจและโอนรางวัลให้ผู้ถูกรางวัลทันที ย้อนกลับไม่ได้','ประกาศผลเลย')))return;
+ const btn=$('#lottoannouncebtn');if(btn)btn.disabled=true;
+ const st=$('#lottost');if(st)st.textContent='กำลังประมวลผล...';
+ const results={};for(const s of Object.keys(LOTTO_SLOT_DIGITS))if(d[s]&&d[s].length===LOTTO_SLOT_DIGITS[s])results[s]=d[s];
+ const pend=lottoBets.filter(b=>b.roundId===LOTTOCFG.roundId&&b.status==='pending');
+ let totalStake=0,totalPayout=0,winners=0;
+ for(let i=0;i<pend.length;i++){
+  const b=pend[i];totalStake+=b.stake||0;
+  const chk=lottoCheckWin(b,results);
+  if(!chk)continue;
+  const payout=chk.payout;
+  try{await db.ref('lottoBets/'+b.uid+'/'+b.id).update({status:chk.win?'won':'lost',payout})}catch(e){}
+  if(chk.win&&payout>0){
+   winners++;totalPayout+=payout;
+   try{await adminPatch(b.uid,o=>{o.jade=(o.jade||0)+payout;addLog(o,'ถูกรางวัลหวย '+(b.typeLabel||'')+' เลข '+b.number,payout,'jade')})}catch(e){}
+  }
+  if(st)st.textContent='กำลังประมวลผล '+(i+1)+'/'+pend.length+'...';
+ }
+ try{await db.ref('lottoHistory/'+LOTTOCFG.roundId).set({roundId:LOTTOCFG.roundId,label:LOTTOCFG.label||'',results,openAt:LOTTOCFG.openAt||0,closeAt:LOTTOCFG.closeAt||0,announcedAt:Date.now(),totalBets:pend.length,totalStake,totalPayout,winners})}catch(e){}
+ try{await db.ref('settings/lotto').update({status:'announced',results,announcedAt:Date.now()})}catch(e){}
+ lottoResultsDraft=null;
+ if(st)st.textContent='ประกาศผลแล้ว ✅ ('+winners+' รางวัล)';
+ R();
+}
+function lottoAdminBetListHTML(){
+ return lottoBets.filter(b=>b.roundId===LOTTOCFG.roundId).slice(0,200).map(b=>`<div class="row" style="border-top:1px solid #ffffff14;padding-top:6px;margin-top:6px"><div><b>${esc(b.email||b.uid)}</b><div class="mut">${esc(b.typeLabel||'')} เลข ${esc(b.number||'')} · 💎${fmt(b.stake)}</div></div><div style="text-align:right">${b.status==='pending'?'<span class="chip">รอผล</span>':b.status==='won'?`<span class="chip wn">ถูก +${fmt(b.payout)}</span>`:'<span class="chip">ไม่ถูก</span>'}</div></div>`).join('')||'<div class="mut" style="margin-top:8px">ยังไม่มีใครซื้อ</div>';
+}
+function vAdminLotto(){
+ const d=lottoCfgGetDraft();
+ const rd=lottoResultsGetDraft();
+ const ph=lottoRoundPhase(LOTTOCFG);
+ const req=lottoRequiredSlots();
+ const typesHtml=d.types.map((t,i)=>`<div class="gcg" style="margin-top:8px;border-top:1px solid #ffffff14;padding-top:8px">
+ <label class="gcl" style="grid-column:1/-1"><span>ชื่อประเภท</span><input class="inp" value="${esc(t.label)}" oninput="lottoTypeSet(${i},'label',this.value)"></label>
+ <label class="gcl"><span>หมวดผล</span><select class="inp" onchange="lottoTypeSet(${i},'slot',this.value)">${Object.keys(LOTTO_SLOT_DIGITS).map(s=>`<option value="${s}" ${t.slot===s?'selected':''}>${LOTTO_SLOT_LABEL[s]} (${LOTTO_SLOT_DIGITS[s]} หลัก)</option>`).join('')}</select></label>
+ <label class="gcl"><span>รูปแบบ</span><select class="inp" onchange="lottoTypeSet(${i},'mode',this.value)"><option value="exact" ${t.mode==='exact'?'selected':''}>ตรงตัว</option><option value="permute" ${t.mode==='permute'?'selected':''}>กลับโต๊ด (สลับหลักได้)</option></select></label>
+ <label class="gcl"><span>อัตราจ่าย (เท่า)</span><input class="inp" type="number" min="0" value="${t.rate}" oninput="lottoTypeSet(${i},'rate',this.value)"></label>
+ <label class="gcl"><span>สถานะ</span><select class="inp" onchange="lottoTypeSet(${i},'on',this.value)"><option value="1" ${t.on?'selected':''}>เปิดใช้งาน</option><option value="0" ${t.on?'':'selected'}>ปิดใช้งาน</option></select></label>
+ <button class="btn" style="grid-column:1/-1" onclick="lottoTypeDel(${i})">ลบประเภทนี้</button>
+ </div>`).join('');
+ const banHtml=d.banned.map((b,i)=>{const bt=d.types.find(x=>x.id===b.typeId)||d.types[0]||{slot:'top3'};
+  return `<div class="gcg" style="margin-top:8px;border-top:1px solid #ffffff14;padding-top:8px">
+ <label class="gcl"><span>ประเภท</span><select class="inp" onchange="lottoBanSet(${i},'typeId',this.value)">${d.types.map(t=>`<option value="${t.id}" ${b.typeId===t.id?'selected':''}>${esc(t.label)}</option>`).join('')}</select></label>
+ <label class="gcl"><span>เลขที่อั้น</span><input class="inp" inputmode="numeric" maxlength="${LOTTO_SLOT_DIGITS[bt.slot]||6}" value="${esc(b.number)}" oninput="lottoBanSet(${i},'number',this.value)"></label>
+ <label class="gcl"><span>วิธีอั้น</span><select class="inp" onchange="lottoBanSet(${i},'mode',this.value)"><option value="block" ${b.mode==='block'?'selected':''}>ปิดรับซื้อเลขนี้</option><option value="rate" ${b.mode==='rate'?'selected':''}>ลดอัตราจ่าย</option></select></label>
+ ${b.mode==='rate'?`<label class="gcl"><span>อัตราจ่ายใหม่ (เท่า)</span><input class="inp" type="number" min="0" value="${b.rate}" oninput="lottoBanSet(${i},'rate',this.value)"></label>`:''}
+ <button class="btn" style="grid-column:1/-1" onclick="lottoBanDel(${i})">ลบเลขอั้นนี้</button>
+ </div>`}).join('');
+ const resultsHtml=Object.keys(LOTTO_SLOT_DIGITS).map(s=>`<label class="gcl"><span>${LOTTO_SLOT_LABEL[s]} (${LOTTO_SLOT_DIGITS[s]} หลัก)</span><input class="inp" inputmode="numeric" maxlength="${LOTTO_SLOT_DIGITS[s]}" placeholder="${req.includes(s)?'ต้องกรอก':'เว้นว่างได้'}" value="${esc(rd[s]||'')}" oninput="lottoResultSet('${s}',this.value)"></label>`).join('');
+ const totals={};let totalStakeNow=0;
+ lottoBets.filter(b=>b.roundId===LOTTOCFG.roundId).forEach(b=>{const k=(b.typeLabel||'')+' '+(b.number||'');totals[k]=(totals[k]||0)+(b.stake||0);totalStakeNow+=b.stake||0});
+ const totalsHtml=Object.keys(totals).sort((a,b)=>totals[b]-totals[a]).slice(0,30).map(k=>`<div class="row" style="padding:3px 0"><span>${esc(k)}</span><b>💎${fmt(totals[k])}</b></div>`).join('');
+ const historyHtml=lottoHistoryList.map(h=>{const r=h.results||{};return `<div class="card" style="margin-top:8px"><b class="n">${esc(h.label||'งวดหวย')}</b><div class="mut">${new Date(h.announcedAt||0).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})} · ซื้อ ${h.totalBets||0} รายการ · จ่ายรางวัล 💎${fmt(h.totalPayout||0)} (${h.winners||0} รางวัล)</div><div class="mut" style="margin-top:4px">${Object.keys(LOTTO_SLOT_LABEL).filter(s=>r[s]).map(s=>LOTTO_SLOT_LABEL[s]+' '+r[s]).join(' · ')}</div></div>`}).join('');
+ return `<div class="card" style="margin-top:0"><b class="n">🎱 ตั้งค่าระบบซื้อขายหวย (เรียลไทม์)</b>
+ <div class="mut" style="margin-top:4px">สถานะตอนนี้: <b>${esc(ph.t)}</b> · <span id="lottost"></span></div></div>
+ <div class="card"><b class="n">🟢 ควบคุมงวด</b>
+ <div class="gcg" style="margin-top:8px">
+  <label class="gcl" style="grid-column:1/-1"><span>ชื่องวด (ไม่บังคับ)</span><input class="inp" value="${esc(d.label||'')}" oninput="lottoCfgSetLabel(this.value)"></label>
+  <label class="gcl" style="grid-column:1/-1"><span>เวลาปิดรับซื้อ (เว้นว่าง = ปิดเองด้วยมือ)</span><input class="inp" type="datetime-local" value="${d.closeAt?gcEndStr(d.closeAt):''}" onchange="lottoCfgSetCloseAt(this.value)"></label>
+ </div>
+ <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+  <button class="btn pri" style="flex:1" onclick="lottoStartRound()">🟢 เปิดรับซื้องวดใหม่</button>
+  ${LOTTOCFG.roundId?'<button class="btn" onclick="lottoUpdateCurrent()">📅 อัปเดตชื่อ/เวลาปิด (งวดปัจจุบัน)</button>':''}
+  ${LOTTOCFG.status==='open'?'<button class="btn" onclick="lottoCloseRound()">🔴 ปิดรับซื้อตอนนี้</button>':''}
+  ${LOTTOCFG.status==='closed'&&LOTTOCFG.roundId?'<button class="btn" onclick="lottoReopenRound()">เปิดรับซื้อต่อ</button>':''}
+ </div></div>
+ ${LOTTOCFG.roundId?`<div class="card"><b class="n">📣 ประกาศผลงวด${LOTTOCFG.label?' "'+esc(LOTTOCFG.label)+'"':''}</b>
+ <div class="mut" style="margin-top:4px">ซื้อแล้ว ${lottoBets.filter(b=>b.roundId===LOTTOCFG.roundId).length} รายการ · รวม 💎${fmt(totalStakeNow)}</div>
+ <div class="gcg" style="margin-top:8px">${resultsHtml}</div>
+ <button class="btn pri" id="lottoannouncebtn" style="width:100%;margin-top:10px" ${LOTTOCFG.status==='announced'?'disabled':''} onclick="lottoAnnounce()">📣 ประกาศผล (โอนรางวัลทันที)</button>
+ ${LOTTOCFG.status==='announced'?'<div class="mut" style="margin-top:6px">งวดนี้ประกาศผลไปแล้ว ต้องเปิดงวดใหม่ถึงจะรับซื้อได้อีก</div>':''}
+ </div>`:''}
+ <div class="card"><b class="n">🚫 เลขอั้น (งวดปัจจุบัน)</b>${banHtml}<button class="btn" style="width:100%;margin-top:10px" onclick="lottoBanAdd()">+ เพิ่มเลขอั้น</button></div>
+ <div class="card"><b class="n">🎯 ประเภทหวยและอัตราจ่าย</b>${typesHtml}<button class="btn" style="width:100%;margin-top:10px" onclick="lottoTypeAdd()">+ เพิ่มประเภทใหม่</button></div>
+ <div class="card"><button class="btn pri" id="lottocfgsave" style="width:100%" onclick="lottoCfgSaveTypes()">💾 บันทึกประเภท/เลขอั้น</button></div>
+ <div class="card"><b class="n">👥 ใครซื้ออะไรบ้าง (งวดปัจจุบัน)</b><div id="lottobetlist">${lottoAdminBetListHTML()}</div></div>
+ <div class="card"><b class="n">📊 ยอดรวมตามเลข (งวดปัจจุบัน)</b>${totalsHtml||'<div class="mut" style="margin-top:8px">ไม่มีข้อมูล</div>'}</div>
+ <div class="card"><b class="n">🗂️ ประวัติผลที่ประกาศแล้ว</b>${historyHtml||'<div class="mut" style="margin-top:8px">ยังไม่มีประวัติ</div>'}</div>`;
+}
+function lottoResultSet(slot,v){const d=lottoResultsGetDraft();d[slot]=String(v).replace(/\D/g,'').slice(0,LOTTO_SLOT_DIGITS[slot]||6)}
+
 function vAdmin(){if(!isAdmin)return '<div class="card"><div class="mut">เฉพาะบัญชีแอดมินเท่านั้น</div></div>';
- const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า'],['topup','💎 เติมหยก'],['promo','🎉 โปรโมชั่น'],['bp','🎫 เวอร์พาส'],['players','👥 ผู้เล่น'],['gacha','🎰 กาชา'],['hxh','⛓️ คอลแลป HxH'],['lb','🐉 กล่องสุ่ม'],['decor','✨ ของตกแต่ง'],['jump','🪂 โดดดึ๋ง'],['rankcfg','⚔️ แรงค์'],['stats','📊 สถิติ'],['sys','🛠️ ระบบ'],['ugc','🎬 คลิปผู้เล่น'],['mus','🎵 เพลงเสริม'],['rpt','🚩 รายงาน'],['rw','🎁 ของรางวัล']];
+ const tabs=[['content','📁 เนื้อหา'],['announce','📢 ประกาศ'],['contact','📬 ข้อความ'],['codes','🎟️ โค้ด'],['shop','🛒 ร้านค้า'],['topup','💎 เติมหยก'],['promo','🎉 โปรโมชั่น'],['bp','🎫 เวอร์พาส'],['players','👥 ผู้เล่น'],['gacha','🎰 กาชา'],['hxh','⛓️ คอลแลป HxH'],['lb','🐉 กล่องสุ่ม'],['decor','✨ ของตกแต่ง'],['jump','🪂 โดดดึ๋ง'],['lotto','🎱 หวย'],['rankcfg','⚔️ แรงค์'],['stats','📊 สถิติ'],['sys','🛠️ ระบบ'],['ugc','🎬 คลิปผู้เล่น'],['mus','🎵 เพลงเสริม'],['rpt','🚩 รายงาน'],['rw','🎁 ของรางวัล']];
  let h=`<div class="tabs" style="margin:0 0 4px">${tabs.map(([k,l])=>`<button class="tab ${adminTab===k?'on':''}" onclick="adminTab='${k}';R()">${l}</button>`).join('')}</div>`;
- if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else if(adminTab==='shop')h+=vAdminShop();else if(adminTab==='topup')h+=vAdminTopup();else if(adminTab==='promo')h+=vAdminPromo();else if(adminTab==='players')h+=vAdminPlayers();else if(adminTab==='gacha')h+=vAdminGacha();else if(adminTab==='hxh')h+=vAdminHxh();else if(adminTab==='lb')h+=vAdminLB();else if(adminTab==='decor')h+=vAdminDecor();else if(adminTab==='jump')h+=vAdminJump();else if(adminTab==='rankcfg')h+=vAdminRankCfg();else if(adminTab==='ugc')h+=vAdminUgc();else if(adminTab==='mus')h+=vAdminMus();else if(adminTab==='rpt')h+=vAdminRpt();else if(adminTab==='rw')h+=vAdminRw();else if(adminTab==='stats')h+=vAdminStats();else if(adminTab==='sys')h+=vAdminSys();else h+=vAdminBp();
+ if(adminTab==='content')h+=vAdminContent();else if(adminTab==='announce')h+=vAdminAnnounce();else if(adminTab==='contact')h+=vAdminContact();else if(adminTab==='codes')h+=vAdminCodes();else if(adminTab==='shop')h+=vAdminShop();else if(adminTab==='topup')h+=vAdminTopup();else if(adminTab==='promo')h+=vAdminPromo();else if(adminTab==='players')h+=vAdminPlayers();else if(adminTab==='gacha')h+=vAdminGacha();else if(adminTab==='hxh')h+=vAdminHxh();else if(adminTab==='lotto')h+=vAdminLotto();else if(adminTab==='lb')h+=vAdminLB();else if(adminTab==='decor')h+=vAdminDecor();else if(adminTab==='jump')h+=vAdminJump();else if(adminTab==='rankcfg')h+=vAdminRankCfg();else if(adminTab==='ugc')h+=vAdminUgc();else if(adminTab==='mus')h+=vAdminMus();else if(adminTab==='rpt')h+=vAdminRpt();else if(adminTab==='rw')h+=vAdminRw();else if(adminTab==='stats')h+=vAdminStats();else if(adminTab==='sys')h+=vAdminSys();else h+=vAdminBp();
  return h}
 
 // ---------- admin: system settings + stats ----------
@@ -4554,8 +4894,8 @@ async function phRepost(id){S.phr=S.phr||{};
   save()
  }catch(e){say('รีโพสต์ไม่สำเร็จ')}}
 async function phDelete(id){if(!(await dlg('ลบโพสต์นี้?','ลบ')))return;try{await db.ref('photos/'+id).remove()}catch(e){say('ลบไม่สำเร็จ')}}
-const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena,live:vLive,photos:vPhotos,hxhgacha:vHxHGacha};
-function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():userDocPending?vLoadingDoc():isRemoved()?vRemoved():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60);if(pg==='topup')loadMyStorageUsed();if(pg==='login'&&authStage==='otp')setTimeout(otpStartTick,30);if(pg==='rank'&&rankTab==='rp')setTimeout(rankCountdownStartTick,30);hxhHomeBgSync();hxhMoreBgSync();hxhGlobalBgSync();hxhVeilSync();document.documentElement.classList.toggle('hxhImmersive',hxhUi());hxhSongSync();defBgSync();hxhLoginBgSync()}
+const V={home:vHome,missions:vM,lib:vLib,view:vView,redeem:vR,more:vMore,mine:vH,admin:vAdmin,contact:vContact,rank:vRank,redeemcode:vRedeemCode,shop:vShop,topup:vTopup,bp:vBP,settings:vSettings,profile:vProfile,user:vUser,friends:vFriends,chats:vChats,chat:vChat,gacha:vGacha,daily:vDaily,explore:vExplore,team:vTeam,rewards:vRewards,decor:vDecor,jump:vJump,duel:vDuel,arena:vArena,live:vLive,photos:vPhotos,hxhgacha:vHxHGacha,lotto:vLotto};
+function R(){applyTheme();head();$('#v').innerHTML=pg==='login'?vLogin():userDocPending?vLoadingDoc():isRemoved()?vRemoved():isBanned()?vBan():sysMaint()?vMaint():sysNoticeH()+V[pg]();if(pg!=='login')oidR();setTimeout(checkNick,500);setTimeout(checkWhatsNew,650);setTimeout(checkAnnPopup,1300);if(pg==='home')setTimeout(hwPop,2000);if(pg==='profile'){loadMyBgVideo();setTimeout(tryPlayCoverVideo,60)}if(pg==='user')setTimeout(tryPlayCoverVideo,60);if(pg==='live'&&liveStage==='watch')setTimeout(liveWatchAttachVideo,60);if(pg==='topup')loadMyStorageUsed();if(pg==='login'&&authStage==='otp')setTimeout(otpStartTick,30);if(pg==='rank'&&rankTab==='rp')setTimeout(rankCountdownStartTick,30);if(pg==='home'||pg==='lotto')setTimeout(lottoCountdownStartTick,30);hxhHomeBgSync();hxhMoreBgSync();hxhGlobalBgSync();hxhVeilSync();document.documentElement.classList.toggle('hxhImmersive',hxhUi());hxhSongSync();defBgSync();hxhLoginBgSync()}
 setInterval(()=>{if(!S||document.visibilityState!=='visible')return;const wb=isBanned();roll();if(wb&&!isBanned()){R();return}if(wb){const e=$('#bnrem');if(e)e.innerHTML='<b>'+banRemain(S.ban)+'</b>';return}S.on++;S.life=(S.life||0)+1;bpEvt('sec');if(pg==='missions'&&missionsTab==='bpm'&&S.on%5===0&&!document.querySelector('#dlg .ov'))R();{const e=$('#onl');if(e)e.textContent='ออนไลน์วันนี้ '+mm(S.on)}
  let re=false;if(run){const m=M.find(x=>x.id===run.id);run.el++;if(run.el>=m.s)re=true;
   const t=$('#t-'+m.id),b=$('#b-'+m.id);if(t)t.textContent=mm(run.el)+' / '+mm(m.s);if(b)b.style.width=Math.min(100,run.el/m.s*100)+'%'}
@@ -5293,7 +5633,7 @@ function boot(){try{
    uid=u.uid;isAdmin=(u.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase();if(isAdmin){try{localStorage.setItem(HXH_HINT_KEY,'1')}catch(e){}}
    if(attachedUid===uid){ready=true;return} // auth SDK just re-validated the same session (token refresh, tab refocus, etc.) — nothing actually changed, so don't touch the screen at all
    attachedUid=uid;
-   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachMyStorageReq();attachBpLevels();attachGC();attachHxhCfg();attachLBR();attachDECOR();attachJUMPCFG();attachBdayWishes();attachSys();attachUgc();attachPromoCfg();songsAttach();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachPremiumReqAll();attachStorageReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
+   attachAntiCheat();attachFashionCfg();attachRankCfg();attachUser();attachContent();attachAnnounce();attachLeaderboard();attachSocial();attachShop();attachQR();attachMyTopups();attachMyPremiumReq();attachMyStorageReq();attachBpLevels();attachGC();attachHxhCfg();attachLBR();attachDECOR();attachJUMPCFG();attachLOTTOCFG();attachMyLottoBets();attachLottoHistory();attachBdayWishes();attachSys();attachUgc();attachPromoCfg();songsAttach();try{jumpDeviceCheck()}catch(e){}if(isAdmin){attachContacts();attachCodes();attachTopups();attachLottoBetsAll();attachPremiumReqAll();attachStorageReqAll()}if(pg==='login')pg='home';ready=true;pg==='admin'?head():R()});
  }catch(e){$('#v').innerHTML='<div class="card" style="margin-top:0"><b class="n">เชื่อมต่อ Firebase ไม่สำเร็จ</b><div class="mut" style="margin-top:6px">'+esc((e&&e.message)||'')+'</div></div>'}}
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});addEventListener('pagehide',flush);
 boot();
