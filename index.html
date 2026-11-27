@@ -2575,15 +2575,16 @@ function vAdminHxh(){
  <button class="btn" style="width:100%;margin-top:10px" onclick="adminTab='players';R()">ไปที่แท็บผู้เล่น</button></div>
  <div class="card"><button class="btn" style="width:100%" onclick="if(confirm('คืนค่าเริ่มต้นทั้งหมด (ยังไม่บันทึก)?'))hxhCfgReset()">คืนค่าเริ่มต้นทั้งหมด</button></div>`}
 // ========== ระบบซื้อขายหวย (เลขหวยออก) ==========
-const LOTTO_SLOT_DIGITS={top3:3,front3:3,top2:2,bottom2:2,straight4:4};
-const LOTTO_SLOT_LABEL={top3:'3 ตัวบน',front3:'3 ตัวหน้า',top2:'2 ตัวบน',bottom2:'2 ตัวล่าง',straight4:'4 ตัวตรง'};
+const LOTTO_SLOT_DIGITS={top3:3,front3:3,top2:2,bottom2:2,straight4:4,prize1:6};
+const LOTTO_SLOT_LABEL={top3:'3 ตัวบน',front3:'3 ตัวหน้า',top2:'2 ตัวบน',bottom2:'2 ตัวล่าง',straight4:'4 ตัวตรง',prize1:'6 ตัว (รางวัลที่ 1)'};
 const LOTTO_TYPES_DEF=[
  {id:'t3up',label:'3 ตัวบน',slot:'top3',mode:'exact',rate:900,on:true},
  {id:'t3tod',label:'3 ตัวโต๊ด',slot:'top3',mode:'permute',rate:150,on:true},
  {id:'t3front',label:'3 ตัวหน้า',slot:'front3',mode:'exact',rate:120,on:true},
  {id:'t2up',label:'2 ตัวบน',slot:'top2',mode:'exact',rate:90,on:true},
  {id:'t2dn',label:'2 ตัวล่าง',slot:'bottom2',mode:'exact',rate:90,on:true},
- {id:'t4straight',label:'4 ตัวตรง',slot:'straight4',mode:'exact',rate:3200,on:true}
+ {id:'t4straight',label:'4 ตัวตรง',slot:'straight4',mode:'exact',rate:3200,on:true},
+ {id:'t6prize1',label:'6 ตัว รางวัลที่ 1',slot:'prize1',mode:'exact',rate:100000,on:true}
 ];
 let LOTTOCFG={enabled:true,roundId:'',label:'',openAt:0,closeAt:0,status:'closed',results:{},announcedAt:0,banned:[],types:LOTTO_TYPES_DEF.map(t=>Object.assign({},t))};
 let lottoCfgDraft=null,lottoResultsDraft=null;
@@ -2716,25 +2717,37 @@ function vLotto(){
  <div class="tabs" style="margin-top:10px"><button class="tab ${lottoTab==='buy'?'on':''}" onclick="lottoSetTab('buy')">ซื้อหวย</button><button class="tab ${lottoTab==='history'?'on':''}" onclick="lottoSetTab('history')">ของฉัน/ผลย้อนหลัง</button></div>`;
  return head+(lottoTab==='history'?lottoHistoryHTML():lottoBuyHTML(ph));
 }
+function lottoPreviewCalc(){
+ const t=lottoTypeById(lottoSel);if(!t)return null;
+ const digits=LOTTO_SLOT_DIGITS[t.slot];
+ const blocked=lottoNumInput.length===digits&&lottoIsBlocked(LOTTOCFG,t.id,lottoNumInput);
+ const rate=lottoNumInput.length===digits?lottoEffectiveRate(LOTTOCFG,t,lottoNumInput):t.rate;
+ const stake=Math.round(+lottoStakeInput||0);
+ return {t,digits,blocked,rate,stake,canBuy:lottoCanBuy(LOTTOCFG)};
+}
+function lottoUpdatePreview(){
+ const p=lottoPreviewCalc();if(!p)return;
+ const rateEl=$('#lottorate');if(rateEl)rateEl.textContent='x'+fmt(p.rate);
+ const warnEl=$('#lottoblockedwarn');if(warnEl)warnEl.innerHTML=p.blocked?'<div class="mut" style="color:#ef4444;margin-top:4px">⛔ เลขนี้อั้น ไม่รับซื้อในงวดนี้</div>':'';
+ const potEl=$('#lottopotential');if(potEl)potEl.innerHTML=p.stake?`<div class="mut" style="margin-top:6px">ถ้าถูก รับ 💎 ${fmt(Math.round(p.stake*p.rate))} หยกเขียว</div>`:'';
+ const btn=$('#lottobuybtn');if(btn)btn.disabled=!p.canBuy||p.blocked;
+}
 function lottoBuyHTML(ph){
  if(ph.k==='off')return '<div class="card"><div class="mut">ยังไม่มีงวดหวยที่เปิดอยู่ในขณะนี้</div></div>';
  const types=(LOTTOCFG.types||[]).filter(t=>t.on);
  if(!types.length)return '<div class="card"><div class="mut">แอดมินยังไม่เปิดประเภทหวยให้ซื้อ</div></div>';
- const canBuy=ph.k==='open';
  const typeChips=types.map(t=>`<button class="chip ${lottoSel===t.id?'wn':''}" style="margin:3px" onclick="lottoPickType('${t.id}')">${esc(t.label)} · x${fmt(t.rate)}</button>`).join('');
  const t=lottoTypeById(lottoSel);
  let form='';
  if(t){
-  const digits=LOTTO_SLOT_DIGITS[t.slot];
-  const blocked=lottoNumInput.length===digits&&lottoIsBlocked(LOTTOCFG,t.id,lottoNumInput);
-  const rate=lottoNumInput.length===digits?lottoEffectiveRate(LOTTOCFG,t,lottoNumInput):t.rate;
-  const stake=Math.round(+lottoStakeInput||0);
-  form=`<div class="card" style="margin-top:10px"><b class="n">${esc(t.label)}</b><div class="mut" style="margin-top:2px">ใส่เลข ${digits} หลัก · อัตราจ่าย x${fmt(rate)}</div>
-  <input class="inp" style="margin-top:8px;font-size:20px;text-align:center;letter-spacing:4px" maxlength="${digits}" inputmode="numeric" placeholder="${'0'.repeat(digits)}" value="${esc(lottoNumInput)}" oninput="lottoNumInput=this.value.replace(/\\D/g,'').slice(0,${digits});R()">
-  ${blocked?'<div class="mut" style="color:#ef4444;margin-top:4px">⛔ เลขนี้อั้น ไม่รับซื้อในงวดนี้</div>':''}
-  <input class="inp" style="margin-top:8px" type="number" min="1" placeholder="จำนวนหยกเขียวที่ซื้อ" value="${esc(lottoStakeInput)}" oninput="lottoStakeInput=this.value;R()">
-  ${stake?`<div class="mut" style="margin-top:6px">ถ้าถูก รับ 💎 ${fmt(Math.round(stake*rate))} หยกเขียว</div>`:''}
-  <button class="btn pri" style="width:100%;margin-top:10px" ${(!canBuy||blocked)?'disabled':''} onclick="lottoBuy()">🎟️ ยืนยันซื้อ</button>
+  const p=lottoPreviewCalc();
+  const digits=p.digits,blocked=p.blocked,rate=p.rate,stake=p.stake,canBuy=p.canBuy;
+  form=`<div class="card" style="margin-top:10px"><b class="n">${esc(t.label)}</b><div class="mut" style="margin-top:2px">ใส่เลข ${digits} หลัก · อัตราจ่าย <span id="lottorate">x${fmt(rate)}</span></div>
+  <input class="inp" style="margin-top:8px;font-size:20px;text-align:center;letter-spacing:4px" maxlength="${digits}" inputmode="numeric" placeholder="${'0'.repeat(digits)}" value="${esc(lottoNumInput)}" oninput="lottoNumInput=this.value.replace(/\\D/g,'').slice(0,${digits});this.value=lottoNumInput;lottoUpdatePreview()">
+  <div id="lottoblockedwarn">${blocked?'<div class="mut" style="color:#ef4444;margin-top:4px">⛔ เลขนี้อั้น ไม่รับซื้อในงวดนี้</div>':''}</div>
+  <input class="inp" style="margin-top:8px" type="number" min="1" placeholder="จำนวนหยกเขียวที่ซื้อ" value="${esc(lottoStakeInput)}" oninput="lottoStakeInput=this.value;lottoUpdatePreview()">
+  <div id="lottopotential">${stake?`<div class="mut" style="margin-top:6px">ถ้าถูก รับ 💎 ${fmt(Math.round(stake*rate))} หยกเขียว</div>`:''}</div>
+  <button class="btn pri" id="lottobuybtn" style="width:100%;margin-top:10px" ${(!canBuy||blocked)?'disabled':''} onclick="lottoBuy()">🎟️ ยืนยันซื้อ</button>
   ${!canBuy?'<div class="mut" style="margin-top:6px">ปิดรับซื้อแล้ว</div>':''}</div>`;
  }
  return `<div class="card" style="margin-top:10px"><b class="n">เลือกประเภทหวย</b><div style="margin-top:8px">${typeChips}</div></div>${form}`;
@@ -2778,7 +2791,7 @@ function lottoToast(html){
 
 // ---------- หน้าแอดมิน ----------
 function lottoCfgGetDraft(){if(!lottoCfgDraft)lottoCfgDraft={types:JSON.parse(JSON.stringify(LOTTOCFG.types)),banned:JSON.parse(JSON.stringify(LOTTOCFG.banned)),label:LOTTOCFG.label||'',closeAt:LOTTOCFG.closeAt||0};return lottoCfgDraft}
-function lottoResultsGetDraft(){if(!lottoResultsDraft)lottoResultsDraft=Object.assign({top3:'',front3:'',top2:'',bottom2:'',straight4:''},LOTTOCFG.results);return lottoResultsDraft}
+function lottoResultsGetDraft(){if(!lottoResultsDraft)lottoResultsDraft=Object.assign({top3:'',front3:'',top2:'',bottom2:'',straight4:'',prize1:''},LOTTOCFG.results);return lottoResultsDraft}
 function lottoCfgSetLabel(v){lottoCfgGetDraft().label=String(v).slice(0,80)}
 function lottoCfgSetCloseAt(v){const d=lottoCfgGetDraft();if(v===''){d.closeAt=0;return}const t=new Date(v).getTime();d.closeAt=isFinite(t)?t:0}
 function lottoTypeSet(i,k,v){const d=lottoCfgGetDraft();const t=d.types[i];if(!t)return;
